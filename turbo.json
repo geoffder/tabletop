@@ -51,7 +51,8 @@
                 "LOCAL_GAME_HISTORY_DELAY_MS",
                 "REQUEST_TIMINGS_ENABLED",
                 "SITE_MANIFEST_PATH",
-                "VAPID_ADMIN_EMAIL"
+                "VAPID_ADMIN_EMAIL",
+                "__VITE_ADDITIONAL_SERVER_ALLOWED_HOSTS"
             ]
         },
         "start": {
