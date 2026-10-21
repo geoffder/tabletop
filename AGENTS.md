@@ -24,6 +24,8 @@ Before changing Site Frontend ↔ Game UI communication or shared Game Client be
 
 For new games or structural changes to game actions, state handlers, game state, or game components, read `docs/DESIGN.md`.
 
+To build a new title end to end, use `.agents/skills/new-game/SKILL.md`; its reference files hold the lessons earlier titles paid for in layout, history text and animation.
+
 ### 18xx design
 
 Before designing or changing any 18xx model, Action, state/handler, logical or visual component, or other reusable functionality, follow `docs/agents/18xx-design.md`. Consider the functionality across all researched titles; TOP and Shikoku 1889 are the first implementation consumers.
