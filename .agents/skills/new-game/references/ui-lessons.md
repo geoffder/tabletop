@@ -9,7 +9,8 @@ Each lesson names the symptom a user saw, so you can recognise it.
 - **Action panel height.** Symptom: the board jumps when the turn changes. Make the action panel one fixed-height message row, as Bus and Magna Grecia do: the last move while you wait, the prompt with its buttons inline on your turn, the step shown in history view. Anything else that always shows (a pool strip) sits below at a constant height. Check by reading the board's `getBoundingClientRect().y` on your turn, while waiting and in history: all equal.
 - **Banner text.** Keep the banner's move text to one line: a brief form ("pushed ⚪ from D1 to D2, taking row D2–D5"); full detail (shifted counts, returned and captured counts) belongs in the history panel. One builder with a `brief` flag serves both.
 - **Spaces in rich text.** Symptom: "removed B2and claimed". Svelte trims whitespace at the edges of `{#if}`/`{#each}` blocks. Build history lines as segments (text, piece, point) with the spaces inside the text segments, and test the joined text.
-- **Coordinates.** Use the published notation, capital letters, BoardSpace style: label each column with its bottom point's name below it (A1) and its top point's name above it (A4). Separate letters above and numbers along the sides collide on a hexagon and read as wrong names. Labels sit about 0.6–0.72 × spacing from their point; compare the frame margin with sibling titles.
+- **Coordinates.** Use the published notation in capital letters, laid out as BoardSpace lays out that game, which differs by game: open BoardSpace's own picture of the board first. ZÈRTZ, GIPF and LYNGK label each column with its bottom point's name below it (A1) and its top point's name above it (A4), where separate letters above and numbers along the sides collide and read as wrong names; YINSH puts the letters under the columns and the numbers before each line on the left. Labels sit about 0.6–0.72 × spacing from their point; compare the frame margin with sibling titles.
+- **Player areas off the board** (YINSH's ring spaces) belong to a seat, not to the viewer. Symptom: a removed ring flew to one corner and then appeared in the other. The harness switches viewer after every action, so viewer-relative sides swap mid-animation. Fix each player's side by turn order, matching the order of the player cards.
 
 ## Phones
 
@@ -27,9 +28,15 @@ Each lesson names the symptom a user saw, so you can recognise it.
 ## Pieces and contrast
 
 - Size pieces in one geometry module, as large as the tightest neighbouring pair allows, with a unit test asserting the gap (≥ 0, small) so later tweaks cannot introduce overlap.
-- Keep details crisp when zoomed: blur shadows on their own layer and draw the piece without SVG filters; draw speckles as real seeded circles, not a `<pattern>`.
+- Keep details crisp when zoomed: draw the piece without SVG filters, and speckles as real seeded circles, not a `<pattern>`.
+- Draw shadows as radial-gradient fills, not a blur filter over a group of them. Symptom (YINSH, on an iPhone; not reproduced in Chromium): a removed ring's shadow stayed until the next move, consistent with WebKit not repainting under a filter whose children were removed.
 - A panel that shows a black piece needs a light background (trays, history panel, history list icons). On a light table, give faded controls (history buttons) a dark backing.
 - Light/dark toggles: an icon showing the mode a press switches to (moon on light, sun on dark), with a matching `aria-label`.
+
+## Table textures
+
+- **A background that runs past the board** (YINSH's storm of cloud): an image inside the board's SVG is clipped at the board's frame by `ScalingWrapper`. Draw it on a layer behind the table instead, positioned from the board's `getScreenCTM()` so it lines up with the board through fitting, zoom and pan (observe resizes and the wrapper's `style` changes). Make the layer `absolute` inside the table, so it scrolls with the table on phones, and `fixed` only inside the full-screen dialog.
+- **Generated textures.** `feTurbulence` piped through `feColorMatrix` must set the color in the matrix's offset column and take alpha from a noise channel; otherwise the clouds come out grey-black and darken everything. Noise warped by `feDisplacementMap` shows seams when tiled, so draw one large image. Filter noise gave laminar streaks or random marbling; the look the user wanted (one storm centred on the board, with eddies) came from tracing thousands of faint streaks along a wind field on a canvas, drawn once and shown as an image.
 
 ## Full screen and zoom
 
