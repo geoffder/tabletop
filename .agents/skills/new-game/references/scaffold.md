@@ -6,6 +6,7 @@
   - replace `<GameDefinition<…>>{…}` with `defineGame({ info, runtime })` (see `games/magna-grecia/src/definition/definition.ts`);
   - remove `as` casts (`game.config as …`, `turnOrderSorted … as …`, `gameSession as …`): read config through a pure `fooFromConfig(config)` that falls back to the default, and narrow the session with `assert(gameSession instanceof FooGameSession, …)`;
   - pin `@typescript/native-preview` to the version the sibling games use (the template writes `*`);
+  - in `src/app.html`, make the viewport tag `width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover`. Without `maximum-scale=1`, iOS browsers zoom in when a text field under 16px is tapped (the harness's new-game name fields) and stay zoomed through reloads, which clips the table's right edge and hides the bottom of the board under the browser toolbar. Without `viewport-fit=cover`, `env(safe-area-inset-*)` reads 0, so the shared layout cannot clear the home indicator or notch. The template is upstream; fix each title rather than the template;
   - keep the harness page's `UiDefinition as unknown as GameUiDefinition<…>`: every title has it and the readiness checks expect it.
 - Delete the template `cover.jpg` once the title has its own cover; a cover can be drawn as SVG and rendered to a 640×640 PNG with the headless browser from `browser-checks.md`.
 - Run `pnpm install` in the container after adding packages; the lockfile changes with them.
