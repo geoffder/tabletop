@@ -16,16 +16,24 @@ GAME_UI=<slug>-ui node .agents/skills/new-game/scripts/shot.mjs 1400 900 \
   'click:[aria-label="jumper D4"]' 'tap:[aria-label="land F2"]' wait:200 shot:mid-jump
 ```
 
-Steps: `click:SEL` (then waits 0.6 s), `tap:SEL` (no wait, for mid-animation frames), `hover:SEL`, `fill:SEL=>VALUE`, `wait:MS`, `eval:JS` (prints the result), `reload:MS`, `shot:NAME` (writes `tmp/screens/NAME.png`). It prints page errors at the end. Give board elements `aria-label`s built from the game's notation ("place D4", "dot D1") so steps can name them.
+Steps: `new:VARIANT` (creates a game named Test; the variant label is optional), `click:SEL` (then waits 0.6 s), `tap:SEL` (no wait, for mid-animation frames), `hover:SEL`, `fill:SEL=>VALUE`, `wait:MS`, `eval:JS` (prints the result), `reload:MS`, `shot:NAME` (writes `tmp/screens/NAME.png`). It prints page errors at the end; `Q='?vp'` adds a query string to the harness URL. Give board elements `aria-label`s built from the game's notation ("place D4", "dot D1") so steps can name them.
 
 ## Checks worth scripting
 
-- **Phone width**: run at `390 844` as well as desktop.
+- **Phone sizes**: run at `390 655` (the visible area of Firefox on an iPhone, with its bars showing) and `375 600` as well as desktop. On these the board is limited by height, so compare its size before and after any change above it.
+- **Overlap**: read `getBoundingClientRect()` of the two things that may collide (a corner label and the zoom bar) at each size. Wait 1.5 s after opening a scenario before measuring sizes: the board is still fitting before that.
 - **Stable board**: `eval:document.querySelector(".<board>").getBoundingClientRect().y` in each state.
 - **Hidden pieces**: list piece groups whose opacity is not 1 after undo and history steps.
 - **Mid-animation**: `tap:` then `wait:` 80–250 ms, then `shot:`.
 - **Refresh**: reload, reopen, shoot twice, and compare with `magick compare -metric AE a.png b.png null:` (0 means no motion).
 - Crop and zoom (`magick … -crop`) before judging small marks.
+
+## Phone-only bugs
+
+The user reports these from a real phone, so start from their screenshot.
+
+- Measure an element in it (a button, the board's label span) against the same element in your shot at that width. Everything uniformly larger means the page is zoomed in, not laid out wrong; see the viewport tag in `scaffold.md`.
+- When the cause is still unclear, add a temporary readout to the harness page behind a query string (`?vp`): `innerHeight`, `visualViewport.height`, probes sized `100dvh`/`100svh`/`100lvh` and `env(safe-area-inset-*)`, the `--app-navbar-height` and `--app-banner-height` variables, the table's and game column's rects, and a small block fixed at `bottom: 0`. Ask for a screenshot with a game open, decide from the numbers, then remove it.
 
 ## Gotchas
 
