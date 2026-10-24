@@ -48,6 +48,20 @@ From DVONN, where stacks reach 20 pieces and only the top colour and the DVONN p
 - **Donuts are see-through.** Leave the hole open: down it draw each piece's inner wall at its true thickness (even where its outside band is thinned), with a thin seam between pieces, clipped to the top opening; below the last wall the board shows. Symptom: a tall thinned stack showed sand down its hole. A white piece's inner wall needs to be pale (the shadowed grey read as a dark smudge against the sand).
 - **Speckles belong to the piece, not the place.** Symptom: a piece's speckle pattern changed as it hopped onto another stack. Seed each piece by an identity stored in game state (DVONN records `placedAt`, the space it was placed on), never by space and level; hand-built scenario pieces each need a distinct identity, or a stack's pieces share one pattern.
 
+## Player cards
+
+- **Tally what players count** (GIPF, after DVONN): each row is a bold count, a one-word caption (`reserve`, `GIPF`, `captured`) and the pieces themselves drawn small with the board's piece shape, in stacks no taller than 3 (the user chose 3 over 4). A special piece shows as itself, each GIPF-piece as its own two-disc stack, never gathered into taller stacks. Captured pieces show in the opponent's colour. Give the count column a fixed two-digit width so both cards' captions line up.
+
+## Session tests
+
+Rune classes such as the session only react when compiled for the client; under the SvelteKit plugin's server build, a `$derived` read in a test stayed at its first value. Give the UI package its own `vitest.config.ts`, as Hill Country Grocers does: the plain Svelte plugin, `resolve.conditions: ['browser']`, the `$lib` alias, and `config/config-vitest/clientRunesEnvironment.ts` as the environment. The root Vitest projects then pick the package up too. Then:
+
+- Build the session with `createHarnessAppContext` and a local game whose seat has the harness user's id (`harness-user`), and stub `saveGameLocally`.
+- `await session.waitForVisibleTransitionSettled()` after constructing it and after every action, Undo and history step. Until the first presentation settles the session is busy and ignores actions without an error. History also holds its stepping lock until a `setTimeout`, so wait one timer between steps.
+- Stub `addEventListener` and `removeEventListener` globally: title preferences listen for window focus, and the client environment's `window` is Node's global.
+- `new URL(path, import.meta.url)` becomes an asset lookup in the client build (`self is not defined`); build file paths with `fileURLToPath(import.meta.url)` instead.
+- Check a new test fails with the fix switched off.
+
 ## Table textures
 
 - **A background that runs past the board** (YINSH's storm of cloud): an image inside the board's SVG is clipped at the board's frame by `ScalingWrapper`. Draw it on a layer behind the table instead, positioned from the board's `getScreenCTM()` so it lines up with the board through fitting, zoom and pan (observe resizes and the wrapper's `style` changes). Make the layer `absolute` inside the table, so it scrolls with the table on phones, and `fixed` only inside the full-screen dialog.
