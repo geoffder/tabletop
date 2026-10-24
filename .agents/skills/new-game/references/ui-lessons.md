@@ -16,19 +16,21 @@ Each lesson names the symptom a user saw, so you can recognise it.
 
 - **Height budget.** Symptom: the board is small on a phone. On a phone the board is limited by height, so every row above it shrinks it. Keep each strip above the board one row on phones: a player's name beside their pieces, the name truncating first. Check the board's size at the phone sizes in `browser-checks.md` before and after the change.
 - **Zoom bar.** Symptom: the bottom-left label hides under the zoom controls. Leave room in the board's `viewBox` below the bottom labels for them, and keep the board centred at full size. `ScalingWrapper` clips its content, so the bar cannot be nudged outside it, and a band reserved above the board with `insetTop` costs board size on every phone.
-- **Overlay toggles** (light/dark) sit in an empty corner of the board's outline, where the fitted board leaves room, so the board needs no band reserved for them.
+- **Overlay toggles** (light/dark) sit in an empty corner of the board's outline, where the fitted board leaves room, so the board needs no band reserved for them. Put a new toggle on the row of an existing one: stacked one per row, ZÈRTZ's third toggle came down onto the top coordinate label on phones.
 
 ## Marks and highlights
 
-- Draw highlight outlines thin (about 1.4, 2 when emphasised), on their own layer above the pieces, with radius `edge + gap + width / 2` so a thicker hover line grows outward and never covers the piece, and small enough that neighbouring outlines never meet.
+- Draw highlight outlines thin (about 1.4, 2 when emphasised), on their own layer above the pieces, with radius `edge + gap + width / 2` so a thicker hover line grows outward and never covers the piece, and small enough that neighbouring outlines never meet. Where pieces touch (ZÈRTZ's rings, packed as on the table), draw the outline just inside the edge instead, `edge − inset − width / 2`, so it stays on its own piece.
 - Mark a piece with something on its own top face (a spot, a recoloured existing ring) rather than a ring around it: large rings overlap neighbours. A toggle mark can recolour a feature the piece already has (a GIPF-piece's crown ring: green keep, red take).
 - Offer a toggle only where both choices are sensible for the player; keep the rules engine permissive.
+- **Hover previews on touch.** Symptom (iPhone): a tapped ring flashed the hover preview, then showed nothing until the move landed. A tap fires pointer enter and leave around the click; ignore enter when `event.pointerType === 'touch'`.
 - Fade outlines rather than removing them; see `animation-lessons.md` for fading them with the move.
 - **Marks on stacked or tall pieces** (DVONN): draw each mark inside its piece's group, after the piece but outside the group that animates, so pieces in front cover it as they cover the piece; keep them registered with the animator so all of them fade with the move.
 - **Dashed marks on light pieces**: outline each dash on its own rather than laying the dashes on a solid dark band. The black dashes are shorter but square-capped, overhanging each coloured dash by the outline width; the piece shows between dashes.
 
 ## Pieces and contrast
 
+- **Pack pieces as the real game does.** ZÈRTZ's rings touch on the table; the first version left a gap that the user removed.
 - Size pieces in one geometry module, as large as the tightest neighbouring pair allows, with a unit test asserting the gap (≥ 0, small) so later tweaks cannot introduce overlap.
 - Keep details crisp when zoomed: draw the piece without SVG filters, and speckles as real seeded circles, not a `<pattern>`.
 - Draw shadows as radial-gradient fills, not a blur filter over a group of them. Symptom (YINSH, on an iPhone; not reproduced in Chromium): a removed ring's shadow stayed until the next move, consistent with WebKit not repainting under a filter whose children were removed.
