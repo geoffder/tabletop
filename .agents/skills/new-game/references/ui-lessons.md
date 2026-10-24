@@ -50,7 +50,11 @@ From DVONN, where stacks reach 20 pieces and only the top colour and the DVONN p
 
 ## Player cards
 
-- **Tally what players count** (GIPF, after DVONN): each row is a bold count, a one-word caption (`reserve`, `GIPF`, `captured`) and the pieces themselves drawn small with the board's piece shape, in stacks no taller than 3 (the user chose 3 over 4). A special piece shows as itself, each GIPF-piece as its own two-disc stack, never gathered into taller stacks. Captured pieces show in the opponent's colour. Give the count column a fixed two-digit width so both cards' captions line up.
+- **Tally what players count** (GIPF, after DVONN): each row is a bold count, a one-word caption (`reserve`, `GIPF`, `captured`) and the pieces themselves drawn small with the board's piece shape, in stacks.
+  - **Choose the stack cap from the title's counts**, so the largest count a row can show still fits on one line beside its caption. GIPF's rows hold at most 18 pieces, and the user chose stacks of 3 over 4. DVONN's cards count up to the whole board and use stacks of 8. Show the user two caps side by side.
+  - A special piece shows as itself, each GIPF-piece as its own two-disc stack, never gathered into taller stacks.
+  - Captured pieces show in the opponent's colour.
+  - Give the count column a fixed two-digit width so both cards' captions line up.
 
 ## Session tests
 
