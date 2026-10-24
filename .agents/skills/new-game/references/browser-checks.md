@@ -25,6 +25,7 @@ Steps: `new:VARIANT` (creates a game named Test; the variant label is optional),
 - **Stable board**: `eval:document.querySelector(".<board>").getBoundingClientRect().y` in each state.
 - **Hidden pieces**: list piece groups whose opacity is not 1 after undo and history steps.
 - **Mid-animation**: `tap:` then `wait:` 80–250 ms, then `shot:`.
+- **Frame strips of motion**: record the page (`recordVideo` on the Playwright context), note when the action was clicked, then crop and extract frames with `ffmpeg -ss … -vf "crop=…" -fps_mode passthrough` (25 fps) and tile them with `magick montage`. Playwright's fake clock (`clock.install()` then `runFor`) keeps running in real time between screenshots unless paused, so its strips showed wrong durations; paused, a history step played in one frame. A single pale frame just after a state lands can be the video encoder: confirm a glitch with an in-page `requestAnimationFrame` logger listing piece counts and every node whose computed opacity is not 1.
 - **Refresh**: reload, reopen, shoot twice, and compare with `magick compare -metric AE a.png b.png null:` (0 means no motion).
 - Crop and zoom (`magick … -crop`) before judging small marks.
 
