@@ -24,6 +24,8 @@ Each lesson names the symptom a user saw, so you can recognise it.
 - Mark a piece with something on its own top face (a spot, a recoloured existing ring) rather than a ring around it: large rings overlap neighbours. A toggle mark can recolour a feature the piece already has (a GIPF-piece's crown ring: green keep, red take).
 - Offer a toggle only where both choices are sensible for the player; keep the rules engine permissive.
 - Fade outlines rather than removing them; see `animation-lessons.md` for fading them with the move.
+- **Marks on stacked or tall pieces** (DVONN): draw each mark inside its piece's group, after the piece but outside the group that animates, so pieces in front cover it as they cover the piece; keep them registered with the animator so all of them fade with the move.
+- **Dashed marks on light pieces**: outline each dash on its own rather than laying the dashes on a solid dark band. The black dashes are shorter but square-capped, overhanging each coloured dash by the outline width; the piece shows between dashes.
 
 ## Pieces and contrast
 
@@ -33,9 +35,22 @@ Each lesson names the symptom a user saw, so you can recognise it.
 - A panel that shows a black piece needs a light background (trays, history panel, history list icons). On a light table, give faded controls (history buttons) a dark backing.
 - Light/dark toggles: an icon showing the mode a press switches to (moon on light, sun on dark), with a matching `aria-label`.
 
+## Stacks
+
+From DVONN, where stacks reach 20 pieces and only the top colour and the DVONN pieces inside matter.
+
+- **Height must be unmistakable.** Put the count on the top piece (DVONN: in the donut's hole, white outlined in black, for stacks of two or more), and let the stack rise as a physical pile up to a cap (the user chose 10 after seeing 7–10), thinning every band above the cap instead of rising further. Show the user the cap as a labelled grid of heights on a scenario where it hides the most.
+- **Where a tall stack hides most**: the two neighbours in the row behind it, which overlap it sideways; the space straight behind stays clear. Keep a harness scenario with pieces, stacks and a special piece in those spaces.
+- **Pieces that matter inside a stack** (DVONN's red pieces) keep most of their band's thickness (0.8) when the rest thin out, capped at half the stack's rise. Symptom: a buried red piece became a 1px line.
+- **Seams between same-coloured dark pieces**: black bands with a black edge run together. A faint white catch-light along the top of a black band whose piece has another black piece on it parts them; none on the top piece (it should look like a single piece) and none between different colours, which part already. The user compared a grey edge, a catch-light and a dark gap, and chose the catch-light.
+- **Donuts are see-through.** Leave the hole open: down it draw each piece's inner wall at its true thickness (even where its outside band is thinned), with a thin seam between pieces, clipped to the top opening; below the last wall the board shows. Symptom: a tall thinned stack showed sand down its hole. A white piece's inner wall needs to be pale (the shadowed grey read as a dark smudge against the sand).
+- **Speckles belong to the piece, not the place.** Symptom: a piece's speckle pattern changed as it hopped onto another stack. Seed each piece by an identity stored in game state (DVONN records `placedAt`, the space it was placed on), never by space and level; hand-built scenario pieces each need a distinct identity, or a stack's pieces share one pattern.
+
 ## Table textures
 
 - **A background that runs past the board** (YINSH's storm of cloud): an image inside the board's SVG is clipped at the board's frame by `ScalingWrapper`. Draw it on a layer behind the table instead, positioned from the board's `getScreenCTM()` so it lines up with the board through fitting, zoom and pan (observe resizes and the wrapper's `style` changes). Make the layer `absolute` inside the table, so it scrolls with the table on phones, and `fixed` only inside the full-screen dialog.
+- **A board with margins and rounded corners** (DVONN's sand board): SVG clip paths ignore strokes, so a polygon stroked wide with round joins draws the shape but cannot clip a texture to it. Compute the outline offset by the margin, with an arc at each corner, and use that path for both.
+- **A printed edition's colours**: when the user points at the rulebook, take the table from it too (DVONN: the rulebook's red, glowing orange towards the middle), and warm every panel, tab and history control to match rather than leaving the earlier titles' navy.
 - **Generated textures.** `feTurbulence` piped through `feColorMatrix` must set the color in the matrix's offset column and take alpha from a noise channel; otherwise the clouds come out grey-black and darken everything. Noise warped by `feDisplacementMap` shows seams when tiled, so draw one large image. Filter noise gave laminar streaks or random marbling; the look the user wanted (one storm centred on the board, with eddies) came from tracing thousands of faint streaks along a wind field on a canvas, drawn once and shown as an image.
 
 ## Full screen and zoom
