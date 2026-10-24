@@ -28,6 +28,10 @@ Steps: `new:VARIANT` (creates a game named Test; the variant label is optional),
 - **Refresh**: reload, reopen, shoot twice, and compare with `magick compare -metric AE a.png b.png null:` (0 means no motion).
 - Crop and zoom (`magick … -crop`) before judging small marks.
 
+## Covers
+
+A real board render makes a good cover: open a scenario at a large viewport (1800×1250), hide the marks and coordinates with `eval:`, shoot, crop 640×640 around the most telling pieces, and composite a title rendered from SVG (`magick base.png title.png -composite`). Re-render it when the table's colours change.
+
 ## Phone-only bugs
 
 The user reports these from a real phone, so start from their screenshot.
