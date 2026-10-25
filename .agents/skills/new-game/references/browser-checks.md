@@ -27,7 +27,9 @@ Steps: `new:VARIANT` (creates a game named Test; the variant label is optional),
 - **Mid-animation**: `tap:` then `wait:` 80–250 ms, then `shot:`.
 - **Frame strips of motion**: record the page (`recordVideo` on the Playwright context), note when the action was clicked, then crop and extract frames with `ffmpeg -ss … -vf "crop=…" -fps_mode passthrough` (25 fps) and tile them with `magick montage`. Playwright's fake clock (`clock.install()` then `runFor`) keeps running in real time between screenshots unless paused, so its strips showed wrong durations; paused, a history step played in one frame. A single pale frame just after a state lands can be the video encoder: confirm a glitch with an in-page `requestAnimationFrame` logger listing piece counts and every node whose computed opacity is not 1.
 - **Refresh**: reload, reopen, shoot twice, and compare with `magick compare -metric AE a.png b.png null:` (0 means no motion).
-- Crop and zoom (`magick … -crop`) before judging small marks.
+- Crop and zoom (`magick … -crop`) before judging small marks; `DPR=2` or `3` renders the page at that pixel density.
+- **Piece grids**: for piece shape and colour rounds, a scratch route in the UI package (`src/routes/pieces/+page.svelte`) drawing every colour at every height, opened with `P=pieces`, beats hunting for positions; keep it out of commits.
+- **Colours from photos**: sample a published piece or board with `magick photo.jpg -crop 20x20+X+Y +repage -scale 1x1! -format '%[hex:p{0,0}]' info:` at a few spots, and compare with the box art, which is usually more saturated.
 
 ## Covers
 
@@ -44,4 +46,6 @@ The user reports these from a real phone, so start from their screenshot.
 
 - New game form: the first `player name` field is disabled; fill `input[placeholder="player name"]:not([disabled])`.
 - The first request after Vite starts can time out while it optimises dependencies; retry.
-- Only one game's harness can serve on 5173; switching branches stops the other title's harness.
+- Only one game's harness can serve on 5173; switching branches stops the other title's harness. To work on a second title without disturbing uncommitted work, check its branch out as a worktree under `tmp/` (`git worktree add tmp/<slug>-wt <branch>`, then `pnpm install --prefer-offline` there in the container); its harness falls back to 5174, and `PORT=5174` points `shot.mjs` at it.
+- The dev container's file watcher sometimes misses an edit made from the host, and Vite keeps serving the old module: a style you changed still computes to the old value. `touch` the file inside the container and reload.
+- Running a title's `scripts/build-scenarios.mjs` rewrites every scenario file with new seeds and dates; restore the ones you did not mean to change.
