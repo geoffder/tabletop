@@ -26,6 +26,7 @@ From ZÈRTZ, retrofitted onto a finished straight-down board: the board seen fro
 - **Making a lower shape thinner made it flatter.** When the user asks for a thinner piece, change the part they mean (ZÈRTZ: the shell) and keep the overall height.
 - **Outline of a raised shape.** Before foreshortening, a shape's top and base are circles. Its outline is the hull of the two: their shared outer tangents, computed on the circles, then each point's y scaled by the tilt. When the top lies within the base, the base ellipse alone is the outline.
 - **See-through holes.** Cut the hole out of the shape's path with `fill-rule: evenodd`, using the overlap of the hole's top and bottom openings, which is a lens between their crossing points. Draw the part of the top opening outside that lens as the far inner wall (a crescent), and tint the lens a little for the shadow under a hollow piece.
+- **A piece sitting down in a hole** (YINSH's marker in its ring) is drawn between the holder and the holder's near half, with the holder's mark after both. That order is right only while the piece is in the hole: rising out of it or dropping into it, the piece must pass over the near half and the mark once its base clears the holder's top. Draw it twice with the same transition, one copy in the hole's place and one after the mark, each shown only on its side of that height (YINSH: `dropIn`/`liftOut` take a `layer`; the upper copy has opacity 0 at rest).
 
 ## Motion seen from the side
 
