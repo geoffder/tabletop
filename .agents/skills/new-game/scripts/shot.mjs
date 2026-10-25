@@ -4,17 +4,23 @@ const ui = process.env.GAME_UI
 if (!ui) throw Error('Set GAME_UI to the game UI package folder, e.g. GAME_UI=zertz-ui')
 const { chromium } = await import(`/workspace/games/${ui}/node_modules/@playwright/test/index.mjs`)
 
-// Usage: [Q=?query] GAME_UI=<slug>-ui node shot.mjs WIDTH HEIGHT step... (see references/browser-checks.md)
+// Usage: [PORT=5173] [P=path] [Q=?query] [DPR=1] GAME_UI=<slug>-ui node shot.mjs WIDTH HEIGHT step...
+// (see references/browser-checks.md)
 // Steps: new, click, tap, hover, fill, wait, eval, reload, shot.
 const [, , width = '1400', height = '900', ...steps] = process.argv
 const browser = await chromium.launch()
-const context = await browser.newContext({ viewport: { width: Number(width), height: Number(height) } })
+const context = await browser.newContext({
+    viewport: { width: Number(width), height: Number(height) },
+    deviceScaleFactor: Number(process.env.DPR ?? 1)
+})
 const page = await context.newPage()
 const errors = []
 page.on('pageerror', (e) => errors.push(e.message))
 page.on('console', (m) => m.type() === 'error' && errors.push(m.text()))
 mkdirSync('/workspace/tmp/screens', { recursive: true })
-await page.goto('http://localhost:5173/' + (process.env.Q ?? ''), { waitUntil: 'networkidle' })
+await page.goto(`http://localhost:${process.env.PORT ?? 5173}/${process.env.P ?? ''}${process.env.Q ?? ''}`, {
+    waitUntil: 'networkidle'
+})
 await page.waitForTimeout(1200)
 for (const step of steps) {
     const [kind, ...rest] = step.split(':')

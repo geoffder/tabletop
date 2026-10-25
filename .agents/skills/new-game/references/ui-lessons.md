@@ -27,6 +27,8 @@ Each lesson names the symptom a user saw, so you can recognise it.
 - Fade outlines rather than removing them; see `animation-lessons.md` for fading them with the move.
 - **Marks on stacked or tall pieces** (DVONN): draw each mark inside its piece's group, after the piece but outside the group that animates, so pieces in front cover it as they cover the piece; keep them registered with the animator so all of them fade with the move.
 - **Dashed marks on light pieces**: outline each dash on its own rather than laying the dashes on a solid dark band. The black dashes are shorter but square-capped, overhanging each coloured dash by the outline width; the piece shows between dashes.
+- **Selection rings on HTML tokens** (a claim strip) lie on the ground around the piece, flattened by the board's tilt. Draw them inside the token's piece icon SVG, behind the piece, with `vector-effect="non-scaling-stroke"` so the cyan and its 1px dark edges keep their pixel widths; keep the ring's room on tokens with nothing to choose, so the strip never shifts. **Measure** the clearance between neighbouring rings (bounding rects minus each ring's reach) at desktop and phone widths before reporting it; one round reported rings as less cramped while they overlapped by 3px on phones.
+- **Show the whole network.** A mark explaining reach (LYNGK's lightning between linked stacks) comes from the board's geometry, not from the legal moves: derived from moves, a link with no landing beyond it was never drawn.
 
 ## Pieces and contrast
 
@@ -36,6 +38,8 @@ Each lesson names the symptom a user saw, so you can recognise it.
 - Draw shadows as radial-gradient fills, not a blur filter over a group of them. Symptom (YINSH, on an iPhone; not reproduced in Chromium): a removed ring's shadow stayed until the next move, consistent with WebKit not repainting under a filter whose children were removed.
 - A panel that shows a black piece needs a light background (trays, history panel, history list icons). On a light table, give faded controls (history buttons) a dark backing.
 - Light/dark toggles: an icon showing the mode a press switches to (moon on light, sun on dark), with a matching `aria-label`.
+- **Text and controls standing on the table** take their own variables (`--<slug>-table-ink`), apart from the ink of dark panels, so a table colour change cannot leave pale text on a pale table.
+- **CSS order.** A phone `@media` rule placed before the desktop rule for the same selector never applies: equal specificity, so the later rule wins. Symptom (LYNGK): the claim strip's compact phone spacing never took effect, crowding the second player's name to "B…". Put media blocks after the rules they override; [`../scripts/media-order.py`](../scripts/media-order.py) `<branch>...` lists every such rule in each title's UI package.
 
 ## Stacks
 
@@ -46,7 +50,7 @@ From DVONN, where stacks reach 20 pieces and only the top colour and the DVONN p
 - **Pieces that matter inside a stack** (DVONN's red pieces) keep most of their band's thickness (0.8) when the rest thin out, capped at half the stack's rise. Symptom: a buried red piece became a 1px line.
 - **Seams between same-coloured dark pieces**: black bands with a black edge run together. A faint white catch-light along the top of a black band whose piece has another black piece on it parts them; none on the top piece (it should look like a single piece) and none between different colours, which part already. The user compared a grey edge, a catch-light and a dark gap, and chose the catch-light.
 - **Donuts are see-through.** Leave the hole open: down it draw each piece's inner wall at its true thickness (even where its outside band is thinned), with a thin seam between pieces, clipped to the top opening; below the last wall the board shows. Symptom: a tall thinned stack showed sand down its hole. A white piece's inner wall needs to be pale (the shadowed grey read as a dark smudge against the sand).
-- **Speckles belong to the piece, not the place.** Symptom: a piece's speckle pattern changed as it hopped onto another stack. Seed each piece by an identity stored in game state (DVONN records `placedAt`, the space it was placed on), never by space and level; hand-built scenario pieces each need a distinct identity, or a stack's pieces share one pattern.
+- **Speckles belong to the piece, not the place.** Symptom: a piece's speckle pattern changed as it hopped onto another stack. Seed each piece by an identity stored in game state (DVONN records `placedAt`, the space it was placed on; LYNGK keeps an optional `ids` list per point, the deal index of each piece, moved with its stack), never by space and level; hand-built scenario pieces each need a distinct identity, or a stack's pieces share one pattern. Keep the identities optional, so saved games from before them load and fall back to space and level.
 
 ## Player cards
 
