@@ -1,6 +1,6 @@
 # Tilted view
 
-From ZÈRTZ, retrofitted onto a finished straight-down board: the board seen from the near side of the table, with pieces standing up from it. All six GIPF project titles (ZÈRTZ, GIPF, LYNGK, YINSH, DVONN, TZAAR) now use it at tilt 0.75.
+From ZÈRTZ, retrofitted onto a finished straight-down board: the board seen from the near side of the table, with pieces standing up from it. All the GIPF project titles (ZÈRTZ, GIPF, LYNGK, YINSH, DVONN, TZAAR, MATRX GIPF) use it at tilt 0.75.
 
 ## Projection
 
@@ -29,6 +29,18 @@ From ZÈRTZ, retrofitted onto a finished straight-down board: the board seen fro
 - **Outline of a raised shape.** Before foreshortening, a shape's top and base are circles. Its outline is the hull of the two: their shared outer tangents, computed on the circles, then each point's y scaled by the tilt. When the top lies within the base, the base ellipse alone is the outline.
 - **See-through holes.** Cut the hole out of the shape's path with `fill-rule: evenodd`, using the overlap of the hole's top and bottom openings, which is a lens between their crossing points. Draw the part of the top opening outside that lens as the far inner wall (a crescent), and tint the lens a little for the shadow under a hollow piece.
 - **A piece sitting down in a hole** (YINSH's marker in its ring) is drawn between the holder and the holder's near half, with the holder's mark after both. That order is right only while the piece is in the hole: rising out of it or dropping into it, the piece must pass over the near half and the mark once its base clears the holder's top. Draw it twice with the same transition, one copy in the hole's place and one after the mark, each shown only on its side of that height (YINSH: `dropIn`/`liftOut` take a `layer`; the upper copy has opacity 0 at rest).
+
+## Carved marks (MATRX)
+
+MATRX's potentials are GIPF's disc with their game's mark cut into it: a second groove, notches across the rim, a hole, a channel, notches through the edge. The user corrected them over many rounds against a top-down photo of every piece; these are the rules that came out of it.
+
+- **Measure from a top-down photo of all the pieces** before modelling marks: brightness profiles across each piece give each groove's and notch's radii, widths and angles directly. Box art and rulebook renders gave a first guess the photo then corrected (TAMSK's mound, the ring groove's position, DVONN's hole size, PÜNCT's notch count).
+- **Every cut is filleted.** Grooves round down from their lips into a rounded floor (a cosine profile across the groove), never straight walls; a flat top stays flat up to a hole, with only its edge rounded; no domes. A cut that meets a groove runs on into it, with no wall left between them.
+- **Rounded lips are true fillets**: a circle tangent to both the cut and the top, solved geometrically. A smooth-min blend of the two heights lowers the surface even where they are equal, which read as a shallow flat cut beside each lip.
+- **Draw a cut that is not round about the disc's centre as a carved surface**: a height function (the lower of the top's profile and the cut), sampled on quads in the disc's plane, painted far first, each shaded at its middle by depth and slope (darker facing you, lit facing away, as GIPF's trough) and left out where it faces away from the view (rising towards you more steeply than `tilt / rise`). Show it only through its opening at the top (a clip path), so its near lip hides what lies behind it. Overlap neighbouring quads slightly, or seams show.
+- **Lay the quads along the cut's own geometry.** A square grid gave staircase edges and visible facets; the user called it pixelated. A straight channel is long strips across its width, each starting where it meets the groove it runs out of (found by bisection on the two heights); a rounded end is rings round its own centre; a cylinder cut is fine strips round its curve (32 across). Fade a quad in by how deep it cuts, so a carving's edge blends rather than steps.
+- **Cuts through the edge** (notches open to the side) are cut out of the whole disc with a mask, then their inner walls are drawn after it, clipped to the cut, every wall that faces you, at the back as well as the front. Clip every mark to the disc's own outline (the hull of its slices), or wall drawings poke out past the side. A notch on the far side leaves the rim open above its profile, so the board behind shows through. Back a cut with the top's own colour to hide the mask's soft edge.
+- **Check each change at DPR 4–6** with crops of every kind in both colours; faint seams, stray strips and stair steps only show there, and the user zooms in.
 
 ## Motion seen from the side
 
