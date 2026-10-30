@@ -33,7 +33,8 @@ Steps: `new:VARIANT` (creates a game named Test; the variant label is optional),
 - **Refresh**: reload, reopen, shoot twice, and compare with `magick compare -metric AE a.png b.png null:` (0 means no motion). After a reload the harness shows no game: reopen it from the Games menu (the last entry with the scenario's name).
 - Crop and zoom (`magick … -crop`) before judging small marks; `DPR=2` or `3` renders the page at that pixel density.
 - **Piece grids**: for piece shape and colour rounds, a scratch route in the UI package (`src/routes/pieces/+page.svelte`) drawing every colour at every height, opened with `P=pieces`, beats hunting for positions; keep it out of commits.
-- **Colours from photos**: sample a published piece or board with `magick photo.jpg -crop 20x20+X+Y +repage -scale 1x1! -format '%[hex:p{0,0}]' info:` at a few spots, and compare with the box art, which is usually more saturated.
+- **Colours from photos**: sample a published piece or board with `magick photo.jpg -crop 20x20+X+Y +repage -scale 1x1! -format '%[hex:p{0,0}]' info:` at a few spots, and compare with the box art, which is usually more saturated. A photo with the box in frame calibrates itself: sampled under the same light, TZAAR's board gold matched the box art's sand, so the table took the rulebook's sand rather than the photo's darker raw value.
+- **Colour variants by injected CSS**: set the override on the title's own table element (`.tzaar-table { --tzaar-table: … }`), not `:root`. The game's stylesheet defines its variables again on an element nearer the table, so a `:root` override does nothing. Symptom (TZAAR): a grid of four table shades showed one colour four times, and the user was asked to choose between them. Before shooting, `eval:` the computed value on the element that paints (`getComputedStyle(table).backgroundImage`) and confirm each variant differs.
 
 ## Covers
 
