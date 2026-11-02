@@ -1,6 +1,6 @@
 # Tilted view
 
-From ZÈRTZ, retrofitted onto a finished straight-down board: the board seen from the near side of the table, with pieces standing up from it. All the GIPF project titles (ZÈRTZ, GIPF, LYNGK, YINSH, DVONN, TZAAR, MATRX GIPF) use it at tilt 0.75.
+From ZÈRTZ, retrofitted onto a finished straight-down board: the board seen from the near side of the table, with pieces standing up from it. All the GIPF project titles (ZÈRTZ, GIPF, LYNGK, YINSH, DVONN, TZAAR, MATRX GIPF, PÜNCT) use it at tilt 0.75.
 
 ## Projection
 
@@ -102,3 +102,15 @@ A stack hops in a straight line over any number of stacks, of any height, in one
 - **Occluders over the flier**: show a nearer stack's copy only while the flier is lower than that stack's top. Above it, no line of sight can pass through the stack, so the switch happens where nothing changes on screen; switched on when footprints stopped overlapping, a nearer stack painted over a flier still above it.
 - **Cut-off stacks** float up 0.04 s after the landing, not after its bounce settles: waiting read as a 0.28 s pause. (LYNGK's completed stack waits because it includes the stack just landed on; DVONN's cut-offs are elsewhere.) A landing that takes a stack past the cap settles first: see *Stacks past the cap* below.
 - **Undo of a move** (the user's choice, as GIPF's placements): the stack hops home and stays chosen; the next Undo puts it down. The session restages the selection in `beforeNewState` on `kind === 'undo'`.
+
+## Pieces over several spaces (PÜNCT)
+
+PÜNCT's pieces are slabs over three spaces that stack and bridge, and which level each piece is on matters most. The user corrected them in these rounds.
+
+- **Outline from the spine.** Join the piece's dots by bars as wide as the piece, round every outer corner and both ends, and draw the side as slices up its height, each the outline drawn in by the edge's rounding there and shaded GIPF's way (shade by which way the slice faces, one gradient per tone and shade level, shared per SVG, darker towards both ends across the piece).
+- **Straight sides, barely rounded.** Rounded by GIPF's proportions (a quarter and a third of the thickness), the shading ran light to dark down most of the side and the pieces read as trapezoids; a tenth and an eighth gave an upright side with a crisp rim. The user also took the thickness from 0.24 to 0.19 of the spacing.
+- **Layers of one colour must part.** A piece rests a seam above the one below (0.12 of its thickness; 0.22 looked too thick), its shadow falls on the lower piece's top as a dark crease, and every top carries a light edge (grey on black, softer on white), so pieces of one colour crossing each other separate. Black came out best partway between near-black and a lighter charcoal, chosen from three variants shown side by side on the pieces that cross.
+- **Draw order is pairwise.** Over a shared space the lower piece goes first; otherwise compare the nearest spaces of the two pieces in neighbouring columns, farther first; sort topologically, starting from the farthest front edge. A piece in motion takes part with every space it sweeps over (below).
+- **Dots dished like TZAAR's centre.** A shallow dish (0.3 of the thickness) with a wide flat floor (0.7 of its radius) and a cosine wall; a narrow floor read as a cone and a deep one as a hole. Draw it ring by ring from the lip inward (shallow enough for each to show as a crescent), each ring shaded far to near by a vertical gradient so the shade turns round the dish without a seam where the back meets the front. A drawn highlight line read as cartoonish: shine a smooth insert with a faint radial sheen. Flecks run down into the dish where its lip does not hide them.
+- **A board with thickness.** Asked for less "flat and sad", following the newer edition's renders: the play area as a plate with its near edge showing and a soft shadow on the table, each hole cut through to a pale base seen a plate's depth below (a gradient far wall, the base clipped to the holes), the central region in its own colour.
+

@@ -9,7 +9,7 @@ The architecture lives in `docs/DESIGN.md`, the table layout in `docs/game-ui-la
 
 ## Steps
 
-1. **Settle the rules.** Read the rules from the publisher's own pages, then put every open choice to the user in one batch: which versions or variants to offer and which is the default, any option the rules make optional, and edge cases the rules leave out. Offer a recommended answer for each. Done when every choice has an answer and the answers are recorded where later sessions will find them.
+1. **Settle the rules.** Read the rules from the publisher's own pages, and BoardSpace's source (GPL Java, `github.com/ddyer0/boardspace.net`, `client/boardspace-java/boardspace-games/<title>/`) for how a long-running implementation reads each gap and names the spaces; its readings make good recommended answers (PÜNCT: bridges, simultaneous connections, column lengths). Then put every open choice to the user in one batch: which versions or variants to offer and which is the default, any option the rules make optional, and edge cases the rules leave out. Offer a recommended answer for each. Done when every choice has an answer and the answers are recorded where later sessions will find them.
 2. **Scaffold.** Follow [`references/scaffold.md`](references/scaffold.md). Done when both packages type-check and the empty harness opens.
 3. **Logic.** Follow [`references/logic.md`](references/logic.md). Done when every rule decision from step 1 has a test and random playouts of every variant end with a result.
 4. **Table UI.** Follow [`references/ui-lessons.md`](references/ui-lessons.md) on top of `docs/game-ui-layout.md`; for a board seen from the side of the table, also [`references/tilted-view.md`](references/tilted-view.md). Done when a full turn plays in the harness at desktop and phone sizes and the board's position is identical across your turn, the waiting view and history view.
@@ -22,4 +22,4 @@ The architecture lives in `docs/DESIGN.md`, the table layout in `docs/game-ui-la
 
 ## Reworking a finished title
 
-Read the reference files for the parts being changed and check the title against each lesson whose symptom it could show; later titles' lessons often apply to earlier ones. The GIPF project titles (GIPF, YINSH, DVONN, LYNGK, ZÈRTZ, TZAAR, MATRX GIPF) all use the tilted view (`references/tilted-view.md`); keep a rework consistent with it. Then apply steps 5–8 to what changed, and step 10 before it ships.
+Read the reference files for the parts being changed and check the title against each lesson whose symptom it could show; later titles' lessons often apply to earlier ones. The GIPF project titles (GIPF, YINSH, DVONN, LYNGK, ZÈRTZ, TZAAR, MATRX GIPF, PÜNCT) all use the tilted view (`references/tilted-view.md`); keep a rework consistent with it. Then apply steps 5–8 to what changed, and step 10 before it ships.
