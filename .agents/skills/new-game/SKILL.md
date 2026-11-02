@@ -18,7 +18,8 @@ The architecture lives in `docs/DESIGN.md`, the table layout in `docs/game-ui-la
 7. **Check in a browser.** Follow [`references/browser-checks.md`](references/browser-checks.md) after every visible change, and look at the screenshots yourself before reporting. Done when the screenshots show what you are about to describe.
 8. **Measure on phone stand-ins.** Follow [`references/performance.md`](references/performance.md) once a full turn plays, and again after any change to how pieces are drawn or animated. Done when opening and a move meet its targets in Chromium slowed 4× and in WebKit.
 9. **Register** the title in `config/config-games/src/games.json`.
+10. **Check the published bundle.** Run `pnpm run bundle` in the UI package, then [`scripts/bundle-check.mjs`](scripts/bundle-check.mjs) as [`references/browser-checks.md`](references/browser-checks.md) describes under *The published bundle*. Done when it passes; repeat after adding any image, generated file list or new kind of import.
 
 ## Reworking a finished title
 
-Read the reference files for the parts being changed and check the title against each lesson whose symptom it could show; later titles' lessons often apply to earlier ones. The GIPF project titles (GIPF, YINSH, DVONN, LYNGK, ZÈRTZ, TZAAR, MATRX GIPF) all use the tilted view (`references/tilted-view.md`); keep a rework consistent with it. Then apply steps 5–8 to what changed.
+Read the reference files for the parts being changed and check the title against each lesson whose symptom it could show; later titles' lessons often apply to earlier ones. The GIPF project titles (GIPF, YINSH, DVONN, LYNGK, ZÈRTZ, TZAAR, MATRX GIPF) all use the tilted view (`references/tilted-view.md`); keep a rework consistent with it. Then apply steps 5–8 to what changed, and step 10 before it ships.
