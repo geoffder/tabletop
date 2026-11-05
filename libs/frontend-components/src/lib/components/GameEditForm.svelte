@@ -376,6 +376,7 @@
 {/snippet}
 
 {#snippet listOption(option: ListConfigOption)}
+    {@const state = gameTitle.info.configurator?.optionState?.(config, option.id)}
     <Label class="mb-2">
         {option.name}
     </Label>
@@ -384,10 +385,16 @@
         id={option.id}
         size="sm"
         items={option.options}
-        value={option.default}
+        value={`${config[option.id] ?? option.default}`}
+        disabled={state?.disabled}
         required
         class="w-fit"
     />
+    {#if state?.note}
+        <Helper class="-mt-2 max-w-sm text-[.7rem] leading-tight dark:text-gray-400">
+            {state.note}
+        </Helper>
+    {/if}
 {/snippet}
 
 {#if showHeading}

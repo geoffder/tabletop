@@ -7,6 +7,9 @@ export interface GameConfigNormalizer<C extends GameConfig = GameConfig> {
     normalizeConfig(config: GameConfig): C
 }
 
+// How an option shows in a game form, given what has been chosen so far.
+export type ConfigOptionState = { disabled?: boolean; note?: string }
+
 export interface GameConfigurator<C extends GameConfig = GameConfig> extends Partial<
     GameConfigNormalizer<C>
 > {
@@ -18,6 +21,8 @@ export interface GameConfigurator<C extends GameConfig = GameConfig> extends Par
         config: GameConfig,
         update: { id: string; value: string | boolean | number | null }
     ): void
+    // Options the configurator leaves out show as defined.
+    optionState?(config: GameConfig, optionId: string): ConfigOptionState
 }
 
 export abstract class BaseConfigurator<
