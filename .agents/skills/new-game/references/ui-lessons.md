@@ -25,6 +25,7 @@ Each lesson names the symptom a user saw, so you can recognise it.
 - **Zoom bar.** Symptom: the bottom-left label hides under the zoom controls. Leave room in the board's `viewBox` below the bottom labels for them, and keep the board centred at full size. `ScalingWrapper` clips its content, so the bar cannot be nudged outside it, and a band reserved above the board with `insetTop` costs board size on every phone.
 - **Cards beside the board** (DVONN): `DefaultTableLayout` (upstream) gives the phone game column `min-w-[90vw]` and a 320px sidebar, so a strip of the cards crowds the board. The title's `GameTable` overrides it under 40rem: game column `min-width: calc(100vw - 20px)`, which leaves 12px of the cards showing as a hint, sidebar 260px, tab icons hidden (the tabs need 309px with icons, 237 without).
 - **Overlay toggles** (light/dark) sit in an empty corner of the board's outline, where the fitted board leaves room, so the board needs no band reserved for them. Put a new toggle on the row of an existing one: stacked one per row, ZÈRTZ's third toggle came down onto the top coordinate label on phones.
+- Put a button's `:hover` inside `@media (hover: hover)`: on a phone the last button tapped stays hovered until the next touch, so a hover colour that differs much from the panel looks like a stuck highlight (ZÈRTZ's 8% white over a dark navy panel).
 
 ## Marks and highlights
 
