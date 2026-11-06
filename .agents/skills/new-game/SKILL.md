@@ -22,4 +22,4 @@ The architecture lives in `docs/DESIGN.md`, the table layout in `docs/game-ui-la
 
 ## Reworking a finished title
 
-Read the reference files for the parts being changed and check the title against each lesson whose symptom it could show; later titles' lessons often apply to earlier ones. The GIPF project titles (GIPF, YINSH, DVONN, LYNGK, ZÈRTZ, TZAAR, MATRX GIPF, PÜNCT) all use the tilted view (`references/tilted-view.md`); keep a rework consistent with it. Then apply steps 5–8 to what changed, and step 10 before it ships.
+Read the reference files for the parts being changed and check the title against each lesson whose symptom it could show; later titles' lessons often apply to earlier ones. The GIPF project titles (GIPF, YINSH, DVONN, LYNGK, ZÈRTZ, TZAAR, MATRX GIPF, PÜNCT, GIPF with Potentials) all use the tilted view (`references/tilted-view.md`); keep a rework consistent with it. Then apply steps 5–8 to what changed, and step 10 before it ships.
