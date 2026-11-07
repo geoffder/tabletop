@@ -1,0 +1,7 @@
+# The five potentials scattered over the cover, as on the GIPF Project Set boxes: each look's file
+# (from the gipf-potentials branch's images/looks), its centre on the 1600 px base, and its width.
+looks/light-zertz-0.webp 1180 560 240
+looks/dark-dvonn-0.webp 1110 420 260
+looks/light-tamsk-0.webp 470 400 250
+looks/dark-yinsh-7.webp 625 690 235
+looks/light-punct-0.webp 990 760 200

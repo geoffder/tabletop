@@ -44,7 +44,7 @@ Steps: `new:VARIANT` (creates a game named Test; the variant label is optional),
 
 A real board render makes a good cover: open a scenario at a large viewport (1800×1250, or 1400×900 at DPR 2), hide the marks, coordinates and stack counts with an injected style, shoot, crop around the most telling pieces and resize to 640×640, and composite a title rendered from SVG (`magick base.png title.png -composite`). Offer the user several crops; re-render it when the table's colours or the pieces change.
 
-GIPF project titles without original box art (LYNGK, MATRX GIPF) have covers in the original box style, built by `tools/gipf-covers` on this branch; rebuild them with `tools/gipf-covers/rebuild-cover.sh` whenever their pieces or board change (see its README).
+GIPF project titles without original box art (LYNGK, MATRX GIPF, GIPF with Potentials) have covers in the original box style, built by `tools/gipf-covers` on this branch; rebuild them with `tools/gipf-covers/rebuild-cover.sh` whenever their pieces or board change, GIPF with Potentials's whenever MATRX GIPF's pieces change (see its README).
 
 ## Phone-only bugs
 
