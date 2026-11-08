@@ -32,5 +32,5 @@ The `game-pr-readiness` skill is the gate; this is what the nine GIPF project ti
 | Board geometry and a duplicate turn field in State | Store pieces only; use the turn manager | `logic.md` | `a1666b2af` |
 | GSAP and a Svelte outro on one node | One animator per node | `animation-lessons.md` | `54987f69c` |
 | Type-assertion casts; silent fallbacks; local copies of shared helpers | `assert`/`assertExists`; reuse `@tabletop/common` helpers (`sameCoordinates`, `distanceAxial`, `coordinatesToNumber`) | `scaffold.md`, `logic.md` | `97a5a493b` |
-| Piece looks sized for full zoom | Undecided | `performance.md` | — |
+| Piece looks sized for full zoom | 2.5× the largest fitted size | `performance.md` | `3d1799911` |
 | Visual contract out of date | Update it in the change that alters the UI | `docs/ui-interaction-visual-contract.md` | `1e198073c` |
