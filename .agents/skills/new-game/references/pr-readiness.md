@@ -28,8 +28,9 @@ The `game-pr-readiness` skill is the gate; this is what the nine GIPF project ti
 | `test` script fails with no Playwright tests | Smoke spec on the title's port | `browser-checks.md` | `afeee5d9d` |
 | Rule readings recorded only in session notes | `docs/rules-interpretations.md` | `logic.md` | `689a366c8` |
 | Rules allow a choice the UI never offers | Offer it with the rules' default | `logic.md` (record and test each reading) | `385c527df` |
-| Board geometry and a duplicate turn field in State | Store pieces only; use the turn manager | `logic.md` | — |
-| GSAP and a Svelte outro on one node | One animator per node | `animation-lessons.md` | — |
-| Type-assertion casts; silent fallbacks; local copies of shared helpers | `assert`/`assertExists`; reuse `@tabletop/common` helpers (`sameCoordinates`, `distanceAxial`) | `scaffold.md`, `logic.md` | — |
+| A rule reading with no test (GIPF: simultaneous loss, blocked ending) | Test each | `logic.md` | `18c5fad7b` |
+| Board geometry and a duplicate turn field in State | Store pieces only; use the turn manager | `logic.md` | `a1666b2af` |
+| GSAP and a Svelte outro on one node | One animator per node | `animation-lessons.md` | `54987f69c` |
+| Type-assertion casts; silent fallbacks; local copies of shared helpers | `assert`/`assertExists`; reuse `@tabletop/common` helpers (`sameCoordinates`, `distanceAxial`, `coordinatesToNumber`) | `scaffold.md`, `logic.md` | `97a5a493b` |
 | Piece looks sized for full zoom | Undecided | `performance.md` | — |
-| Visual contract out of date | Update it in the change that alters the UI | `docs/ui-interaction-visual-contract.md` | — |
+| Visual contract out of date | Update it in the change that alters the UI | `docs/ui-interaction-visual-contract.md` | `1e198073c` |
