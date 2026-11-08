@@ -34,3 +34,4 @@ The `game-pr-readiness` skill is the gate; this is what the nine GIPF project ti
 | Type-assertion casts; silent fallbacks; local copies of shared helpers | `assert`/`assertExists`; reuse `@tabletop/common` helpers (`sameCoordinates`, `distanceAxial`, `coordinatesToNumber`) | `scaffold.md`, `logic.md` | `97a5a493b` |
 | Piece looks sized for full zoom | 2.5× the largest fitted size | `performance.md` | `3d1799911` |
 | Visual contract out of date | Update it in the change that alters the UI | `docs/ui-interaction-visual-contract.md` | `1e198073c` |
+| Comments narrating the code (not counted, but the likeliest review comment) | Keep only reasons (coding policy #38–41) | `SKILL.md` | `6fea763d9` |

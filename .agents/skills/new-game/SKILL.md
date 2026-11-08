@@ -7,6 +7,8 @@ description: Build a new game title end to end — rules decisions, logic and UI
 
 The architecture lives in `docs/DESIGN.md`, the table layout in `docs/game-ui-layout.md`, staged selection in `docs/user-interactions.md`; this skill is the order of work and the **lessons** earlier titles paid for. Read each reference file below when its step starts, before writing that step's code.
 
+Comment only what the code cannot say (coding policy #38–41): a rule reading, an outside constraint, a library workaround, the reason for a surprising choice. A comment that restates a name or the next line, or narrates a drawing or a motion, does not belong; the visual contract and `docs/rules-interpretations.md` hold that knowledge. GIPF's UI ran to 7% comment lines against under 1% in upstream titles, and was trimmed to its reasons in `6fea763d9`.
+
 ## Steps
 
 1. **Settle the rules.** Read the rules from the publisher's own pages, and BoardSpace's source (GPL Java, `github.com/ddyer0/boardspace.net`, `client/boardspace-java/boardspace-games/<title>/`) for how a long-running implementation reads each gap and names the spaces; its readings make good recommended answers (PÜNCT: bridges, simultaneous connections, column lengths). Then put every open choice to the user in one batch: which versions or variants to offer and which is the default, any option the rules make optional, and edge cases the rules leave out. Offer a recommended answer for each. Done when every choice has an answer and the answers are recorded where later sessions will find them.
