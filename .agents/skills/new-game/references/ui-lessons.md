@@ -80,6 +80,10 @@ From DVONN, where stacks reach 20 pieces and only the top colour and the DVONN p
   - Captured pieces show in the opponent's colour.
   - Give the count column a fixed two-digit width so both cards' captions line up.
 
+## Staged selection and Undo
+
+Register the staged selection in the session's constructor with `this.localSelections.register(undoableStagedSelection(StageOrder, () => this.selection, (s) => (this.selection = s)))` and leave `undo()` to the base (`docs/user-interactions.md`). The base pops it, clears it whenever a new state is published (before `beforeNewState`), and exposes `hasLocalSelection`, which the Undo button reads. A title that restages a choice after Undo does it in `beforeNewState`. Every GIPF project title first overrode `undo()` with its own `hasManualSelection()`, which the review fails.
+
 ## Session tests
 
 Rune classes such as the session only react when compiled for the client; under the SvelteKit plugin's server build, a `$derived` read in a test stayed at its first value. Give the UI package its own `vitest.config.ts`, as Hill Country Grocers does: the plain Svelte plugin, `resolve.conditions: ['browser']`, the `$lib` alias, and `config/config-vitest/clientRunesEnvironment.ts` as the environment. The root Vitest projects then pick the package up too. Then:

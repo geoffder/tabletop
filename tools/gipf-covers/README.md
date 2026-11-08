@@ -27,12 +27,13 @@ tools/gipf-covers/rebuild-cover.sh gipf-potentials check
 tools/gipf-covers/rebuild-cover.sh gipf-potentials
 ```
 
-The rebuild writes `tmp/gipf-covers/rebuild/GAME/GAME-cover.jpg` (1200 px wide) and
-`before-after.jpg` beside it, and commits nothing. Commit the cover on the game's branch as
-`games/GAME-ui/src/lib/images/GAME-cover.jpg`, then copy the new captures into `sources/GAME`
-(the script prints the command) and commit them here, so `check` matches again. GIPF with
-Potentials also writes `gipf-potentials-cover-wide.jpg`, the uncropped version committed beside
-its cover.
+The rebuild writes `tmp/gipf-covers/rebuild/GAME/GAME-cover.webp` and `before-after.jpg` beside
+it, and commits nothing. The cover is composed as a 1200 px JPEG, then encoded by `webp.py` as a
+lossy WebP 680 px high, twice the large catalog card's height: the readiness review fails a JPEG
+cover and one far above that size. Commit it on the game's branch as
+`games/GAME-ui/src/lib/images/GAME-cover.webp`, then copy the new captures into `sources/GAME`
+(the script prints the command) and commit them here, so `check` matches again. Commit no other
+version of a cover; an image nothing imports fails the review too.
 
 Needs the devcontainer (for the captures), python3 with numpy and Pillow, and ImageMagick.
 

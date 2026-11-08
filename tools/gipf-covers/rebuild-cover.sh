@@ -10,16 +10,15 @@
 #   PORT=5174 rebuild-cover.sh GAME
 #       Captures the board again from GAME's harness running on PORT (start it from a GAME
 #       checkout: `pnpm exec vite dev --port 5174 --strictPort` in games/GAME-ui), builds the cover
-#       into tmp/gipf-covers/rebuild/GAME/GAME-cover.jpg (1200 px, ready to commit as
-#       games/GAME-ui/src/lib/images/GAME-cover.jpg) and writes before-after.jpg beside it.
+#       into tmp/gipf-covers/rebuild/GAME/GAME-cover.webp (680 px high, ready to commit as
+#       games/GAME-ui/src/lib/images/GAME-cover.webp) and writes before-after.jpg beside it.
 #       After committing it, copy the new captures over the archived ones in sources/GAME (the
 #       script prints the command) and commit those here, so `check` matches again.
 #
 #   [LOOKS_BRANCH=matrx] rebuild-cover.sh gipf-potentials
 #       No harness: takes the potentials' looks as committed on the gipf-potentials branch (or on
 #       LOOKS_BRANCH: MATRX GIPF's looks have the same names, so a MATRX piece change can be seen
-#       on the cover before it reaches gipf-potentials) and builds both the cover and its
-#       uncropped -wide version.
+#       on the cover before it reaches gipf-potentials) and builds the cover.
 #
 # Needs: the devcontainer (for the captures), python3 with numpy and Pillow, ImageMagick.
 set -euo pipefail
@@ -38,7 +37,6 @@ PORT=${PORT:-5174}
 LOOKS_BRANCH=${LOOKS_BRANCH:-gipf-potentials}
 # The covers built, by file name: GIPF with Potentials keeps its uncropped version beside it.
 COVERS=("$GAME-cover")
-[ "$GAME" = gipf-potentials ] && COVERS+=("$GAME-cover-wide")
 mkdir -p "$WORK"
 
 # Runs a command in the devcontainer, failing if it fails; its log lines are left out.
@@ -103,30 +101,30 @@ build() {
         magick "$WORK/full.jpg" -crop 1224x900+187+0 +repage "$WORK/full-43.jpg"
         magick "$WORK/full-43.jpg" -filter Lanczos -resize '1200x1200>' \
             -strip -quality 88 -sampling-factor 4:2:0 "$WORK/$GAME-cover.jpg"
-        magick "$WORK/full.jpg" -colorspace sRGB -alpha off -filter Lanczos -resize '1200x1200>' \
-            -strip -quality 88 -sampling-factor 4:2:0 "$WORK/$GAME-cover-wide.jpg"
-        return
+        ;;
+    *)
+        magick "$WORK/full.jpg" -filter Lanczos -resize 1200x -quality 90 "$WORK/$GAME-cover.jpg"
         ;;
     esac
-    magick "$WORK/full.jpg" -filter Lanczos -resize 1200x -quality 90 "$WORK/$GAME-cover.jpg"
+    python3 -I "$S/webp.py" "$WORK/$GAME-cover.jpg" "$WORK/$GAME-cover.webp" >/dev/null
 }
 
 for cover in "${COVERS[@]}"; do
-    git -C "$ROOT" show "$GAME:games/$GAME-ui/src/lib/images/$cover.jpg" > "$WORK/committed-$cover.jpg"
+    git -C "$ROOT" show "$GAME:games/$GAME-ui/src/lib/images/$cover.webp" > "$WORK/committed-$cover.webp"
 done
 
 if [ "$MODE" = check ]; then
     build "$SOURCES"
     for cover in "${COVERS[@]}"; do
         printf 'RMSE of %s against the committed one: ' "$cover"
-        magick compare -metric RMSE "$WORK/$cover.jpg" "$WORK/committed-$cover.jpg" null: 2>&1 || true
+        magick compare -metric RMSE "$WORK/$cover.webp" "$WORK/committed-$cover.webp" null: 2>&1 || true
         echo
     done
 else
     capture
     build "$WORK"
-    magick "$WORK/committed-$GAME-cover.jpg" "$WORK/$GAME-cover.jpg" +append -resize 1800x -quality 88 "$WORK/before-after.jpg"
-    echo "Built ${COVERS[*]/#/$WORK/} (.jpg) and $WORK/before-after.jpg"
+    magick "$WORK/committed-$GAME-cover.webp" "$WORK/$GAME-cover.webp" +append -resize 1800x -quality 88 "$WORK/before-after.jpg"
+    echo "Built ${COVERS[*]/#/$WORK/} (.webp) and $WORK/before-after.jpg"
     case $GAME in
     lyngk) echo "After committing: cp $WORK/board-chain-t.png $SOURCES/" ;;
     matrx) echo "After committing: cp $WORK/{board-pot,board-lines,board-pot-c-pad,board-lines-c-pad}.png $SOURCES/" ;;
