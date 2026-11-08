@@ -196,6 +196,10 @@
         return defaultGameConfig(gameTitle.info.configurator?.options ?? [])
     }
 
+    function isOptionDisabled(option: ConfigOption): boolean {
+        return gameTitle.info.configurator?.isOptionDisabled?.(config, option.id) === true
+    }
+
     function onOptionChange(option: ConfigOption, event: Event) {
         let value: string | boolean | number | null | undefined = undefined
         if (isBooleanConfigOption(option)) {
@@ -400,6 +404,7 @@
         id={option.id}
         placeholder={option.placeholder}
         value={`${config[option.id] ?? option.default ?? ''}`}
+        disabled={isOptionDisabled(option)}
     ></Input>
 {/snippet}
 
@@ -412,6 +417,7 @@
         onchange={(event: Event) => onOptionChange(option, event)}
         id={option.id}
         value={`${config[option.id] ?? option.default ?? ''}`}
+        disabled={isOptionDisabled(option)}
     ></Input>
 {/snippet}
 
@@ -420,6 +426,7 @@
         onchange={(event: Event) => onOptionChange(option, event)}
         id={option.id}
         checked={(config[option.id] as boolean) ?? option.default}
+        disabled={isOptionDisabled(option)}
         ><div class="flex flex-col leading-tight justify-center items-start">
             {option.name}
             <Helper class="text-[.65rem] dark:text-gray-400 leading-tight">
@@ -439,6 +446,7 @@
         size="sm"
         items={option.options}
         value={`${config[option.id] ?? option.default}`}
+        disabled={isOptionDisabled(option)}
         required
         class="w-fit"
     />
