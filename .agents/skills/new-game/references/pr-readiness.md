@@ -55,3 +55,23 @@ GIPF's second review (all first-pass fixes in) failed on these; MATRX was brough
 | A branch the flow can never reach (MATRX: rows at the start of a turn) | Probe it with a throw under the playouts; delete it if it never fires | `logic.md` | `matrx` `0c81fe0f5` |
 | Optional fields kept for "games from before" a change, on a title never deployed | Make them required | `logic.md` | `matrx` `c758aedb6` |
 | Smoke spec times out clicking a covered target | Press the target's keyboard path (Enter) | `browser-checks.md` | `matrx` `dc5314f22` |
+
+## What gate 16 found after the merge
+
+Gate 16 (phone rendering) was added to the review after the GIPF project titles first passed it. Merging `main` into each PR branch brought it in, and all four titles failed it the same way. A new title drawn by `docs/phone-rendering.md` from the start avoids each row.
+
+| Finding | Fix | Lesson | Example on `game-gipf` |
+|---|---|---|---|
+| Labels centred with `dominant-baseline` | Alphabetic baseline, `dy` 0.35 × font size in user units, `letter-spacing` in px | `ui-lessons.md` | `a2aea2931` |
+| GSAP writes `matrix()` on moving SVG | A pose that writes `translate()`/`scale()` from its setters | `animation-lessons.md` | `09ee9f3ba` |
+| No check that moves stay off `matrix()` | `tests/motion.spec.ts` over each kind of move | `animation-lessons.md` | `dbb96354f` |
+| Shadows drawn with a blur filter | Radial-gradient ellipses | `ui-lessons.md`, `performance.md` | `948776b5f` |
+| A table-sized mask (MATRX's grid fade) | A gradient of the table's colour laid over it | `performance.md` | `matrx` `af68c72f5` |
+| Visual contract silent on the new drawing | Record the motion and shadow rules in it | `docs/ui-interaction-visual-contract.md` | `d6baf2297` |
+
+## Opening the PR
+
+1. **Make a `game-<slug>` branch of the title's own commits**: `git rebase --onto <upstream base> <commit below the title's first> game-<slug>` leaves out this skill and the `turbo.json` fix. Then **merge** upstream's `main` rather than rebasing again, so the reviewed commits stay as they were. Take upstream's lockfile, run `pnpm install`, and confirm `pnpm install --frozen-lockfile` passes on the merged branch.
+2. **Collect the evidence again on the merged branch**: every check in *Before running the review*, and any gate added since the title's review, run in full. Say in the PR which was which: "passed review before the merge; evidence collected again and gate 16 run in full".
+3. **A change to shared code goes in its own PR first.** GIPF with Potentials needed `isOptionDisabled` on the configurator (#264). The title's PR (#268) carries that commit, opens as a **draft** whose first line says "Depends on #264" and that its diff shows the two shared files until then, and is marked ready once #264 merges.
+4. **The description** follows #266–#269: what the title is and its two packages, version 0.0.1 shipping as Alpha, and the designer's position. Then what it touches outside its folders, the logic (setups, a turn, rules, end, rulings, tournament setup) and the UI (board, moves, motion, toggles, scenarios, visual contract). Next come phone rendering, and testing with each package's counts, the bundle check and gate 16's phone cost. Notes for review end it: squash-merge, the accepted `svelte-ignore`, and any known gap with the platform change that would close it. Check every number and description against the branch before posting; drafts overstated playout counts and described motion not yet verified.

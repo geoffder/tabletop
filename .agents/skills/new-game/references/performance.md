@@ -10,6 +10,7 @@ The user plays on an iPhone, and a desktop browser at 1× hides most of what mak
 - WebKit needs its system libraries once per container: `sudo -n env PATH=$PATH node games/<slug>-ui/node_modules/@playwright/test/cli.js install-deps webkit`, then `pnpm exec playwright install webkit`.
 - The dev harness measures like a production build here (MATRX: `vite build` + `vite preview` gave the same numbers), so the dev server is fair for these comparisons.
 - Targets that felt fine: open under 0.5 s with Chromium at 4×; moves at 55 fps or better in WebKit, with no frame over 50 ms except the one where the new state lands.
+- `tools/webkit-probe` (upstream; `docs/phone-rendering.md`, *Measure in WebKit*) is what the readiness review's gate 16 runs: web-process memory and the board's repaint time in WebKit as a 3× phone. Use `perf.mjs` for frame timings and profiles, and the probe for memory and repaint. Run the probe as the gate does, twice with `--json --repeat 3`: once on the empty harness, once on the busiest scenario with a steps module that makes the heaviest choice and move. Keep the steps module in `/workspace/tmp/<slug>-readiness/`.
 - Test a suspected cause by swapping it out in the page before rebuilding anything: MATRX replaced every piece's drawing with an image of it from an `eval`, measured, then built the change that won.
 
 ## What was slow, and what fixed it
@@ -19,6 +20,17 @@ The user plays on an iPhone, and a desktop browser at 1× hides most of what mak
 - **SVG images in motion on WebKit.** Shown as `<image href="look.svg">`, a look leaves the page but WebKit redraws the SVG every frame it moves: 60–100 ms frames during each slide, while Chromium held 60 fps. Bitmaps fixed it (WebKit push 48 → 63 fps).
 - **Brute-force placement at fine steps.** PÜNCT placed each coordinate label by stepping it out 1% of a spacing at a time and testing its box against all 211 cells: 175 ms per view, paid on opening and again on the first board turn, which visibly lagged. Testing only the cells within a few spacings, stepping out coarsely and back in finely, took 6 ms with identical positions (checked by comparing the old and new code's output in a throwaway test).
 - **Blur filters** on shadows: draw them as radial-gradient fills (see `ui-lessons.md`). MATRX's open time on WebKit fell by a third when its 16 filtered shadows went.
+
+## Phone rendering (readiness gate 16)
+
+`docs/phone-rendering.md` holds the rules. A title passes when every effect is piece-sized, pre-rendered or still, and the board is one SVG drawn with `renderAtViewScale`. Pre-rendered looks and gradient shadows (`ui-lessons.md`) already met most of them. The GIPF project titles failed on four things:
+
+- **A board-sized mask.** MATRX faded its fine grid into the table through a mask the size of the table, which WebKit draws offscreen. A rectangle filled with a radial gradient in the table's own colour, clear at the centre, laid over the grid looks the same (at most 3 of 255 levels apart in Chromium). It halved the board's repaint from 65 to 33 ms, cut peak memory by 45 MB and the longest frame from 97 to 44 ms (`matrx` `af68c72f5`).
+- **Blur-filter shadows.** GIPF still blurred its piece shadows. An ellipse with a radial gradient whose stops follow the edge the blur gave matches it to 16 of 255 levels (`gipf` `948776b5f`, `board/softShadow.ts`).
+- **`dominant-baseline` on labels**: see `ui-lessons.md`, *Text under the board's zoom*.
+- **GSAP's `matrix()` on moving pieces**: see `animation-lessons.md`, *Move SVG through a pose*.
+
+What the four cost on a 3× phone once fixed, as medians over the empty harness (516–526 MB): +53 to +82 MB steady at a busy position, +10 to +55 MB at peak, a 32 ms board repaint, and no long frames apart from the move's landing. A new title of the same kind should come in near these.
 
 ## Pre-rendering piece looks
 
