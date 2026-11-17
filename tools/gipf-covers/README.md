@@ -5,7 +5,7 @@ that never had one: LYNGK and MATRX GIPF, each a rendered landscape seen through
 the game's own board captured from its harness and set in perspective, title discs, and the GIPF
 project logo; and GIPF with Potentials, the 1996 GIPF box lettered "with potentials" with five of
 the game's own potentials scattered over it. The other GIPF project titles use their original box
-art.
+art; TZAAR's scan lacks the logo the other boxes carry, so it is added here too.
 
 Rebuild a cover whenever the pieces or the board change, so the cover shows them as they are:
 GIPF with Potentials whenever MATRX GIPF's pieces change, since its potentials are drawn the same.
@@ -25,6 +25,9 @@ PORT=5174 tools/gipf-covers/rebuild-cover.sh lyngk
 # matrx with LOOKS_BRANCH=matrx (same file names) to see a MATRX piece change on it first.
 tools/gipf-covers/rebuild-cover.sh gipf-potentials check
 tools/gipf-covers/rebuild-cover.sh gipf-potentials
+
+# TZAAR: the box scan in sources/tzaar with the logo added.
+tools/gipf-covers/rebuild-cover.sh tzaar check
 ```
 
 The rebuild writes `tmp/gipf-covers/rebuild/GAME/GAME-cover.webp` and `before-after.jpg` beside
@@ -54,7 +57,10 @@ The settings in `rebuild-cover.sh` are the ones the user chose; change them only
   "with potentials" centred under the title on a dark glow (lettering cut from the MATRX GIPF box,
   its "w" from Courgette; made once, it does not depend on the pieces). `pieces.txt` places
   light ZÈRTZ, dark DVONN, light TAMSK, dark YINSH (turned) and light PÜNCT with drop shadows,
-  as on the GIPF Project Set boxes. The cover is cropped to about 4:3, as the original boxes are.
+  as on the GIPF Project Set boxes. The cover is cropped to about 4:3, as the original boxes are,
+  and given the logo.
+- **Logo:** `logo.py --stamp` puts it where `cover.py` does on LYNGK and MATRX GIPF: disc 4.5% of
+  the cover's width, 2.5% in from the right and 3.5% up from the bottom.
 
 ## Files
 

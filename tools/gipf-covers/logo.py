@@ -1,6 +1,7 @@
 """Build the Don & Co era "GIPF project" logo: four blue discs, white "project" script, blue swoosh.
 
 Usage: python3 -I logo.py OUT.png DISC_DIAMETER
+       python3 -I logo.py --stamp IN.jpg OUT.jpg   (adds it to a finished cover, as cover.py places it)
 """
 import os
 import sys
@@ -63,5 +64,18 @@ def logo(D):
     return out
 
 
+def stamp(img):
+    """Adds the logo to the bottom right of an RGBA cover, at the size and place cover.py gives it."""
+    W, H = img.size
+    lg = logo(int(W * 0.045))
+    lg = lg.crop(lg.getbbox())
+    img.alpha_composite(lg, (int(W * 0.975 - lg.width), int(H * 0.965 - lg.height)))
+
+
 if __name__ == '__main__':
-    logo(int(sys.argv[2])).save(sys.argv[1])
+    if sys.argv[1] == '--stamp':
+        img = Image.open(sys.argv[2]).convert('RGBA')
+        stamp(img)
+        img.convert('RGB').save(sys.argv[3], quality=92)
+    else:
+        logo(int(sys.argv[2])).save(sys.argv[1])

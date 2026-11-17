@@ -11,7 +11,7 @@ from PIL import Image, ImageDraw, ImageFilter
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from disc import disc  # noqa: E402
-from logo import logo  # noqa: E402
+from logo import stamp  # noqa: E402
 
 TITLE = 'LYNGK'
 
@@ -190,9 +190,7 @@ def compose(scene_path, board_path, colours, board_scale=0.52, board_cy=0.70, sq
     img.alpha_composite(rm)
 
     # GIPF project logo, bottom right
-    lg = logo(int(W * 0.045))
-    lg = lg.crop(lg.getbbox())
-    img.alpha_composite(lg, (int(W * 0.975 - lg.width), int(H * 0.965 - lg.height)))
+    stamp(img)
     return img.convert('RGB')
 
 
