@@ -18,11 +18,12 @@ tools/gipf-covers/rebuild-cover.sh lyngk check
 tools/gipf-covers/rebuild-cover.sh matrx check
 
 # New cover from the game as it is now. Start the game's harness on port 5174 first, from a
-# checkout of its branch: `pnpm exec vite dev --port 5174 --strictPort` in games/GAME-ui.
+# checkout with the game as it is now: `pnpm exec vite dev --port 5174 --strictPort` in games/GAME-ui.
 PORT=5174 tools/gipf-covers/rebuild-cover.sh lyngk
 
-# GIPF with Potentials needs no harness: it takes the looks committed on gipf-potentials, or on
-# matrx with LOOKS_BRANCH=matrx (same file names) to see a MATRX piece change on it first.
+# GIPF with Potentials needs no harness: it takes its own committed looks, or
+# MATRX GIPF's with LOOKS_GAME=matrx (same file names) to see a MATRX piece change on it first.
+# Covers and looks are read from upstream/main; COVER_REF and LOOKS_REF name another ref.
 tools/gipf-covers/rebuild-cover.sh gipf-potentials check
 tools/gipf-covers/rebuild-cover.sh gipf-potentials
 
@@ -33,9 +34,10 @@ tools/gipf-covers/rebuild-cover.sh tzaar check
 The rebuild writes `tmp/gipf-covers/rebuild/GAME/GAME-cover.webp` and `before-after.jpg` beside
 it, and commits nothing. The cover is composed as a 1200 px JPEG, then encoded by `webp.py` as a
 lossy WebP 680 px high, twice the large catalog card's height: the readiness review fails a JPEG
-cover and one far above that size. Commit it on the game's branch as
+cover and one far above that size. Commit it on a branch off upstream `main` as
 `games/GAME-ui/src/lib/images/GAME-cover.webp`, then copy the new captures into `sources/GAME`
-(the script prints the command) and commit them here, so `check` matches again. Commit no other
+(the script prints the command) and commit them here, so `check` matches again once that branch
+merges (until then, `COVER_REF=origin/<branch>`). Commit no other
 version of a cover; an image nothing imports fails the review too.
 
 Needs the devcontainer (for the captures), python3 with numpy and Pillow, and ImageMagick.

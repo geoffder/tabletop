@@ -3,9 +3,9 @@
 # the settings the user chose, so it can be redone whenever the pieces or board change. See
 # README.md.
 #
-#   rebuild-cover.sh GAME check
+#   [COVER_REF=origin/some-branch] rebuild-cover.sh GAME check
 #       Builds from the archived captures in sources/GAME and compares the result with the cover
-#       committed on the GAME branch. RMSE 0 means the recipe still holds.
+#       committed at COVER_REF (upstream/main by default). RMSE 0 means the recipe still holds.
 #
 #   PORT=5174 rebuild-cover.sh GAME
 #       Captures the board again from GAME's harness running on PORT (start it from a GAME
@@ -15,10 +15,11 @@
 #       After committing it, copy the new captures over the archived ones in sources/GAME (the
 #       script prints the command) and commit those here, so `check` matches again.
 #
-#   [LOOKS_BRANCH=matrx] rebuild-cover.sh gipf-potentials
-#       No harness: takes the potentials' looks as committed on the gipf-potentials branch (or on
-#       LOOKS_BRANCH: MATRX GIPF's looks have the same names, so a MATRX piece change can be seen
-#       on the cover before it reaches gipf-potentials) and builds the cover.
+#   [LOOKS_REF=upstream/main] [LOOKS_GAME=matrx] rebuild-cover.sh gipf-potentials
+#       No harness: takes the potentials' looks as committed at LOOKS_REF from GIPF with
+#       Potentials (or from LOOKS_GAME: MATRX GIPF's looks have the same names, so a MATRX piece
+#       change can be seen on the cover before it reaches GIPF with Potentials) and builds the
+#       cover.
 #
 #   rebuild-cover.sh tzaar
 #       No harness: the Don & Co box scan in sources/tzaar with the GIPF project logo added.
@@ -37,7 +38,9 @@ SOURCES=$S/sources/$GAME
 WORK=$ROOT/tmp/gipf-covers/rebuild/$GAME
 IN_CONTAINER_WORK=/workspace/tmp/gipf-covers/rebuild/$GAME
 PORT=${PORT:-5174}
-LOOKS_BRANCH=${LOOKS_BRANCH:-gipf-potentials}
+COVER_REF=${COVER_REF:-upstream/main}
+LOOKS_REF=${LOOKS_REF:-upstream/main}
+LOOKS_GAME=${LOOKS_GAME:-gipf-potentials}
 # The covers built, by file name: GIPF with Potentials keeps its uncropped version beside it.
 COVERS=("$GAME-cover")
 mkdir -p "$WORK"
@@ -69,10 +72,10 @@ capture() {
         python3 -I "$S/matrx_board.py" "$WORK/board-pot.png" "$WORK/board-lines.png" "$WORK"
         ;;
     gipf-potentials)
-        # The looks each piece in pieces.txt is drawn from, as committed on the branch.
+        # The looks each piece in pieces.txt is drawn from, as committed at LOOKS_REF.
         mkdir -p "$WORK/looks"
         grep -v '^#' "$SOURCES/pieces.txt" | awk 'NF { print $1 }' | while read -r look; do
-            git -C "$ROOT" show "$LOOKS_BRANCH:games/$LOOKS_BRANCH-ui/src/lib/images/$look" > "$WORK/$look"
+            git -C "$ROOT" show "$LOOKS_REF:games/$LOOKS_GAME-ui/src/lib/images/$look" > "$WORK/$look"
         done
         ;;
     esac
@@ -118,7 +121,7 @@ build() {
 }
 
 for cover in "${COVERS[@]}"; do
-    git -C "$ROOT" show "$GAME:games/$GAME-ui/src/lib/images/$cover.webp" > "$WORK/committed-$cover.webp"
+    git -C "$ROOT" show "$COVER_REF:games/$GAME-ui/src/lib/images/$cover.webp" > "$WORK/committed-$cover.webp"
 done
 
 if [ "$MODE" = check ]; then
