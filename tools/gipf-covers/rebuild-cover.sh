@@ -81,6 +81,12 @@ capture() {
     esac
 }
 
+# The composed cover as the 1200 px JPEG the WebP is encoded from.
+encode_full() {
+    rm -f "$WORK/$GAME-cover.jpg"
+    magick "$WORK/full.jpg" -filter Lanczos -resize 1200x -quality 90 "$WORK/$GAME-cover.jpg"
+}
+
 # Builds the covers from the board inputs (or looks) in a folder, into $WORK.
 build() {
     local from=$1
@@ -91,6 +97,7 @@ build() {
             BOARD_GLOW=0.45,0.75,1.0,0.22 \
             python3 -I "$S/cover.py" full.jpg "$SOURCES/scene-storm7c.png" "$from/board-chain-t.png" \
             '#1d4fa6,#b3212b,#17804a,#ddd3b4,#1b1b1d' 0.74 0.71 0.30 0.82)
+        encode_full
         ;;
     matrx)
         (cd "$WORK" && GLOW_MASK="$from/board-lines-c-pad.png" GLOW_COL=0.25,1.0,0.45,0.7 \
@@ -98,6 +105,7 @@ build() {
             BOARD_GLOW=0.15,1.0,0.40,0.09 \
             python3 -I "$S/cover.py" full.jpg "$SOURCES/scene-construct-20h.png" "$from/board-pot-c-pad.png" \
             '#1c1c1e/#2f63b0' 0.86 0.716 0.30 0.82)
+        encode_full
         ;;
     gipf-potentials)
         # The 1996 GIPF box with "with potentials" lettered on (base.png), the five potentials
@@ -112,9 +120,6 @@ build() {
     tzaar)
         # The box scan lacks the logo the other original boxes carry.
         python3 -I "$S/logo.py" --stamp "$SOURCES/box.jpg" "$WORK/$GAME-cover.jpg"
-        ;;
-    *)
-        magick "$WORK/full.jpg" -filter Lanczos -resize 1200x -quality 90 "$WORK/$GAME-cover.jpg"
         ;;
     esac
     python3 -I "$S/webp.py" "$WORK/$GAME-cover.jpg" "$WORK/$GAME-cover.webp" >/dev/null

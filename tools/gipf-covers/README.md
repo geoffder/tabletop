@@ -61,8 +61,14 @@ The settings in `rebuild-cover.sh` are the ones the user chose; change them only
   light ZÈRTZ, dark DVONN, light TAMSK, dark YINSH (turned) and light PÜNCT with drop shadows,
   as on the GIPF Project Set boxes. The cover is cropped to about 4:3, as the original boxes are,
   and given the logo.
-- **Logo:** `logo.py --stamp` puts it where `cover.py` does on LYNGK and MATRX GIPF: disc 4.5% of
-  the cover's width, 2.5% in from the right and 3.5% up from the bottom.
+- **Logo:** the user's clean copy of the GIPF project logo (`assets/gipf-project-logo-source.jpg`,
+  black "project" on white), cut by `cut_logo.py` into a discs layer and an ink layer, then drawn
+  by `logo.py` as the original boxes print it: rims tinted dark navy, "project" in white, a
+  little larger and tucked up under the discs, over a blue swoosh (a fine point under the G
+  arcing up and thickening to a rounded end past the F), all with a tight dark shadow (between
+  ZÈRTZ's tightest and YINSH's softest). `stamp` places it as on the boxes: 18% of the cover's
+  width, 3% in from the right and 2.5% up from the bottom; `logo.py --stamp` adds it to a
+  finished cover.
 
 ## Files
 
@@ -75,7 +81,7 @@ The settings in `rebuild-cover.sh` are the ones the user chose; change them only
 - `scene.py`: renders a landscape. The archived scenes are
   `scene.py OUT.png storm 1600 1180 0.14 80 7` (LYNGK) and
   `scene.py OUT.png construct 1600 1180 0.14 105 20` (MATRX GIPF); both re-render identically.
-- `disc.py`, `logo.py`: the title discs and the GIPF project logo.
-- `assets/`: EB Garamond (SIL Open Font License) for the disc letters, and the logo's "project"
-  script.
+- `disc.py`: the title discs. `cut_logo.py`, `logo.py`: the GIPF project logo.
+- `assets/`: EB Garamond (SIL Open Font License) for the disc letters, and the logo's source and
+  cut layers.
 - `sources/`: the scenes and the board captures the committed covers were built from.
