@@ -47,10 +47,10 @@ GIPF's second review (all first-pass fixes in) failed on these; MATRX was brough
 | A decision tapped several times is one Undo step | A stacked stage (`pushStagedSelectionValue`) | `ui-lessons.md` | `gipf` `0c4b638d8` |
 | No test that a stage outside the order throws | Add it to the staged-selection spec | `ui-lessons.md` | `gipf` `0c4b638d8` |
 | Another player's Undo leaves the piece staged on its dot | Restage only for your own Undo; anything else slides back and lifts off in one ≤ 0.2 s motion | `animation-lessons.md` | `gipf` `bdc1534c1` |
-| A view switch or far-side turn mid-move leaves its tweens running | A session `moveInterrupter`: `abandon()` on `view-switch`, `interrupt()` on the toggle, both `progress(1)` on the context's timeline | `animation-lessons.md` | `gipf` `40964fab3`, `3f5923485` |
+| A view switch or far-side turn mid-move leaves its tweens running | A session `moveInterrupter`: `abandon()` on `view-switch`, `interrupt()` on the toggle (since superseded: each animator stops only its own tweens, see below) | `animation-lessons.md` | `gipf` `40964fab3`, `3f5923485` |
 | After an Undo hands the harness's Non-active view over, a hidden selection absorbs the next Undo | Keep the selection to the player who made it | `ui-lessons.md` | `gipf` `fbf922e9c` |
 | A step back animates the wrong push | Read the undone move by index, not from `onHistoryAction` | `animation-lessons.md` | `gipf` `632741e12` |
-| `svelte-ignore` on the tap-off `<svg>` | Accepted by the user: tap-off is a pointer convenience, and keyboard players let go with Undo | — | — |
+| `svelte-ignore` on the tap-off `<svg>` | Accepted at first; the maintainer then moved it onto a `role="presentation"` wrapper in every title | `ui-lessons.md` | `a5afb8f2c` |
 | No session or staged-selection spec at all | Write both; the UI's `vitest.config.ts` needs `root: projectRoot(import.meta.url)` | `ui-lessons.md` | `matrx` `2e1b0d442` |
 | A branch the flow can never reach (MATRX: rows at the start of a turn) | Probe it with a throw under the playouts; delete it if it never fires | `logic.md` | `matrx` `0c81fe0f5` |
 | Optional fields kept for "games from before" a change, on a title never deployed | Make them required | `logic.md` | `matrx` `c758aedb6` |
@@ -69,9 +69,37 @@ Gate 16 (phone rendering) was added to the review after the GIPF project titles 
 | A table-sized mask (MATRX's grid fade) | A gradient of the table's colour laid over it | `performance.md` | `matrx` `af68c72f5` |
 | Visual contract silent on the new drawing | Record the motion and shadow rules in it | `docs/ui-interaction-visual-contract.md` | `d6baf2297` |
 
+## What the maintainer changed at merge (2026-11-15/16)
+
+The four titles above merged, then the maintainer made follow-up fixes on `main`. The other five (YINSH, DVONN, LYNGK, TZAAR, PÜNCT) were opened without a review, with a temporary `REVIEW-NOTES.md` listing the known fixes and the author's decisions; he did the readiness work himself, one logic commit and one UI commit per title, and squash-merged. Each lesson now lives in its reference file; the headlines:
+
+| Change | Lesson | Example on `main` |
+|---|---|---|
+| Pieces carry ids in State; the animator diffs boards by id; inference, `historyMove` and `knownMove` deleted | `logic.md`, `animation-lessons.md` | TZAAR `839351b09`, LYNGK `b7f042747` |
+| Optional ids and their fallbacks deleted; icons synthesise ids | `ui-lessons.md` | YINSH `4e1ad36cf` |
+| No derivable values, setup-only config or duplicate counts in State; schema invariants checked in specs | `logic.md` | PÜNCT `06fc9dfe6`, YINSH `815e96171` |
+| Turn outcome worked out once, in the handler, written as `passedPlayerId` | `logic.md` | DVONN `e8168c726` |
+| `seriesKeeps = 'latest'`; config readers throw on unknown values; `bggId`; `series` | `logic.md`, `scaffold.md` | `36405defd`, `4497039ac`, `e35ef711b`, `f879fddf7` |
+| White option added to GIPF and YINSH | `logic.md` | `dc33c3d3e`, `891013da4` |
+| Staged piece lifts off only when the player lets it go; restage checks read the incoming state | `animation-lessons.md`, `ui-lessons.md` | `c7d160278`, `b277355f5` |
+| Each animator stops only its own motion; every layout preference interrupts | `animation-lessons.md` | TZAAR `839351b09` |
+| Marks fade per node, never a layer | `animation-lessons.md` | YINSH `4e1ad36cf` |
+| No Svelte `crossfade`/`animate:flip`/`Tween`, no reactive writes per frame, no `$effect` feeding motion | `animation-lessons.md` | LYNGK `b7f042747`, PÜNCT `06fc9dfe6` |
+| Tap-off on a `role="presentation"` wrapper | `ui-lessons.md` | `a5afb8f2c` |
+| End panels assert the result | `ui-lessons.md` | YINSH `4e1ad36cf` |
+| Specs fail on console errors; shared `tests/harness.ts`; undo-timing spec | `browser-checks.md` | DVONN `0f8377044` |
+| Image pieces' tap areas (a player's report after merge) | `ui-lessons.md` | `a51d325be`, `2414a6e64` |
+| Comments that cite other titles or precedent removed | `SKILL.md` | TZAAR `839351b09` |
+
+He kept the author's decisions recorded in the notes: every return motion, overlapped to fit 0.2 s; other movable stacks hidden once one is chosen; win/lose scores with totals on the cards; rule readings; stack limits off. Where the notes proposed patching guessing machinery, he replaced it with diffs by id instead; expect that.
+
+**The PR bot.** A Greptile bot reviews every PR and posts inline findings. Several were real and are now lessons (fractional coordinates, unbounded row building, called games in the end panel, focus rings, scenario ids, staged preview kind, cleanup on detach), and some were still open on `main` after merge. Read and answer each finding before asking for a merge.
+
+**Visual contract.** The reworked contracts carry a "Shared visual state" table (producer → consumers, lifetime, validity) and a regression table whose "Verified" column names the spec or says manual (`games/punct-ui/docs/ui-interaction-visual-contract.md`).
+
 ## Opening the PR
 
 1. **Make a `game-<slug>` branch of the title's own commits**: `git rebase --onto <upstream base> <commit below the title's first> game-<slug>` leaves out this skill and the `turbo.json` fix. Then **merge** upstream's `main` rather than rebasing again, so the reviewed commits stay as they were. Take upstream's lockfile, run `pnpm install`, and confirm `pnpm install --frozen-lockfile` passes on the merged branch.
 2. **Collect the evidence again on the merged branch**: every check in *Before running the review*, and any gate added since the title's review, run in full. Say in the PR which was which: "passed review before the merge; evidence collected again and gate 16 run in full".
 3. **A change to shared code goes in its own PR first.** GIPF with Potentials needed `isOptionDisabled` on the configurator (#264). The title's PR (#268) carries that commit, opens as a **draft** whose first line says "Depends on #264" and that its diff shows the two shared files until then, and is marked ready once #264 merges.
-4. **The description** follows #266–#269: what the title is and its two packages, version 0.0.1 shipping as Alpha, and the designer's position. Then what it touches outside its folders, the logic (setups, a turn, rules, end, rulings, tournament setup) and the UI (board, moves, motion, toggles, scenarios, visual contract). Next come phone rendering, and testing with each package's counts, the bundle check and gate 16's phone cost. Notes for review end it: squash-merge, the accepted `svelte-ignore`, and any known gap with the platform change that would close it. Check every number and description against the branch before posting; drafts overstated playout counts and described motion not yet verified.
+4. **The description** follows #266–#269: what the title is and its two packages, version 0.0.1 shipping as Alpha, and the designer's position. Then what it touches outside its folders, the logic (setups, a turn, rules, end, rulings, tournament setup) and the UI (board, moves, motion, toggles, scenarios, visual contract). Next come phone rendering, and testing with each package's counts, the bundle check and gate 16's phone cost. Notes for review end it: squash-merge, and any known gap with the platform change that would close it. Check every number and description against the branch before posting; drafts overstated playout counts and described motion not yet verified.
