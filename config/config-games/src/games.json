@@ -206,5 +206,9 @@
     {
         "gameId": "punct",
         "packageId": "punct"
+    },
+    {
+        "gameId": "hex",
+        "packageId": "hex"
     }
 ]
