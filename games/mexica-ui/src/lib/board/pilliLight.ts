@@ -34,12 +34,13 @@ import {
 
 const WOOD = { light: linear('#e2bf91'), dark: linear('#b98a5a') }
 const GOLD = { light: linear('#f0c85a'), dark: linear('#8a5a1c') }
+const TURQUOISE = { light: linear('#4cc3b4'), dark: linear('#0f5e5a') }
 // The light on a painted face turned towards it shows the paint as it is.
 const FULL_LIGHT = 0.95
 
 // What a point of the figure is made of: paint, lightened (above 1) or darkened (below) by
-// what is painted there, bare wood or gold.
-type Finish = { kind: 'paint' | 'wood' | 'gold'; tone: number }
+// what is painted there, bare wood, gold or turquoise.
+type Finish = { kind: 'paint' | 'wood' | 'gold' | 'turquoise'; tone: number }
 type Part = { distance: (p: Vec) => number; finish: (p: Vec) => Finish }
 type Figure = { scene: Scene; finish: (p: Vec) => Finish }
 
@@ -146,6 +147,12 @@ function shade(p: Vec, figure: Figure, toward: Vec): Sample[] {
         const shine = 0.8 * facing ** 24
         return opaque(add(scale(metal, 0.3 + 0.8 * light), [shine, shine * 0.9, shine * 0.6]))
     }
+    if (finish.kind === 'turquoise') {
+        const half = normalize(add(KEY, toward))
+        const polish = 0.25 * clamp(dot(normal, half)) ** 30
+        const stone = mix(TURQUOISE.dark, TURQUOISE.light, 0.5 + 0.5 * sun)
+        return opaque(add(scale(stone, 0.35 + 0.75 * light), [polish, polish, polish]))
+    }
     // As a factor on the paint's sRGB colour; more than full light, and the satin's
     // reflections, lighten it.
     const factor = ((light / FULL_LIGHT) * finish.tone) ** (1 / 2.2)
@@ -203,6 +210,7 @@ function frustum(p: Vec, z0: number, z1: number, r0: number, r1: number, round: 
 const paint = (tone = 1): Finish => ({ kind: 'paint', tone })
 const WOODEN: Finish = { kind: 'wood', tone: 1 }
 const GILT: Finish = { kind: 'gold', tone: 1 }
+const STONE: Finish = { kind: 'turquoise', tone: 1 }
 
 // The robe up to the neck, the cape over the shoulders, the head on top.
 const ROBE = { foot: 8.6, neck: 4.6, height: 15.5, round: 1.3 }
@@ -447,12 +455,140 @@ function head(p: Vec): number {
     return sphere(p, HEAD.at, HEAD.radius)
 }
 
+// What the head wears, as parts of their own: a gold band with a jewel; a thinner circlet
+// higher on the brow with a medallion; the pointed turquoise diadem of the Mexica rulers on a
+// gold band; or the band with gold ear spools set with turquoise.
 const BAND = { at: HEAD.at[2] + 1.1, radius: 3.55, thickness: 0.62 }
 const JEWEL: Vec = [0, HEAD.at[1] + 3.75, BAND.at + 0.1]
+const CIRCLET = { rise: 1.9, thickness: 0.42, medallion: 1.05, depth: 0.32 }
+const DIADEM = { rise: 0.75, lean: 0.38, half: 2.6, height: 4.8, thickness: 0.22, rim: 0.4 }
+const SPOOL = { radius: 1.5, depth: 0.5, stone: 0.8, drop: 1.3, out: 0.35 }
 
-function headband(p: Vec): number {
-    const around = length2(p[0], p[1] - HEAD.at[1]) - BAND.radius
-    return Math.min(length2(around, p[2] - BAND.at) - BAND.thickness, sphere(p, JEWEL, 0.95))
+// A ring round the head at `rise` above its centre, `thickness` thick.
+function ring(p: Vec, rise: number, thickness: number): number {
+    const radius = Math.sqrt(HEAD.radius ** 2 - rise ** 2) + thickness * 0.4
+    const around = length2(p[0], p[1] - HEAD.at[1]) - radius
+    return length2(around, p[2] - HEAD.at[2] - rise) - thickness
+}
+
+// A disc `radius` across and `depth` thick, facing along `axis`, its edge rounded.
+function disc(p: Vec, centre: Vec, axis: 0 | 1, radius: number, depth: number): number {
+    const d: Vec = [p[0] - centre[0], p[1] - centre[1], p[2] - centre[2]]
+    const along = Math.abs(d[axis]) - depth / 2
+    const out = length2(d[axis === 0 ? 1 : 0], d[2]) - radius
+    const round = Math.min(depth / 2, 0.2)
+    const qx = out + round
+    const qy = along + round
+    return Math.min(Math.max(qx, qy), 0) + length2(Math.max(qx, 0), Math.max(qy, 0)) - round
+}
+
+// Inigo Quilez's isosceles triangle, its tip at the origin and its base `height` below.
+function triangle(x: number, y: number, half: number, height: number): number {
+    const px = Math.abs(x)
+    const qq = half * half + height * height
+    const ta = clamp((px * half + y * height) / qq)
+    const ax = px - half * ta
+    const ay = y - height * ta
+    const tb = clamp(px / half)
+    const bx = px - half * tb
+    const by = y - height
+    const da = ax * ax + ay * ay
+    const db = bx * bx + by * by
+    const sa = -(px * height - y * half)
+    const sb = -(y - height)
+    return -Math.sqrt(Math.min(da, db)) * Math.sign(Math.min(sa, sb))
+}
+
+type Plate = { across: number; up: number; edge: number }
+
+// The diadem's plate: a triangle standing at the front of the head, leaning back.
+function diademPlate(p: Vec): Plate {
+    const c = Math.cos(DIADEM.lean)
+    const s = Math.sin(DIADEM.lean)
+    const base: Vec = [
+        0,
+        HEAD.at[1] + Math.sqrt(HEAD.radius ** 2 - DIADEM.rise ** 2) + 0.15,
+        HEAD.at[2] + DIADEM.rise
+    ]
+    const d: Vec = [p[0] - base[0], p[1] - base[1], p[2] - base[2]]
+    const across = d[1] * c + d[2] * s
+    const up = -d[1] * s + d[2] * c
+    const edge = triangle(p[0], DIADEM.height - up, DIADEM.half, DIADEM.height)
+    return { across, up, edge }
+}
+
+function diadem(p: Vec): number {
+    const { across, edge } = diademPlate(p)
+    const round = 0.15
+    const qx = edge + round
+    const qy = Math.abs(across) - DIADEM.thickness + round
+    return Math.min(Math.max(qx, qy), 0) + length2(Math.max(qx, 0), Math.max(qy, 0)) - round
+}
+
+function headdress(style: PilliStyle): Part[] {
+    const band: Part = {
+        distance: (p) =>
+            Math.min(
+                length2(length2(p[0], p[1] - HEAD.at[1]) - BAND.radius, p[2] - BAND.at) -
+                    BAND.thickness,
+                sphere(p, JEWEL, 0.95)
+            ),
+        finish: () => GILT
+    }
+    switch (style.headband) {
+        case 'none':
+            return []
+        case 'band':
+            return [band]
+        case 'circlet': {
+            const front: Vec = [
+                0,
+                HEAD.at[1] + Math.sqrt(HEAD.radius ** 2 - CIRCLET.rise ** 2) + 0.35,
+                HEAD.at[2] + CIRCLET.rise
+            ]
+            return [
+                {
+                    distance: (p) =>
+                        Math.min(
+                            ring(p, CIRCLET.rise, CIRCLET.thickness),
+                            disc(p, front, 1, CIRCLET.medallion, CIRCLET.depth)
+                        ),
+                    finish: (p) =>
+                        disc(p, front, 1, CIRCLET.medallion * 0.55, CIRCLET.depth + 0.1) < 0
+                            ? STONE
+                            : GILT
+                }
+            ]
+        }
+        case 'diadem':
+            return [
+                { distance: (p) => ring(p, DIADEM.rise - 0.2, 0.4), finish: () => GILT },
+                {
+                    distance: diadem,
+                    finish: (p) => (diademPlate(p).edge > -DIADEM.rim ? GILT : STONE)
+                }
+            ]
+        case 'spools': {
+            const at = (side: number): Vec => [
+                side * (HEAD.radius + SPOOL.depth / 2 - 0.1 + SPOOL.out),
+                HEAD.at[1],
+                HEAD.at[2] - SPOOL.drop
+            ]
+            const spools = (p: Vec) =>
+                Math.min(
+                    disc(p, at(-1), 0, SPOOL.radius, SPOOL.depth),
+                    disc(p, at(1), 0, SPOOL.radius, SPOOL.depth)
+                )
+            return [
+                band,
+                {
+                    distance: spools,
+                    finish: (p) =>
+                        length2(p[1] - HEAD.at[1], p[2] - at(1)[2]) < SPOOL.stone ? STONE : GILT
+                }
+            ]
+        }
+    }
 }
 
 // A fan stands behind the head, leaning back; its feathers spread from a point below its
@@ -539,7 +675,7 @@ function figureOf(style: PilliStyle): Figure {
         const hands = armEnds(style).hands
         parts.push({ distance: (p) => sphere(p, hands, 1.5), finish: () => WOODEN })
     }
-    if (style.headband) parts.push({ distance: headband, finish: () => GILT })
+    parts.push(...headdress(style))
     const nearest = (p: Vec) => {
         let best = parts[0]
         let distance = Infinity
