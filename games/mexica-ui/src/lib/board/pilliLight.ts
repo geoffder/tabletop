@@ -35,12 +35,13 @@ import {
 const WOOD = { light: linear('#e2bf91'), dark: linear('#b98a5a') }
 const GOLD = { light: linear('#f0c85a'), dark: linear('#8a5a1c') }
 const TURQUOISE = { light: linear('#4cc3b4'), dark: linear('#0f5e5a') }
+const HAIR = { light: linear('#4a3a2e'), dark: linear('#15100c') }
 // The light on a painted face turned towards it shows the paint as it is.
 const FULL_LIGHT = 0.95
 
 // What a point of the figure is made of: paint, lightened (above 1) or darkened (below) by
-// what is painted there, bare wood, gold or turquoise.
-type Finish = { kind: 'paint' | 'wood' | 'gold' | 'turquoise'; tone: number }
+// what is painted there, bare wood, gold, turquoise, or black hair and face paint.
+type Finish = { kind: 'paint' | 'wood' | 'gold' | 'turquoise' | 'hair'; tone: number }
 type Part = { distance: (p: Vec) => number; finish: (p: Vec) => Finish }
 type Figure = { scene: Scene; finish: (p: Vec) => Finish }
 
@@ -147,6 +148,12 @@ function shade(p: Vec, figure: Figure, toward: Vec): Sample[] {
         const shine = 0.8 * facing ** 24
         return opaque(add(scale(metal, 0.3 + 0.8 * light), [shine, shine * 0.9, shine * 0.6]))
     }
+    if (finish.kind === 'hair') {
+        const half = normalize(add(KEY, toward))
+        const sheen = 0.06 * clamp(dot(normal, half)) ** 12
+        const dark = mix(HAIR.dark, HAIR.light, sun)
+        return opaque(add(scale(dark, 0.4 + 0.7 * light), [sheen, sheen, sheen]))
+    }
     if (finish.kind === 'turquoise') {
         const half = normalize(add(KEY, toward))
         const polish = 0.25 * clamp(dot(normal, half)) ** 30
@@ -211,13 +218,16 @@ const paint = (tone = 1): Finish => ({ kind: 'paint', tone })
 const WOODEN: Finish = { kind: 'wood', tone: 1 }
 const GILT: Finish = { kind: 'gold', tone: 1 }
 const STONE: Finish = { kind: 'turquoise', tone: 1 }
+const BLACK: Finish = { kind: 'hair', tone: 1 }
 
 // The robe up to the neck, the cape over the shoulders, the head on top.
 const ROBE = { foot: 8.6, neck: 4.6, height: 15.5, round: 1.3 }
 const PLINTH = { height: 1.8, radius: 9.1, round: 0.45 }
 const CAPE: Vec = [6.4, 4.6, 2.9]
 const CAPE_AT = 15.6
-const HEAD = { radius: 3.7, at: [0, 0.3, 21.2] satisfies Vec }
+// The head stands clear of the cape on a short neck, so its face shows from the table's side.
+const HEAD = { radius: 3.7, at: [0, 0.3, 22.4] satisfies Vec }
+const NECK = { from: [0, 0.1, 17.6] satisfies Vec, radius: 1.9 }
 // The band round the hem, clear of the ring at the foot: a raised line along each edge and
 // between them a stepped fret, repeating a whole number of times round the robe.
 const HEM = {
@@ -455,13 +465,67 @@ function head(p: Vec): number {
     return sphere(p, HEAD.at, HEAD.radius)
 }
 
+// Hair over the head down to a fringe across the brow, lower at the sides and the back, standing
+// a little proud of the head so its edge shows.
+const FRINGE = { back: -2.7, front: 1.5, proud: 0.3 }
+const NOSE: Vec = [0, HEAD.at[1] + HEAD.radius - 0.25, HEAD.at[2] - 0.75]
+const EYES = { apart: 1.2, rise: 0.15, size: 0.42 }
+const FACE_PAINT = { rise: 0.15, half: 0.6 }
+
+function fringeAt(p: Vec): number {
+    const front = (p[1] - HEAD.at[1]) / HEAD.radius
+    return FRINGE.back + (FRINGE.front - FRINGE.back) * smoothstep(-0.3, 0.8, front)
+}
+
+function hair(p: Vec): number {
+    const cap = sphere(p, HEAD.at, HEAD.radius + FRINGE.proud)
+    return Math.max(cap, fringeAt(p) - (p[2] - HEAD.at[2]))
+}
+
+function nose(p: Vec): number {
+    return ellipsoid([p[0] - NOSE[0], p[1] - NOSE[1], p[2] - NOSE[2]], [0.55, 0.7, 0.85])
+}
+
+function headPart(style: PilliStyle): Part {
+    const haired = style.head !== 'plain'
+    const faced = style.head === 'face' || style.head === 'painted'
+    return {
+        distance: (p) => {
+            let shape = blend(head(p), capsule(p, NECK.from, HEAD.at, NECK.radius), 0.6)
+            if (haired) shape = Math.min(shape, hair(p))
+            if (faced) shape = blend(shape, nose(p), 0.35)
+            return shape
+        },
+        finish: (p) => {
+            if (haired && hair(p) < 0.12) return BLACK
+            const rise = p[2] - HEAD.at[2]
+            const front = p[1] - HEAD.at[1] > 1
+            if (
+                style.head === 'painted' &&
+                front &&
+                Math.abs(rise - FACE_PAINT.rise) < FACE_PAINT.half
+            ) {
+                return BLACK
+            }
+            if (faced && front) {
+                const eye = Math.min(
+                    length2(p[0] - EYES.apart, rise - EYES.rise),
+                    length2(p[0] + EYES.apart, rise - EYES.rise)
+                )
+                if (eye < EYES.size) return BLACK
+            }
+            return WOODEN
+        }
+    }
+}
+
 // What the head wears, as parts of their own: a gold band with a jewel; a thinner circlet
 // higher on the brow with a medallion; the pointed turquoise diadem of the Mexica rulers on a
 // gold band; or the band with gold ear spools set with turquoise.
-const BAND = { at: HEAD.at[2] + 1.1, radius: 3.55, thickness: 0.62 }
-const JEWEL: Vec = [0, HEAD.at[1] + 3.75, BAND.at + 0.1]
+const BAND = { at: HEAD.at[2] + 2.0, radius: 3.2, thickness: 0.6 }
+const JEWEL: Vec = [0, HEAD.at[1] + BAND.radius + 0.25, BAND.at + 0.1]
 const CIRCLET = { rise: 1.9, thickness: 0.42, medallion: 1.05, depth: 0.32 }
-const DIADEM = { rise: 0.75, lean: 0.38, half: 2.6, height: 4.8, thickness: 0.22, rim: 0.4 }
+const DIADEM = { rise: 1.7, lean: 0.38, half: 2.6, height: 4.8, thickness: 0.22, rim: 0.4 }
 const SPOOL = { radius: 1.5, depth: 0.5, stone: 0.8, drop: 1.3, out: 0.35 }
 
 // A ring round the head at `rise` above its centre, `thickness` thick.
@@ -665,7 +729,7 @@ function figureOf(style: PilliStyle): Figure {
     const shapeOf = style.fan === 'plain' ? plainFan : featherFan
     const parts: Part[] = [
         { distance: (p) => body(style, p), finish: (p) => bodyFinish(style, p) },
-        { distance: head, finish: () => WOODEN },
+        headPart(style),
         ...fans.map((fan) => ({
             distance: (p: Vec) => shapeOf(fan, p),
             finish: (p: Vec) => fanFinish(style, fan, p)

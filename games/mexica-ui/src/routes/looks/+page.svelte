@@ -39,13 +39,15 @@
     let previews: Record<string, string> | undefined = $state()
     type Figure = { url: string; shine: string; outline: string; box: Box }
     let figures: Record<string, Figure> | undefined = $state()
-    // Headdresses to compare, dry-brushed as the board shows them.
-    const FIGURE_STYLES: [string, PilliStyle][] = [
-        ['band', { ...PILLI_STYLE, headband: 'band' }],
-        ['circlet', { ...PILLI_STYLE, headband: 'circlet' }],
-        ['diadem', { ...PILLI_STYLE, headband: 'diadem' }],
-        ['ear spools', { ...PILLI_STYLE, headband: 'spools' }]
-    ]
+    // Heads under the band and the diadem, dry-brushed as the board shows them.
+    const HEADS: PilliStyle['head'][] = ['plain', 'hair', 'face', 'painted']
+    const HEADBANDS: PilliStyle['headband'][] = ['band', 'diadem']
+    const FIGURE_STYLES: [string, PilliStyle][] = HEADS.flatMap((head) =>
+        HEADBANDS.map((headband): [string, PilliStyle] => [
+            `${head}, ${headband}`,
+            { ...PILLI_STYLE, head, headband }
+        ])
+    )
     const SHINES = [PILLI_SHINE]
     const FIGURE_ROWS = FIGURE_STYLES.flatMap(([name]) => SHINES.map((shine) => ({ name, shine })))
     const FIGURE_COLORS: readonly Color[] = [
