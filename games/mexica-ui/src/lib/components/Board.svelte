@@ -16,8 +16,9 @@
     import { CELL, type PlanStep } from '$lib/board/view.js'
     import { LOOK_URLS } from '$lib/board/lookUrls.js'
     import { CANAL_LOOK, LAKE_LOOK, PAVING_LOOK, templeLook } from '$lib/board/looks.js'
-    import { templeBounds } from '$lib/board/templeShape.js'
-    import { TEMPLE_TINT, templeMark } from '$lib/board/templeMarks.js'
+    import { DESIGN, templeBounds } from '$lib/board/templeShape.js'
+    import { templeMark } from '$lib/board/templeMarks.js'
+    import TempleMarks from './TempleMarks.svelte'
     import { PLAN } from '$lib/board/plan.js'
     import { bridgePaths, octagon, PILLI_PATH, PILLI_SCALE, PLUME_PATH } from '$lib/board/shapes.js'
 
@@ -305,20 +306,11 @@
                         {...templeBounds(piece.level, view.tilt)}
                         preserveAspectRatio="none"
                     ></image>
-                    {#if piece.playerId !== undefined}
-                        <path d={mark.path} fill={playerFill(piece.playerId)} opacity={TEMPLE_TINT}
-                        ></path>
-                    {/if}
-                    {#each mark.pips as pip, index (index)}
-                        <ellipse
-                            cx={pip.x + pip.width / 2}
-                            cy={pip.y + pip.height / 2}
-                            rx={pip.width / 2}
-                            ry={pip.height / 2}
-                            fill="#1c1712"
-                            opacity="0.38"
-                        ></ellipse>
-                    {/each}
+                    <TempleMarks
+                        {mark}
+                        stair={DESIGN.stair}
+                        fill={piece.playerId === undefined ? undefined : playerFill(piece.playerId)}
+                    />
                 </g>
             {:else}
                 {@const lift = piece.onBridge ? view.lift(0.16) : 0}

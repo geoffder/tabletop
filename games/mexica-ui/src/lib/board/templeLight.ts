@@ -26,7 +26,7 @@ import {
     pipCentres,
     riseOf,
     shrineBlocks,
-    stairBlocks,
+    stairParts,
     TEMPLE,
     type TempleDesign,
     templeBounds,
@@ -53,7 +53,9 @@ export const TEMPLE_STONE: TempleStone = {
     cool: '#bfc3c4'
 }
 
-type Shape = { block: Block; round: number; tier: number }
+// Stair stone has no blocks: `tone` is its shade between light and dark, and `riser` dims the
+// faces of its steps towards the viewer.
+type Shape = { block: Block; round: number; tier: number; tone: number; riser: number }
 type Stone = { light: Rgb; dark: Rgb; joint: Rgb; warm: Rgb; cool: Rgb }
 type Scene = (p: Vec) => number
 // Hollows cut out of the stone: shrine doorways and the pips on the top.
@@ -68,18 +70,28 @@ export function renderTemple(
 ): Bitmap {
     const box = templeBounds(level, tilt, design)
     const rise = riseOf(tilt)
+    const stair = stairParts(level, design)
+    const shadowed = design.stair === 'treads' || design.stair === 'combined'
+    const heavy = design.stair === 'balustrade'
+    const shaped = (block: Block, round: number, tier: number) => ({
+        block,
+        round,
+        tier,
+        tone: 0.3,
+        riser: 1
+    })
     const shapes: Shape[] = [
-        ...tierBlocks(level, design).map((block, tier) => ({ block, round: TEMPLE.round, tier })),
-        ...stairBlocks(level, design).map((block) => ({
-            block,
-            round: TEMPLE.stairRound,
-            tier: -1
+        ...tierBlocks(level, design).map((block, tier) => shaped(block, TEMPLE.round, tier)),
+        ...stair.steps.map((block) => ({
+            ...shaped(block, TEMPLE.stairRound, -1),
+            tone: heavy ? 0.12 : 0.3,
+            riser: shadowed ? 0.55 : 1
         })),
-        ...shrineBlocks(level, design).map((block, index) => ({
-            block,
-            round: 0.6,
-            tier: level + index
-        }))
+        ...stair.walls.map((block) => ({
+            ...shaped(block, TEMPLE.stairRound, -1),
+            tone: heavy ? 0.7 : 0.3
+        })),
+        ...shrineBlocks(level, design).map((block, index) => shaped(block, 0.6, level + index))
     ]
     const doorways = doorwayBlocks(level, design)
     const peak = peakOf(level, design)
@@ -206,7 +218,8 @@ function softShadow(p: Vec, normal: Vec, scene: Scene): number {
 
 function shade(p: Vec, shapes: readonly Shape[], scene: Scene, hollow: Hollow, stone: Stone): Rgb {
     const surface = normalAt(p, scene)
-    const cut = stoneAt(p, surface, nearest(p, shapes).shape)
+    const shape = nearest(p, shapes).shape
+    const cut = stoneAt(p, surface, shape)
     const normal = normalize(add(surface, cut.tip))
     const body = mix(stone.light, stone.dark, clamp(cut.tone))
     const cast = mix(body, cut.hue > 0 ? stone.warm : stone.cool, Math.abs(cut.hue))
@@ -214,7 +227,8 @@ function shade(p: Vec, shapes: readonly Shape[], scene: Scene, hollow: Hollow, s
     const sun = clamp(dot(normal, LIGHT)) * (0.35 + 0.65 * softShadow(p, surface, scene))
     const sky = 0.12 * Math.max(0, normal[1]) + 0.1 * Math.max(0, normal[2])
     const inside = hollow(p) < 0.25 ? 0.4 : 1
-    return scale(base, (0.4 + 0.6 * sun + sky) * occlusion(p, surface, scene) * inside)
+    const riser = surface[1] > 0.7 ? shape.riser : 1
+    return scale(base, (0.4 + 0.6 * sun + sky) * occlusion(p, surface, scene) * inside * riser)
 }
 
 const mottle = fractal(noise2(97), 4)
@@ -253,7 +267,7 @@ function stoneAt(p: Vec, normal: Vec, shape: Shape): Cut {
     const onTop = normal[2] > 0.7
     const sideways = Math.abs(normal[0]) > 0.7
     if (shape.tier < 0 || (!onTop && !sideways && Math.abs(normal[1]) <= 0.7)) {
-        const tone = 0.3 + (mottle(p[0] * 0.3, p[2] * 0.3) - 0.5) * 0.25
+        const tone = shape.tone + (mottle(p[0] * 0.3, p[2] * 0.3) - 0.5) * 0.25
         return { tip: [0, 0, 0], joint: 0, tone, hue: 0 }
     }
     const block = shape.block
