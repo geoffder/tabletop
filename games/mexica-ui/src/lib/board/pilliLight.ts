@@ -253,6 +253,60 @@ function capsule(p: Vec, a: Vec, b: Vec, radius: number): number {
     return Math.hypot(ap[0] - ab[0] * t, ap[1] - ab[1] * t, ap[2] - ab[2] * t) - radius
 }
 
+// A capsule narrowing from radius `ra` at `a` to `rb` at `b`: close to a distance where the
+// taper is gentle.
+function taper(p: Vec, a: Vec, b: Vec, ra: number, rb: number): number {
+    const ab: Vec = [b[0] - a[0], b[1] - a[1], b[2] - a[2]]
+    const ap: Vec = [p[0] - a[0], p[1] - a[1], p[2] - a[2]]
+    const t = clamp(dot(ap, ab) / dot(ab, ab))
+    const off = Math.hypot(ap[0] - ab[0] * t, ap[1] - ab[1] * t, ap[2] - ab[2] * t)
+    return (off - (ra + (rb - ra) * t)) * 0.9
+}
+
+// The cloak's two corners tied in a knot, over the right shoulder or at the chest: two loops
+// either side of the knot, and the two ends hanging down over the robe.
+type Knot = { core: Vec; ends: [Vec, Vec] }
+const KNOT = 1.5
+
+function knotOf(style: PilliStyle): Knot | undefined {
+    if (style.knot === 'none') return undefined
+    const [x, z] = style.knot === 'shoulder' ? [-2.7, CAPE_AT + 0.5] : [0, CAPE_AT - 0.7]
+    const onCape = (x: number, z: number) =>
+        CAPE[1] * Math.sqrt(Math.max(0, 1 - (x / CAPE[0]) ** 2 - ((z - CAPE_AT) / CAPE[2]) ** 2))
+    const onRobe = (x: number, z: number) =>
+        Math.sqrt(Math.max(0, robeRadius(style, z) ** 2 - x * x))
+    const end = (dx: number, drop: number): Vec => {
+        const ex = x + dx
+        const ez = z - drop
+        return [ex, Math.max(onRobe(ex, ez), onCape(ex, ez)) + 0.3 * KNOT, ez]
+    }
+    return {
+        core: [x, onCape(x, z) + 0.45 * KNOT, z],
+        ends: [end(-0.8 * KNOT, 3.4 * KNOT), end(0.7 * KNOT, 3 * KNOT)]
+    }
+}
+
+function knot(knot: Knot, p: Vec): number {
+    const c = knot.core
+    const at = (dx: number, dy: number, dz: number): Vec => [
+        p[0] - c[0] - dx * KNOT,
+        p[1] - c[1] - dy * KNOT,
+        p[2] - c[2] - dz * KNOT
+    ]
+    const sized = (radii: Vec): Vec => scale(radii, KNOT)
+    const core = ellipsoid(at(0, 0, 0), sized([0.95, 0.7, 0.8]))
+    const loops = Math.min(
+        ellipsoid(at(-0.95, -0.15, 0.25), sized([0.75, 0.5, 0.62])),
+        ellipsoid(at(0.95, -0.15, 0.15), sized([0.75, 0.5, 0.62]))
+    )
+    const start = (dx: number): Vec => [c[0] + dx * KNOT, c[1] + 0.15 * KNOT, c[2] - 0.55 * KNOT]
+    const ends = Math.min(
+        taper(p, start(-0.35), knot.ends[0], 0.55 * KNOT, 0.3 * KNOT),
+        taper(p, start(0.35), knot.ends[1], 0.55 * KNOT, 0.3 * KNOT)
+    )
+    return Math.min(blend(core, loops, 0.35 * KNOT), blend(core, ends, 0.3 * KNOT))
+}
+
 function arms(style: PilliStyle, p: Vec): number {
     const { shoulder, wrist } = armEnds(style)
     const mirrored: Vec = [Math.abs(p[0]), p[1], p[2]]
@@ -267,6 +321,8 @@ function body(style: PilliStyle, p: Vec): number {
         shape = Math.min(shape, cord(p))
         shape -= relief(p)
     }
+    const tied = knotOf(style)
+    if (tied) shape = blend(shape, knot(tied, p), 0.25)
     return shape
 }
 
@@ -302,6 +358,8 @@ function fret(p: Vec): boolean {
 
 function bodyFinish(style: PilliStyle, p: Vec): Finish {
     if (style.arms && arms(style, p) < 0.2) return paint(0.95)
+    const tied = knotOf(style)
+    if (tied && knot(tied, p) < 0.15) return paint(1.08)
     if (style.trim) {
         if (p[2] > HEM.foot && p[2] < HEM.top) return paint(fret(p) ? 1.35 : 0.78)
         if (p[2] > HEM.top && p[2] < CAPE_AT - 2 && openingAt(p)) return paint(0.7)

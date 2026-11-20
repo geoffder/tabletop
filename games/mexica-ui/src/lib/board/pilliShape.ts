@@ -8,6 +8,8 @@ import { type Box, PILLI_SIZE } from './view.js'
 //   robe: a bell, or a pawn's concave flare on a ring at the foot.
 //   trim: a stepped fret round the hem, the cloak's opening down the front and a cord along the
 //     cape's edge.
+//   knot: the cloak's corners tied over the right shoulder or at the chest, as the Mexica
+//     fastened a cloak.
 //   arms: forearms meeting in front, wooden hands clasped.
 //   fan: a smooth fan, separate feathers, or a second, shorter row of feathers in front.
 //   headband: a gold band round the head with a jewel at the front.
@@ -15,6 +17,7 @@ import { type Box, PILLI_SIZE } from './view.js'
 export type PilliStyle = {
     robe: 'bell' | 'pawn'
     trim: boolean
+    knot: 'none' | 'shoulder' | 'chest'
     arms: boolean
     fan: 'plain' | 'feathers' | 'tiered'
     headband: boolean
@@ -24,6 +27,7 @@ export type PilliStyle = {
 export const PILLI_STYLE: PilliStyle = {
     robe: 'pawn',
     trim: true,
+    knot: 'shoulder',
     arms: false,
     fan: 'tiered',
     headband: true,
