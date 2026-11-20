@@ -1,0 +1,86 @@
+# Browser checks
+
+Look at the game in a real browser after every visible change; type checks do not catch layout, contrast or animation bugs.
+
+## Setup (once per container)
+
+Inside the dev container: `cd games/<slug>-ui && pnpm exec playwright install chromium && pnpm exec playwright install-deps chromium`.
+
+## Driving the harness
+
+[`../scripts/shot.mjs`](../scripts/shot.mjs) runs a list of steps against the harness at `http://localhost:5173` from inside the container:
+
+```
+GAME_UI=<slug>-ui node .agents/skills/new-game/scripts/shot.mjs 1400 900 \
+  'click:button:has-text("Scenarios")' 'click:text=Capture chain' wait:1500 \
+  'click:[aria-label="jumper D4"]' 'tap:[aria-label="land F2"]' wait:200 shot:mid-jump
+```
+
+Steps: `new:VARIANT` (creates a game named Test; the variant label is optional), `click:SEL` (then waits 0.6 s), `tap:SEL` (no wait, for mid-animation frames), `hover:SEL`, `fill:SEL=>VALUE`, `wait:MS`, `eval:JS` (prints the result), `reload:MS`, `shot:NAME` (writes `tmp/screens/NAME.png`). It prints page errors at the end; `Q='?vp'` adds a query string to the harness URL. Give board elements `aria-label`s built from the game's notation ("place D4", "dot D1") so steps can name them.
+
+## Checks worth scripting
+
+- **Phone sizes**: run at `390 655` (the visible area of Firefox on an iPhone, with its bars showing) and `375 600` as well as desktop. On these the board is limited by height, so compare its size before and after any change above it.
+- **Overlap**: read `getBoundingClientRect()` of the two things that may collide (a corner label and the zoom bar) at each size. Wait 1.5 s after opening a scenario before measuring sizes: the board is still fitting before that.
+- **Stable board**: `eval:document.querySelector(".<board>").getBoundingClientRect().y` in each state. At a game's end the harness drops its own "It's your turn" bar (44px), so the board moves there in every title; that is harness chrome, not the title's layout.
+- **Hidden pieces**: list piece groups whose opacity is not 1 after undo and history steps.
+- **Mid-animation**: `tap:` then `wait:` 80–250 ms, then `shot:`.
+- **Another player's move**: the harness plays every seat as its own, so `other-action` never fires there. A full-action history replay takes the same path (the piece drops in before it moves): click `step backwards`, then `play history` (both with `>> visible=true`, as the first copy is the hidden phone bar). A single `step forwards` carries no action and plays the quick path.
+- **Frozen frames**: for an exact frame of a GSAP motion (a depth or overlap question the 25 fps video blurs), import the page's own GSAP module and slow or stop it: `eval:` an async function that finds the `deps/gsap.js` URL in `performance.getEntriesByType('resource')`, imports that exact URL (same module instance as the app), and calls `globalTimeline.timeScale(0.05)`; after a `wait:` call `globalTimeline.pause()` and shoot at `DPR=2`. While paused, hide one layer at a time with `eval:` and shoot again to find which one paints over which.
+- **The shape of a motion**: sample a mark that moves with the piece (its selection ring's `getBoundingClientRect().y`) every 250 ms from an `eval` loop while GSAP runs at a tenth of its speed. The numbers show what frames cannot: PÜNCT's placement fell 25 px to the board, bounced 7 px, peaked 3 px above its hover and settled, as asked.
+- **Slowed Svelte transitions**: Svelte 5 plays `in:`/`out:` transitions as Web Animations, which GSAP's timeline does not reach. Before the action, `eval:` a wrapper over `Element.prototype.animate` that sets each new animation's `playbackRate` to 0.05, then shoot every few hundred ms. The browser blends between the transition's sampled keyframes, so a step in opacity shows as a translucent frame or two at that speed; at full speed it lasts about one frame.
+- **Onion skins of a path** (comparing arcs): `clock.install()` before loading, then once the board is ready `clock.pauseAt(now + 1000)`, click the action, and alternate `clock.runFor(33)` with a clipped screenshot. The paused clock gave evenly spaced frames of a ZÈRTZ jump. Layer every other frame with a lighten blend (PIL's `ImageChops.lighter`) and set the options side by side, labelled: the shapes compare at a glance, which a video does not show.
+- **Frame strips of motion**: record the page (`recordVideo` on the Playwright context), note when the action was clicked, then crop and extract frames with `ffmpeg -ss … -vf "crop=…" -fps_mode passthrough` (25 fps) and tile them with `magick montage`. Playwright's fake clock (`clock.install()` then `runFor`) keeps running in real time between screenshots unless paused, so its strips showed wrong durations; paused, a history step played in one frame. A single pale frame just after a state lands can be the video encoder: confirm a glitch with an in-page `requestAnimationFrame` logger listing piece counts and every node whose computed opacity is not 1.
+- **Finding what paints a pixel**: [`../scripts/pick.mjs`](../scripts/pick.mjs) lists every element under a point of a harness route, topmost first, with its index among its siblings, its fill and the start of its path; give a selector to place the point as fractions of that element's box (`GAME_UI=<slug>-ui node pick.mjs looks 0.925 0.694 'svg[data-look="light-punct"]'`). Pre-rendered images report only the `<image>`, so pick on the route that draws the look live. To see which generated part is which, colour them by index for one render (`hsl(index × 47 % 360 60% 60%)` with a thin stroke), and to test a guess, hide one layer with `eval:` and shoot again; put the colours back before rendering the looks for real.
+- **Check generated geometry numerically** before drawing it: a few lines of `node` printing the function over the angles or distances in question (a notch's reach at 260–280°) shows a sign or branch error that a render shows only as a strange shape.
+- **Opening a game and moving**: measure on phone stand-ins with `../scripts/perf.mjs`, as `performance.md` describes; a desktop page at 1× hides most of what makes a game slow on a phone. Vite's on-demand compile is rarely the cause: YINSH's whole runtime, 375 modules, compiled cold in ~1 s.
+- **Refresh**: reload, reopen, shoot twice, and compare with `magick compare -metric AE a.png b.png null:` (0 means no motion). After a reload the harness shows no game: reopen it from the Games menu (the last entry with the scenario's name).
+- Crop and zoom (`magick … -crop`) before judging small marks; `DPR=2` or `3` renders the page at that pixel density.
+- **Piece grids**: for piece shape and colour rounds, a scratch route in the UI package (`src/routes/pieces/+page.svelte`) drawing every colour at every height, opened with `P=pieces`, beats hunting for positions; keep it out of commits.
+- **Colours from photos**: sample a published piece or board with `magick photo.jpg -crop 20x20+X+Y +repage -scale 1x1! -format '%[hex:p{0,0}]' info:` at a few spots, and compare with the box art, which is usually more saturated. A photo with the box in frame calibrates itself: sampled under the same light, TZAAR's board gold matched the box art's sand, so the table took the rulebook's sand rather than the photo's darker raw value.
+- **Colour variants by injected CSS**: set the override on the title's own table element (`.tzaar-table { --tzaar-table: … }`), not `:root`. The game's stylesheet defines its variables again on an element nearer the table, so a `:root` override does nothing. Symptom (TZAAR): a grid of four table shades showed one colour four times, and the user was asked to choose between them. Before shooting, `eval:` the computed value on the element that paints (`getComputedStyle(table).backgroundImage`) and confirm each variant differs.
+
+## Smoke spec
+
+Each UI package carries a Playwright smoke spec in `tests/`, run by the package's `test` script, as `games/medina-ui/tests/table.spec.ts` does: create a game in the harness, make a choice, Undo it, commit a move, Undo the move, and fail on any page error. Expose the session by rewriting `return getContext();` in the served `sessionContext.svelte.ts` through `page.route`. Run the harness on the title's own port (GIPF project: zertz 5201, gipf 5202, lyngk 5203, yinsh 5204, dvonn 5205, tzaar 5206, matrx 5207, punct 5208, gipf-potentials 5209), and `goto('/', { waitUntil: 'networkidle' })`: on a cold dev server the click on "New game" lands before the page hydrates and does nothing. After Playwright is upgraded, `pnpm exec playwright install chromium` in the container. A target whose click area lies under the staged stack and arrows (MATRX) never becomes clickable to Playwright; press its keyboard path (`press('Enter')`) instead.
+
+The maintainer's rework of the five later titles settled on three specs over one shared `tests/harness.ts` (`games/lyngk-ui/tests/`):
+
+- **`harness.ts`**: `exposeSession` (the `page.route` rewrite above, asserting the served body contains `return getContext();`), `openScenario(page, name, { clock })` (installs the clock before `goto`; matches the menu text exactly), `createGame` (fills the reproduction seed and the player names), `settle` (polls `updatingVisibleState === false`), `press` (Enter), `clickCentre`, and `watchErrors`/`expectNoErrors` in `beforeEach`/`afterEach`.
+- **Fail on console errors as well as page errors.** The session catches an exception in a transition listener, logs it to the console and goes on, so an animator failure never reaches `pageerror`; listen for `console` messages of type `error`.
+- **Click real coordinates as well as pressing keys.** Keyboard presses hid PÜNCT's tap-area bug, found by a player after merge: click a target's real centre and assert that no neighbouring piece's box covers the point (`a51d325be`).
+- **`table.spec.ts`** (the smoke spec, `test.use({ reducedMotion: 'reduce' })`), **`motion.spec.ts`** (`animation-lessons.md`, *Move SVG through a pose*) and **`undo-timing.spec.ts`**: every actionless step (Undo, another player's Undo, single history steps, `goToBeginning`, `goToEnd`) ends within 0.2 s, quick drops by 0.18 s. It wraps the presenter's `createAnimationContext` (`Reflect.get(Reflect.get(session, 'presenter'), 'deps')`) to record each context's `actionTimeline` children's ends; it stubs `session.willUndo = () => {}` before `undo()` to stand in for another player's Undo, and plays both seats by flipping `setViewingAsNonActivePlayer` (`games/dvonn-ui/tests/undo-timing.spec.ts`).
+- **`playwright.config.ts`**: `command: 'pnpm run dev --port <port>'`, `reuseExistingServer: !process.env.CI`, `baseURL`, a 1280×900 viewport, `timeout: 60_000`.
+
+## Covers
+
+A real board render makes a good cover: open a scenario at a large viewport (1800×1250, or 1400×900 at DPR 2), hide the marks, coordinates and stack counts with an injected style, shoot, crop around the most telling pieces and resize to 640×640, and composite a title rendered from SVG (`magick base.png title.png -composite`). Offer the user several crops; re-render it when the table's colours or the pieces change.
+
+GIPF project titles without original box art (LYNGK, MATRX GIPF, GIPF with Potentials) have covers in the original box style, built by `tools/gipf-covers` on this branch; rebuild them with `tools/gipf-covers/rebuild-cover.sh` whenever their pieces or board change, GIPF with Potentials's whenever MATRX GIPF's pieces change (see its README).
+
+## Phone-only bugs
+
+The user reports these from a real phone, so start from their screenshot.
+
+- Measure an element in it (a button, the board's label span) against the same element in your shot at that width. Everything uniformly larger means the page is zoomed in, not laid out wrong; see the viewport tag in `scaffold.md`.
+- When the cause is still unclear, add a temporary readout to the harness page behind a query string (`?vp`): `innerHeight`, `visualViewport.height`, probes sized `100dvh`/`100svh`/`100lvh` and `env(safe-area-inset-*)`, the `--app-navbar-height` and `--app-banner-height` variables, the table's and game column's rects, and a small block fixed at `bottom: 0`. Ask for a screenshot with a game open, decide from the numbers, then remove it.
+
+## Gotchas
+
+- New game form: the first `player name` field is disabled; fill `input[placeholder="player name"]:not([disabled])`.
+- The first request after Vite starts can time out while it optimises dependencies; retry.
+- Only one game's harness can serve on 5173; switching branches stops the other title's harness. To work on a second title without disturbing uncommitted work, check its branch out as a worktree under `tmp/` (`git worktree add tmp/<slug>-wt <branch>`, then `pnpm install --prefer-offline` there in the container); its harness falls back to 5174, and `PORT=5174` points `shot.mjs` at it.
+- The dev container's file watcher sometimes misses an edit made from the host, and Vite keeps serving the old module: a style you changed still computes to the old value. `touch` the file inside the container and reload. Removing a CSS variable that a missed component still uses shows as something drastic (MATRX's table turned dark navy): check the component's served style before suspecting the change.
+- **Chrome keeps an SVG `<pattern>`'s tile** when a CSS variable it uses changes on the page: overriding the variable for a variant shows nothing new, and shots of every variant come out identical. Write each variant into the stylesheet and reload, and compare the shots' pixels before showing them.
+- **Scenario builders start from a fixed master seed** (`MASTER_SEED` in `games/tzaar-ui/scripts/build-scenarios.mjs`), so rebuilding writes identical files; every change to State means rebuilding every scenario. The builder must also write every piece id the State holds: YINSH's dropped its ring ids, so a rebuild would have changed every ring's specks (the PR bot).
+- The harness's Scenarios menu shows a scenario's name with hyphens as spaces ('Same-colour stacks' is listed as "Same colour stacks"): list the menu's texts with an `eval` when a `click:text=` times out.
+- `click:text=Tall stacks` matches any text containing it, so it opened *Behind tall stacks*. Quote the text for an exact match: `click:text="Tall stacks"`.
+- A recording's marks come from the script's clock, but on a cold dev server the video starts seconds later (a mark at 15.3 s in a 9.3 s video). Check the video's length with `ffprobe` and cut from its end when the marks overshoot.
+- Stopping a background `devcontainer exec` (a second harness) leaves turbo and vite running in the container, still serving its port. Kill them inside the container (`ps -eo pid,args | grep <worktree>`), then confirm the port no longer answers.
+- **A change that does not show**: confirm the source has it before suspecting the server. A scripted string replacement that no longer matches (Prettier had reflowed the lines) changes nothing and reports nothing; make such scripts assert each match. Then `curl` the module from Vite (`/src/lib/...ts`) and grep it for the change.
+
+## The published bundle
+
+The harness is Vite; the published game is a Rolldown bundle (`pnpm run bundle`, config in `config/config-rolldown`), which handles less. Code that only Vite understands, such as `import.meta.glob`, `import.meta.env` or a `?url` import, is copied into the bundle as written and fails only in the deployed game. Symptom (MATRX): the harness drew every piece, and the bundle built without an error or warning, yet loading its runtime threw `(intermediate value).glob is not a function`. A green bundle proves nothing, and importing `index.js` alone does not reach the fault either: the components load only when `UiDefinition.runtime()` is called.
+
+[`../scripts/bundle-check.mjs`](../scripts/bundle-check.mjs) (`GAME_UI=<slug>-ui node .agents/skills/new-game/scripts/bundle-check.mjs`, after bundling) checks what the site depends on. It looks for `import.meta`, `$app/` and `$lib/` left in the code, and for asset URLs with no file in `bundle/assets`. Then, in headless Chromium, it imports the bundle and calls `runtime()`. Run against MATRX before its fix, it failed on both the leftover glob and the runtime error; ZÈRTZ, GIPF, LYNGK, YINSH, DVONN, TZAAR and fixed MATRX all passed (2026-11-01). It does not mount the table: for that, play the game on the local hosted site (the `local-hosted-game` skill).
