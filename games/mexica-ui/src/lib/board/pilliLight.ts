@@ -219,6 +219,7 @@ const HEM = {
     steps: 2,
     line: 0.32,
     soft: 0.14,
+    bevel: 0.3,
     studs: 18,
     stud: 0.55,
     teeth: 12
@@ -335,7 +336,10 @@ function body(style: PilliStyle, p: Vec): number {
     if (style.arms) shape = blend(shape, arms(style, p), 0.7)
     if (style.trim) {
         shape = Math.min(shape, cord(p))
-        shape -= relief(style, p)
+        // The relief's slopes make the distance change faster than distance, so rays step
+        // more carefully over it, or some stop inside and take a false shadow.
+        const raised = relief(style, p)
+        if (raised !== 0) shape = (shape - raised) * 0.6
         if (style.hem === 'studs') shape = Math.min(shape, studs(style, p))
     }
     const tied = knotOf(style)
@@ -389,8 +393,8 @@ function triangles(style: PilliStyle, p: Vec): number {
     const width = (2 * Math.PI * robeRadius(style, p[2])) / HEM.teeth
     const slant = 1 / Math.hypot(1, (2 * height) / width)
     return (
-        smoothstep(-HEM.soft, HEM.soft, (top - p[2]) * slant) *
-        smoothstep(-HEM.soft, HEM.soft, p[2] - floor)
+        smoothstep(-HEM.bevel, HEM.bevel, (top - p[2]) * slant) *
+        smoothstep(-HEM.bevel, HEM.bevel, p[2] - floor)
     )
 }
 
@@ -417,7 +421,8 @@ function fret(p: Vec): number {
     const top = HEM.foot + inner + height * (0.2 + 0.8 * level)
     const above = p[2] - (HEM.foot + inner)
     return (
-        smoothstep(-HEM.soft, HEM.soft, above) * (1 - smoothstep(-HEM.soft, HEM.soft, p[2] - top))
+        smoothstep(-HEM.bevel, HEM.bevel, above) *
+        (1 - smoothstep(-HEM.bevel, HEM.bevel, p[2] - top))
     )
 }
 
