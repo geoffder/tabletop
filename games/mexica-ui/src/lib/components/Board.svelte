@@ -16,7 +16,7 @@
     import { BRIDGE_RISE, CELL, type PlanStep } from '$lib/board/view.js'
     import type { Point } from '@tabletop/common'
     import { LOOK_URLS } from '$lib/board/lookUrls.js'
-    import { BANK_WIDTH, SIDES, SPILL_BOX, waterworks } from '$lib/board/waterworks.js'
+    import { BANK_WIDTH, SIDES, waterworks } from '$lib/board/waterworks.js'
     import {
         CANAL_LOOK,
         LAKE_LOOK,
@@ -24,7 +24,6 @@
         SHORE_LOOK,
         slopeCornerLook,
         slopeLook,
-        spillLook,
         templeLook
     } from '$lib/board/looks.js'
     import { DESIGN, templeBounds } from '$lib/board/templeShape.js'
@@ -230,13 +229,9 @@
                 <rect {...kerb.edge} class="surface kerb-edge"></rect>
             {/each}
             {#each works.spills as spill (spill.key)}
-                {@const look = spillLook(spill.side, spill.variant)}
                 <image
-                    href={LOOK_URLS[look]}
-                    x={spill.x - SPILL_BOX[spill.side].width / 2}
-                    y={spill.y - SPILL_BOX[spill.side].height / 2}
-                    width={SPILL_BOX[spill.side].width}
-                    height={SPILL_BOX[spill.side].height}
+                    href={LOOK_URLS[spill.look]}
+                    {...spill.box}
                     preserveAspectRatio="none"
                     class="surface"
                 ></image>

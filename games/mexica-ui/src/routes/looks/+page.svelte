@@ -22,13 +22,12 @@
         slopeCornerLook,
         slopeLook,
         type SlopeSide,
-        SPILL_VARIANTS,
         spillLook,
         templeLook
     } from '$lib/board/looks.js'
     import type { Bitmap } from '$lib/board/light.js'
     import { renderTemple } from '$lib/board/templeLight.js'
-    import { SPILL_REACH } from '$lib/board/waterworks.js'
+    import { SPILL_VARIANTS, type SpillKind } from '$lib/board/spillShape.js'
     import { DESIGN, type TempleDesign, templeBounds } from '$lib/board/templeShape.js'
     import { ownerMark } from '$lib/board/templeMarks.js'
     import { renderPilli } from '$lib/board/pilliLight.js'
@@ -61,6 +60,7 @@
     const LEVELS: readonly Level[] = [1, 2, 3, 4]
     const SLOPE_SIDES: readonly SlopeSide[] = ['n', 'e', 's', 'w']
     const SLOPE_CORNERS: readonly SlopeCorner[] = ['ne', 'nw', 'se', 'sw']
+    const SPILL_KINDS: readonly SpillKind[] = ['across', 'along']
     const STRIP: readonly [Level, Color][] = [
         [1, Color.Green],
         [2, Color.Red],
@@ -99,12 +99,19 @@
         drawn[CANAL_LOOK] = toUrl(renderCanal(TURQUOISE), 0.86)
         drawn[SHORE_LOOK] = toUrl(renderShore(), 0.86)
         for (const side of SLOPE_SIDES) drawn[slopeLook(side)] = toUrl(renderSlope(side), 0.9)
-        for (const side of SLOPE_SIDES) {
-            for (let variant = 0; variant < SPILL_VARIANTS; variant++) {
-                drawn[spillLook(side, variant)] = toUrl(
-                    renderSpill(side, variant, SPILL_REACH),
-                    0.9
-                )
+        for (const out of SLOPE_SIDES) {
+            for (const end of SLOPE_SIDES) {
+                if (end === out || SLOPE_SIDES.indexOf(end) % 2 === SLOPE_SIDES.indexOf(out) % 2) {
+                    continue
+                }
+                for (const kind of SPILL_KINDS) {
+                    for (let variant = 0; variant < SPILL_VARIANTS; variant++) {
+                        drawn[spillLook(out, end, kind, variant)] = toUrl(
+                            renderSpill(out, end, kind, variant),
+                            0.9
+                        )
+                    }
+                }
             }
         }
         for (const corner of SLOPE_CORNERS) {

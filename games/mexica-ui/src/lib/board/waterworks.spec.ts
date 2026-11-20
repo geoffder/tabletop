@@ -32,7 +32,7 @@ describe('waterworks', () => {
         const works = waterworks(LAND_CELLS, new Set([canal]))
         expect(works.spills).toHaveLength(2)
         const top = rowOf(canal) * CELL
-        for (const spill of works.spills) expect(spill.y).toBeLessThan(top)
+        for (const spill of works.spills) expect(spill.box.y).toBeLessThan(top)
     })
 
     it('leaves no shore in the mouth of a canal', () => {

@@ -2,7 +2,9 @@ import type { Point } from '@tabletop/common'
 import { type Cell, cellAt, columnOf, isLand, rowOf } from '@tabletop/mexica'
 import { SLOPE_WIDTH, type SlopeCorner, type SlopeSide } from './looks.js'
 import { SHORE_ZONE } from './surfaceTexture.js'
-import { CELL } from './view.js'
+import { type Box, CELL } from './view.js'
+import { SPILL_VARIANTS, spillBox, type SpillKind } from './spillShape.js'
+import { spillLook } from './looks.js'
 
 // The island's built edges, in plan, for a set of canals.
 //
@@ -16,10 +18,9 @@ export type Spot = { column: number; row: number }
 
 export type Bank = { key: string; slope: SlopeSide; points: string }
 export type Curve = { key: string; corner: SlopeCorner; x: number; y: number }
-export type Spill = { key: string; side: SlopeSide; variant: number; x: number; y: number }
+export type Spill = { key: string; look: string; box: Box }
 export type Kerb = { key: string; stone: Box; edge: Box }
 export type Zone = { key: string; points: string }
-type Box = { x: number; y: number; width: number; height: number }
 
 export type Waterworks = {
     banks: Bank[]
@@ -30,17 +31,8 @@ export type Waterworks = {
 }
 
 export const BANK_WIDTH = SLOPE_WIDTH
-// How far out from the land a spill of rocks reaches.
-export const SPILL_REACH = 16
-const SPILL_WIDE = SPILL_REACH * 0.4
-// The box of a spill's image round its centre, as renderSpill draws it.
-export const SPILL_BOX: Record<SlopeSide, { width: number; height: number }> = {
-    n: { width: SPILL_WIDE * 2 + 6, height: SPILL_REACH + 6 },
-    s: { width: SPILL_WIDE * 2 + 6, height: SPILL_REACH + 6 },
-    e: { width: SPILL_REACH + 6, height: SPILL_WIDE * 2 + 6 },
-    w: { width: SPILL_REACH + 6, height: SPILL_WIDE * 2 + 6 }
-}
 const KERB = { width: 2.6, line: 0.7 }
+const SEAM = 0.5
 
 export const SIDES: readonly SlopeSide[] = ['n', 'e', 's', 'w']
 const STEP: Record<SlopeSide, Spot> = {
@@ -209,18 +201,17 @@ function spillsOf(island: Island, grounds: readonly Spot[]): Spill[] {
                       : island.canal(beside) || island.mouth(beside)
                 if (!cut) continue
                 const corner = cornerOf(spot, side, end)
-                const centre = offset(
-                    offset(corner, toward(side), SPILL_REACH / 2),
-                    toward(end),
-                    1.5
-                )
-                const variant = Math.abs(spot.column * 7 + spot.row * 13 + SIDES.indexOf(end)) % 3
+                // The brick runs back across the shore's end beside a canal or a mouth, and on
+                // along the coast past it otherwise.
+                const kind: SpillKind =
+                    island.canal(beside) || island.mouth(beside) ? 'across' : 'along'
+                const variant =
+                    Math.abs(spot.column * 7 + spot.row * 13 + SIDES.indexOf(end)) % SPILL_VARIANTS
+                const box = spillBox(side, end, kind, variant)
                 spills.push({
                     key: `spill-${keyOf(spot)}-${side}-${end}`,
-                    side,
-                    variant,
-                    x: centre.x,
-                    y: centre.y
+                    look: spillLook(side, end, kind, variant),
+                    box: { ...box, x: box.x + corner.x, y: box.y + corner.y }
                 })
             }
         }
@@ -258,7 +249,16 @@ function zonesOf(island: Island, spot: Spot): Zone[] {
     const edges = edgesOf(spot)
     const [nw, ne] = edges.n
     const [se, sw] = edges.s
-    const square = { key: `zone-${keyOf(spot)}`, points: shape([nw, ne, se, sw]) }
+    // Each square laps a little over its neighbours, or the seams between them let the lake
+    // show through as hairlines.
+    const lap = (corner: Point, x: number, y: number) => ({
+        x: corner.x + x * SEAM,
+        y: corner.y + y * SEAM
+    })
+    const square = {
+        key: `zone-${keyOf(spot)}`,
+        points: shape([lap(nw, -1, -1), lap(ne, 1, -1), lap(se, 1, 1), lap(sw, -1, 1)])
+    }
     if (!island.ground(spot)) return [square]
     const reach = SHORE_ZONE
     const pieces = SIDES.filter((side) => {
