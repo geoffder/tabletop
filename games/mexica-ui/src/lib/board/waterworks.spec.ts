@@ -26,6 +26,16 @@ function northCoastBetweenLand(): Cell {
     return found
 }
 
+// A square of land with land all round it, corners too.
+function inland(): Cell {
+    const found = LAND_CELLS.find((cell) => {
+        const [column, row] = [columnOf(cell), rowOf(cell)]
+        return [-1, 0, 1].every((dx) => [-1, 0, 1].every((dy) => landAt(column + dx, row + dy)))
+    })
+    if (found === undefined) throw new Error('No such square on the board')
+    return found
+}
+
 describe('waterworks', () => {
     it("spills rocks over the shore cut short either side of a canal's mouth", () => {
         const canal = northCoastBetweenLand()
@@ -56,5 +66,28 @@ describe('waterworks', () => {
         const none = waterworks(LAND_CELLS, new Set())
         expect(none.banks).toHaveLength(0)
         expect(none.spills).toHaveLength(0)
+    })
+
+    it('joins the kerbs round each corner of a canal with land on both sides and across, in the square across', () => {
+        const canal = inland()
+        const works = waterworks(LAND_CELLS, new Set([canal]))
+        expect(works.joins).toHaveLength(4)
+        const [left, top] = [columnOf(canal) * CELL, rowOf(canal) * CELL]
+        for (const join of works.joins) {
+            const points = join.points.split(' ').map((point) => point.split(',').map(Number))
+            const outside = points.every(
+                ([x, y]) =>
+                    x <= left + 1e-9 ||
+                    x >= left + CELL - 1e-9 ||
+                    y <= top + 1e-9 ||
+                    y >= top + CELL - 1e-9
+            )
+            expect(outside).toBe(true)
+        }
+        const coast = waterworks(LAND_CELLS, new Set([northCoastBetweenLand()]))
+        expect(coast.joins.map((join) => join.key.split('-').at(-1)).toSorted()).toEqual([
+            'se',
+            'sw'
+        ])
     })
 })
