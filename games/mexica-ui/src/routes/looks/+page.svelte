@@ -39,15 +39,11 @@
     let previews: Record<string, string> | undefined = $state()
     type Figure = { url: string; shine: string; outline: string; box: Box }
     let figures: Record<string, Figure> | undefined = $state()
-    // Heads under the band and the diadem, dry-brushed as the board shows them.
-    const HEADS: PilliStyle['head'][] = ['plain', 'hair', 'face', 'painted']
-    const HEADBANDS: PilliStyle['headband'][] = ['band', 'diadem']
-    const FIGURE_STYLES: [string, PilliStyle][] = HEADS.flatMap((head) =>
-        HEADBANDS.map((headband): [string, PilliStyle] => [
-            `${head}, ${headband}`,
-            { ...PILLI_STYLE, head, headband }
-        ])
-    )
+    // The wooden head's grain at two strengths, dry-brushed as the board shows them.
+    const FIGURE_STYLES: [string, PilliStyle][] = [
+        ['grain 0.5', { ...PILLI_STYLE, grain: 0.5 }],
+        ['grain 0.9', { ...PILLI_STYLE, grain: 0.9 }]
+    ]
     const SHINES = [PILLI_SHINE]
     const FIGURE_ROWS = FIGURE_STYLES.flatMap(([name]) => SHINES.map((shine) => ({ name, shine })))
     const FIGURE_COLORS: readonly Color[] = [
