@@ -7,7 +7,9 @@ export const FLAT = 1
 
 export const TIER_HEIGHT = 0.26
 export const BRIDGE_RISE = 0.16
-export const PILLI_HEIGHT = 0.62 * CELL
+// A Pilli Mexica's height and how far its headdress reaches back, as shares of a cell.
+export const PILLI_HEIGHT = 0.8
+export const PILLI_DEPTH = 0.24
 
 const LABEL_SIZE = 12
 const LABEL_GAP = 8
@@ -104,7 +106,10 @@ export class BoardView {
 
     // The tallest piece standing on a cell, as screen height above its centre.
     get headroom(): number {
-        return Math.max(this.lift(TIER_HEIGHT * 4), this.lift(BRIDGE_RISE) + PILLI_HEIGHT)
+        return Math.max(
+            this.lift(TIER_HEIGHT * 4),
+            this.lift(BRIDGE_RISE + PILLI_HEIGHT) + PILLI_DEPTH * CELL * this.tilt
+        )
     }
 
     private turn(column: number, row: number): [number, number] {

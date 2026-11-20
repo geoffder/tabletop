@@ -13,14 +13,16 @@
         placePoints
     } from '@tabletop/mexica'
     import { getGameSession } from '$lib/model/sessionContext.svelte.js'
-    import { CELL, type PlanStep } from '$lib/board/view.js'
+    import { BRIDGE_RISE, CELL, type PlanStep } from '$lib/board/view.js'
     import { LOOK_URLS } from '$lib/board/lookUrls.js'
     import { CANAL_LOOK, LAKE_LOOK, PAVING_LOOK, templeLook } from '$lib/board/looks.js'
     import { DESIGN, templeBounds } from '$lib/board/templeShape.js'
     import { templeMark } from '$lib/board/templeMarks.js'
     import TempleMarks from './TempleMarks.svelte'
     import { PLAN } from '$lib/board/plan.js'
-    import { bridgePaths, octagon, PILLI_PATH, PILLI_SCALE, PLUME_PATH } from '$lib/board/shapes.js'
+    import { bridgePaths, octagon } from '$lib/board/shapes.js'
+    import { LOOK_OUTLINES } from '$lib/board/lookOutlines.js'
+    import { pilliBounds, pilliLook } from '$lib/board/pilliShape.js'
 
     const session = getGameSession()
     const view = $derived(session.view)
@@ -313,22 +315,29 @@
                     />
                 </g>
             {:else}
-                {@const lift = piece.onBridge ? view.lift(0.16) : 0}
-                <ellipse
-                    cx={centre.x}
-                    cy={centre.y + 1 - lift}
-                    rx={CELL * 0.26}
-                    ry={CELL * 0.26 * view.tilt}
-                    class="shadow"
-                ></ellipse>
+                {@const lift = piece.onBridge ? view.lift(BRIDGE_RISE) : 0}
+                {@const look = pilliLook(view.flat)}
                 <g
-                    transform="translate({centre.x} {centre.y +
-                        CELL * 0.1 * view.tilt -
-                        lift}) scale({PILLI_SCALE})"
+                    transform="translate({centre.x} {centre.y + CELL * 0.1 * view.tilt - lift})"
+                    class="piece"
                 >
-                    <path d={PLUME_PATH} class="plume"></path>
-                    <path d={PILLI_PATH} style:fill={playerFill(piece.playerId)} class="pilli"
+                    <ellipse
+                        cx="1"
+                        cy="1"
+                        rx={CELL * 0.26}
+                        ry={CELL * 0.26 * view.tilt}
+                        fill="url(#mx-piece-shadow)"
+                    ></ellipse>
+                    <path
+                        d={LOOK_OUTLINES[look]}
+                        fill={playerFill(piece.playerId)}
+                        fill-rule="evenodd"
                     ></path>
+                    <image
+                        href={LOOK_URLS[look]}
+                        {...pilliBounds(view.tilt)}
+                        preserveAspectRatio="none"
+                    ></image>
                 </g>
             {/if}
         {/each}
@@ -472,10 +481,6 @@
         stroke-width: 1;
     }
 
-    .shadow {
-        fill: rgb(30 20 10 / 0.22);
-    }
-
     .bridge {
         fill: var(--mx-bridge);
         stroke: var(--mx-bridge-ink);
@@ -498,19 +503,6 @@
         fill: var(--mx-bridge-top);
         stroke: var(--mx-bridge-ink);
         stroke-width: 0.8;
-    }
-
-    .pilli {
-        stroke: #1b1510;
-        stroke-width: 1.4;
-        stroke-linejoin: round;
-    }
-
-    .plume {
-        fill: var(--mx-plume);
-        stroke: #1b1510;
-        stroke-width: 1.2;
-        stroke-linejoin: round;
     }
 
     .mark-band {
