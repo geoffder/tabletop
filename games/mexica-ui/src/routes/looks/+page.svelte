@@ -31,15 +31,66 @@
     }
 
     const LEVELS: readonly Level[] = [1, 2, 3, 4]
-    const OWNERS = [
-        { name: 'red', color: '#b91c1c' },
-        { name: 'blue', color: '#2563eb' },
-        { name: 'green', color: '#16a34a' },
-        { name: 'yellow', color: '#fde047' },
-        { name: 'neutral', color: undefined }
+    const COLORS = [
+        'red',
+        'blue',
+        'green',
+        'yellow',
+        'orange',
+        'purple',
+        'pink',
+        'brown',
+        'black',
+        'white'
     ]
-    const PREVIEW_LEVELS: readonly Level[] = [4, 2]
-    const TINTS = [0.45, 0.6, 0.75]
+    const PALETTES: { name: string; colors: Record<string, string> }[] = [
+        {
+            name: 'site',
+            colors: {
+                red: '#b91c1c',
+                blue: '#2563eb',
+                green: '#16a34a',
+                yellow: '#fde047',
+                orange: '#ea580c',
+                purple: '#9333ea',
+                pink: '#ec4899',
+                brown: '#92400e',
+                black: '#1f2937',
+                white: '#f9fafb'
+            }
+        },
+        {
+            name: 'pigment',
+            colors: {
+                red: '#a8322d',
+                blue: '#2f78a8',
+                green: '#3a8a5f',
+                yellow: '#d9a62e',
+                orange: '#c9672a',
+                purple: '#6d4a8f',
+                pink: '#c25b82',
+                brown: '#7a5232',
+                black: '#2b2622',
+                white: '#efe9dc'
+            }
+        },
+        {
+            name: 'soft',
+            colors: {
+                red: '#c25a4e',
+                blue: '#5b8fb5',
+                green: '#6aa07c',
+                yellow: '#e2bf5a',
+                orange: '#d88a52',
+                purple: '#8a72a8',
+                pink: '#d3849f',
+                brown: '#97704f',
+                black: '#47423d',
+                white: '#f3efe6'
+            }
+        }
+    ]
+    const PREVIEW_LEVEL: Level = 3
 
     onMount(() => {
         const start = performance.now()
@@ -73,60 +124,36 @@
             <h2>Temples, {flat ? 'flat' : 'tilted'}</h2>
             <table class="temples">
                 <tbody>
-                    {#each TINTS as tint (tint)}
+                    {#each PALETTES as palette (palette.name)}
                         <tr>
-                            <th>tint {tint}</th>
-                            {#each PREVIEW_LEVELS as level (level)}
-                                {#each OWNERS as owner (owner.name)}
-                                    {@const tilt = flat ? FLAT : TILT}
-                                    {@const box = templeBounds(level, tilt)}
-                                    {@const mark = ownerMark(level, tilt, 'tinted')}
-                                    <td>
-                                        <svg
-                                            viewBox="-24 -36 48 54"
-                                            width="144"
-                                            height="162"
-                                            data-temple="{tint}-{level}-{owner.name}"
-                                        >
-                                            <rect
-                                                x="-24"
-                                                y="-36"
-                                                width="48"
-                                                height="54"
-                                                fill="#e6dcc4"
-                                            ></rect>
-                                            <ellipse
-                                                cx="1.5"
-                                                cy="1.5"
-                                                rx="19"
-                                                ry={19 * tilt}
-                                                fill="url(#temple-shadow)"
-                                            ></ellipse>
-                                            <image
-                                                href={drawn[templeLook(level, flat)]}
-                                                {...box}
-                                                preserveAspectRatio="none"
-                                            ></image>
-                                            {#if owner.color}
-                                                <path
-                                                    d={mark.tops}
-                                                    fill={owner.color}
-                                                    opacity={tint}
-                                                ></path>
-                                                <path
-                                                    d={mark.fronts}
-                                                    fill={owner.color}
-                                                    opacity={tint}
-                                                ></path>
-                                                <path
-                                                    d={mark.fronts}
-                                                    fill="#000"
-                                                    opacity={tint * 0.22}
-                                                ></path>
-                                            {/if}
-                                        </svg>
-                                    </td>
-                                {/each}
+                            <th>{palette.name}</th>
+                            {#each COLORS as name (name)}
+                                {@const tilt = flat ? FLAT : TILT}
+                                {@const box = templeBounds(PREVIEW_LEVEL, tilt)}
+                                {@const mark = ownerMark(PREVIEW_LEVEL, tilt, 'tinted')}
+                                <td>
+                                    <svg viewBox="-20 -34 40 50" width="120" height="150">
+                                        <rect x="-20" y="-34" width="40" height="50" fill="#e6dcc4"
+                                        ></rect>
+                                        <ellipse
+                                            cx="1.5"
+                                            cy="1.5"
+                                            rx="19"
+                                            ry={19 * tilt}
+                                            fill="url(#temple-shadow)"
+                                        ></ellipse>
+                                        <image
+                                            href={drawn[templeLook(PREVIEW_LEVEL, flat)]}
+                                            {...box}
+                                            preserveAspectRatio="none"
+                                        ></image>
+                                        <path
+                                            d={mark.tops}
+                                            fill={palette.colors[name]}
+                                            opacity={mark.opacity}
+                                        ></path>
+                                    </svg>
+                                </td>
                             {/each}
                         </tr>
                     {/each}
