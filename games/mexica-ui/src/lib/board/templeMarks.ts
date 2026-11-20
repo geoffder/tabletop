@@ -26,6 +26,21 @@ function union(boxes: readonly Box[]): string {
         .join('')
 }
 
+// Rounded rectangles, all drawn the same way round, so the path fills their union.
+function roundedUnion(outlines: readonly { box: Box; round: number }[]): string {
+    return outlines
+        .map(({ box, round }) => {
+            const r = Math.min(round, box.width / 2, box.height / 2)
+            const { x, y, width, height } = box
+            return (
+                `M${x + r} ${y}h${width - 2 * r}a${r} ${r} 0 0 1 ${r} ${r}v${height - 2 * r}` +
+                `a${r} ${r} 0 0 1 ${-r} ${r}h${-(width - 2 * r)}a${r} ${r} 0 0 1 ${-r} ${-r}` +
+                `v${-(height - 2 * r)}a${r} ${r} 0 0 1 ${r} ${-r}Z`
+            )
+        })
+        .join('')
+}
+
 // The parts of a face either side of the stair in front of it.
 function besideStair(box: Box): Box[] {
     const left = -TEMPLE.stairHalf
@@ -54,11 +69,17 @@ export function ownerMark(level: Level, tilt: number, style: OwnerStyle): OwnerM
     const faces = (block: Block) => blockFaces(block, tilt)
     switch (style) {
         case 'tinted': {
-            const all = [...tiers, ...stairBlocks(level)].map(faces)
+            const outlines = [
+                ...tiers.map((block) => ({ block, round: TEMPLE.round })),
+                ...stairBlocks(level).map((block) => ({ block, round: TEMPLE.stairRound }))
+            ].map(({ block, round }) => {
+                const { top, front } = faces(block)
+                return { box: { ...top, height: front.y + front.height - top.y }, round }
+            })
             return {
-                tops: union(all.map((face) => face.top)),
-                fronts: union(all.map((face) => face.front)),
-                opacity: 0.42
+                tops: roundedUnion(outlines),
+                fronts: '',
+                opacity: TEMPLE_TINT
             }
         }
         case 'capped': {

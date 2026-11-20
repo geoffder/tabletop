@@ -310,12 +310,6 @@
                     {#if piece.playerId !== undefined}
                         <path d={mark.tops} fill={playerFill(piece.playerId)} opacity={TEMPLE_TINT}
                         ></path>
-                        <path
-                            d={mark.fronts}
-                            fill={playerFill(piece.playerId)}
-                            opacity={TEMPLE_TINT}
-                        ></path>
-                        <path d={mark.fronts} class="temple-face-shade"></path>
                     {/if}
                 </g>
             {:else}
@@ -440,11 +434,6 @@
     .surface,
     .piece {
         pointer-events: none;
-    }
-
-    .temple-face-shade {
-        fill: #000;
-        opacity: 0.13;
     }
 
     .label {

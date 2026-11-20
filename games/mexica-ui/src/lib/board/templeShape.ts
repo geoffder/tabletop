@@ -10,7 +10,9 @@ export const TEMPLE = {
     inset: 0.065 * CELL,
     tier: TIER_HEIGHT * CELL,
     stairHalf: 0.11 * CELL,
-    stepsPerTier: 3
+    stepsPerTier: 3,
+    round: 1.4,
+    stairRound: 0.35
 }
 
 export function riseOf(tilt: number): number {
