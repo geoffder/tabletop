@@ -254,9 +254,8 @@ export function renderCanal(style: WaterStyle, pixels = LAKE_PIXELS): Bitmap {
 }
 
 export const SLOPE_PIXELS = 4
-// As the kerbs along the canals' banks.
-const COVE_KERB = { width: 2.6, line: 0.7 }
-const COVE_FILL: 'kerb' | 'paving' = 'kerb'
+// How round the top of a cove's bank is at the corner of land; its foot rounds by COVE_TOE.
+const COVE_TOP_ROUND = 4
 
 // The tezontle bricks facing a canal's sloping banks, in plan, quietened so they sit below the
 // paving rather than stand out from it.
@@ -318,55 +317,77 @@ export function renderSlope(side: SlopeSide, pixels = SLOPE_PIXELS): Bitmap {
     })
 }
 
-// Where a canal turns round a corner of land, its bank curves round the corner: a quarter of a
-// ring of bricks round the corner, which lies at the tile's corner named.
 // Where two of a canal's banks meet in an inside corner, the bank bends round it as a cove: its
-// courses run in quarter circles round the corner's inner point, sloping down towards it, and the
-// bank's top fills the corner of land beyond them. The corner of land lies at the tile's corner
-// named.
+// foot rounds in a quarter circle at the water, while its top keeps closer to the square corner
+// of land, so the courses between tighten from the foot up. What little corner the top leaves is
+// filled as the kerb. The corner of land lies at the tile's corner named.
 export function renderSlopeCove(corner: SlopeCorner, pixels = SLOPE_PIXELS): Bitmap {
     const mottle = fractal(noise2(77), 3)
-    const [kerb, kerbEdge, paving] = ['#a88676', '#6b5245', STONES.limestone.light].map(linear)
-    // The bank's top bends round the corner of land, its foot round a point further out by the
-    // toe, both about the same centre across the tile from the corner of land.
+    const kerb = linear('#a88676')
     const size = SLOPE_WIDTH + COVE_TOE
+    // Distances from the corner of the tile across from the corner of land.
     const cx = corner === 'ne' || corner === 'se' ? 0 : size
     const cy = corner === 'se' || corner === 'sw' ? 0 : size
+    const sx = cx === 0 ? 1 : -1
+    const sy = cy === 0 ? 1 : -1
     const step = 1 / pixels
+    // The bank's course `t` of the way down, from its top (0) to its foot (1): a square of the
+    // given half size with its corner rounded.
+    const course = (t: number) => {
+        const level = size - t * SLOPE_WIDTH
+        const round = COVE_TOP_ROUND + t * (COVE_TOE - COVE_TOP_ROUND)
+        return { level, round, straight: level - round }
+    }
+    // How far outside a course a point lies.
+    const outside = (a: number, b: number, t: number) => {
+        const { round, straight } = course(t)
+        const da = a - straight
+        const db = b - straight
+        return Math.hypot(Math.max(da, 0), Math.max(db, 0)) + Math.min(Math.max(da, db), 0) - round
+    }
     return paint({ x: 0, y: 0, width: size, height: size }, pixels, (x, y) => {
-        const dx = x - cx
-        const dy = y - cy
-        const r = Math.hypot(dx, dy)
-        const across = size - r
-        const water = clamp((across - SLOPE_WIDTH) / step + 0.5)
+        const a = Math.abs(x - cx)
+        const b = Math.abs(y - cy)
+        const pastTop = outside(a, b, 0)
+        const intoWater = -outside(a, b, 1)
+        const water = clamp(intoWater / step + 0.5)
         if (water >= 1) return { color: [0, 0, 0], alpha: 0 }
-        const angle = Math.atan2(Math.abs(dy), Math.abs(dx))
-        const along = angle * Math.max(r, 2)
-        const brick = brickAt(
-            along,
-            clamp(across, 0, SLOPE_WIDTH),
-            (Math.PI / 2) * Math.max(r, 2),
-            9
-        )
-        // Down the slope is towards the centre.
-        const facing = r > 0 ? (-dx / r) * LIGHT_2D.x + (-dy / r) * LIGHT_2D.y : 0
-        const slope = brickColor(
-            brick,
-            clamp(across, 0, SLOPE_WIDTH),
-            facing,
-            mottle(x * 0.4, y * 0.4)
-        )
-        // Behind the bank's top the kerb fills the corner, or runs round the curve, its edge to
-        // the water, with the paving filling the corner beyond.
-        const onTop = clamp(-across / step + 0.5)
-        const pastEdge = clamp((-across - COVE_KERB.line) / step + 0.5)
-        const pastKerb = clamp((-across - COVE_KERB.width) / step + 0.5)
-        const top =
-            COVE_FILL === 'kerb' ? kerb : mix(mix(kerbEdge, kerb, pastEdge), paving, pastKerb)
-        return { color: mix(slope, top, onTop), alpha: 1 - water }
+        let t = 0
+        if (pastTop < 0) {
+            let low = 0
+            let high = 1
+            for (let i = 0; i < 18; i++) {
+                const mid = (low + high) / 2
+                if (outside(a, b, mid) < 0) low = mid
+                else high = mid
+            }
+            t = intoWater > 0 ? 1 : (low + high) / 2
+        }
+        const across = t * SLOPE_WIDTH
+        const { round, straight } = course(t)
+        const run = 2 * straight + (Math.PI / 2) * round
+        const along =
+            b <= straight
+                ? b
+                : a <= straight
+                  ? run - a
+                  : straight + Math.atan2(b - straight, a - straight) * round
+        const brick = brickAt(along, across, Math.max(run, 1), 9)
+        // Down the slope is inwards, away from the course's edge.
+        const [na, nb] =
+            b <= straight
+                ? [1, 0]
+                : a <= straight
+                  ? [0, 1]
+                  : [a - straight, b - straight].map((v) => v / Math.max(1e-6, round))
+        const facing = -na * sx * LIGHT_2D.x - nb * sy * LIGHT_2D.y
+        const slope = brickColor(brick, across, facing, mottle(x * 0.4, y * 0.4))
+        return { color: mix(slope, kerb, clamp(pastTop / step + 0.5)), alpha: 1 - water }
     })
 }
 
+// Where a canal turns round a corner of land, its bank curves round the corner: a quarter of a
+// ring of bricks round the corner, which lies at the tile's corner named.
 export function renderSlopeCorner(corner: SlopeCorner, pixels = SLOPE_PIXELS): Bitmap {
     const mottle = fractal(noise2(73), 3)
     const cx = corner === 'ne' || corner === 'se' ? SLOPE_WIDTH : 0

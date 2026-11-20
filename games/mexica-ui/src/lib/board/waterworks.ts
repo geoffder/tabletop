@@ -29,6 +29,8 @@ export type Curve = {
 }
 export type Spill = { key: string; look: string; box: Box }
 export type Kerb = { key: string; stone: Box; edge: Box }
+// Where two kerbs meet round a corner of land, a quarter round of kerb joins them.
+export type KerbJoin = { key: string; points: string }
 export type Zone = { key: string; points: string }
 
 export type Waterworks = {
@@ -36,6 +38,7 @@ export type Waterworks = {
     curves: Curve[]
     spills: Spill[]
     kerbs: Kerb[]
+    joins: KerbJoin[]
     zones: Zone[]
 }
 
@@ -149,6 +152,7 @@ export function waterworks(landCells: readonly Cell[], canals: ReadonlySet<Cell>
         curves: waters.flatMap((spot) => curvesOf(island, spot)),
         spills: spillsOf(island, grounds),
         kerbs: grounds.flatMap((spot) => kerbsOf(island, spot)),
+        joins: waters.flatMap((spot) => joinsOf(island, spot)),
         zones: landCells.map(spotOf).flatMap((spot) => zonesOf(island, spot))
     }
 }
@@ -263,6 +267,31 @@ function kerbsOf(island: Island, spot: Spot): Kerb[] {
             stone: strip(KERB.width),
             edge: strip(KERB.line)
         }
+    })
+}
+
+// Where a water square meets land on both sides of a corner and across it, the kerbs on either
+// side each stop at the corner, leaving a notch of the square across between them: a quarter
+// round of kerb about the corner fills it.
+function joinsOf(island: Island, spot: Spot): KerbJoin[] {
+    return CORNERS.flatMap(([corner, up, beside]) => {
+        const across = plus(spot, plus(STEP[up], STEP[beside]))
+        if (
+            ![plus(spot, STEP[up]), plus(spot, STEP[beside]), across].every((near) =>
+                island.ground(near)
+            )
+        )
+            return []
+        const point = cornerOf(spot, up, beside)
+        const [a, b] = [toward(up), toward(beside)]
+        const arc = Array.from({ length: 9 }, (_, index) => {
+            const angle = (index / 8) * (Math.PI / 2)
+            return {
+                x: point.x + (a.x * Math.cos(angle) + b.x * Math.sin(angle)) * KERB.width,
+                y: point.y + (a.y * Math.cos(angle) + b.y * Math.sin(angle)) * KERB.width
+            }
+        })
+        return [{ key: `join-${keyOf(spot)}-${corner}`, points: shape([point, ...arc]) }]
     })
 }
 

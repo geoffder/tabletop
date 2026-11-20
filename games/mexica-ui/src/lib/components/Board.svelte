@@ -233,6 +233,9 @@
                 <rect {...kerb.stone} class="surface kerb"></rect>
                 <rect {...kerb.edge} class="surface kerb-edge"></rect>
             {/each}
+            {#each works.joins as join (join.key)}
+                <polygon points={join.points} class="surface kerb"></polygon>
+            {/each}
             {#each works.spills as spill (spill.key)}
                 <image
                     href={LOOK_URLS[spill.look]}
