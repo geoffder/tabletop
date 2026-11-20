@@ -13,12 +13,14 @@
         placePoints
     } from '@tabletop/mexica'
     import { getGameSession } from '$lib/model/sessionContext.svelte.js'
-    import { BANK_DEPTH, BRIDGE_RISE, CELL, type PlanStep } from '$lib/board/view.js'
+    import { BANK_DEPTH, BRIDGE_RISE, CELL, type PlanStep, SHORE_HEIGHT } from '$lib/board/view.js'
     import { LOOK_URLS } from '$lib/board/lookUrls.js'
     import {
         CANAL_LOOK,
         LAKE_LOOK,
         PAVING_LOOK,
+        rubbleLook,
+        SHORE_LOOK,
         templeLook,
         WALL_VARIANTS,
         wallLook
@@ -75,18 +77,24 @@
     const CLIP_OVERLAP = 0.5
     const WALL_SHADOW = 7
 
-    const isWaterAt = (cell: Cell, step: PlanStep) => {
+    const isCanalAt = (cell: Cell, step: PlanStep) => {
         const next = cellAt(columnOf(cell) + step.column, rowOf(cell) + step.row)
-        return next === undefined || !isLand(next) || layout.canals.has(next)
+        return next !== undefined && layout.canals.has(next)
     }
 
-    // A wall drops from each stretch of land to the water just in front of it on screen, and the
-    // land shades the water beyond it from the light at the upper left.
+    const isLakeAt = (cell: Cell, step: PlanStep) => {
+        const next = cellAt(columnOf(cell) + step.column, rowOf(cell) + step.row)
+        return next === undefined || !isLand(next)
+    }
+
+    // A wall drops from each stretch of land to a canal just in front of it on screen, and the
+    // land shades the canal beside it from the light at the upper left. The lake's shore is a
+    // bank of rocks drawn with the surface.
     const shore = $derived.by(() => {
         const height = view.lift(BANK_DEPTH)
         const ground = LAND_CELLS.filter((cell) => !layout.canals.has(cell))
         const walls = ground
-            .filter((cell) => isWaterAt(cell, view.nearer))
+            .filter((cell) => isCanalAt(cell, view.nearer))
             .map((cell) => {
                 const box = view.cellBox(cell)
                 const bottom = box.y + box.height
@@ -102,7 +110,7 @@
                 }
             })
         const sides = ground
-            .filter((cell) => isWaterAt(cell, view.rightward))
+            .filter((cell) => isCanalAt(cell, view.rightward))
             .map((cell) => {
                 const box = view.cellBox(cell)
                 return {
@@ -115,10 +123,25 @@
                     }
                 }
             })
-        return { walls, sides }
+        const rise = view.lift(SHORE_HEIGHT)
+        const coast = ground
+            .filter((cell) => isLakeAt(cell, view.nearer))
+            .map((cell) => {
+                const box = view.cellBox(cell)
+                return {
+                    cell,
+                    face: {
+                        x: box.x - 0.3,
+                        y: box.y + box.height,
+                        width: box.width + 0.6,
+                        height: rise
+                    }
+                }
+            })
+        return { walls, sides, coast }
     })
 
-    // A kerb of dressed stone along every edge where the paving meets water, in plan.
+    // A kerb of tezontle along every edge where the paving meets a canal, in plan.
     const KERB = { width: 2.6, line: 0.7 }
     const PLAN_SIDES: readonly PlanStep[] = [
         { column: 0, row: -1 },
@@ -128,7 +151,7 @@
     ]
     const kerbs = $derived.by(() =>
         LAND_CELLS.filter((cell) => !layout.canals.has(cell)).flatMap((cell) =>
-            PLAN_SIDES.filter((step) => isWaterAt(cell, step)).map((step) => {
+            PLAN_SIDES.filter((step) => isCanalAt(cell, step)).map((step) => {
                 const left = columnOf(cell) * CELL
                 const top = rowOf(cell) * CELL
                 const across = step.column !== 0
@@ -142,6 +165,26 @@
                     key: `${cell}-${step.column}-${step.row}`,
                     stone: strip(KERB.width),
                     edge: strip(KERB.line)
+                }
+            })
+        )
+    )
+
+    // Where a canal opens into the lake its water runs on out through the rocks of the shore.
+    const MOUTH = 11
+    const mouths = $derived(
+        [...layout.canals].flatMap((cell) =>
+            PLAN_SIDES.filter((step) => isLakeAt(cell, step)).map((step) => {
+                const left = columnOf(cell) * CELL + step.column * (step.column > 0 ? CELL : MOUTH)
+                const top = rowOf(cell) * CELL + step.row * (step.row > 0 ? CELL : MOUTH)
+                return {
+                    key: `${cell}-${step.column}-${step.row}`,
+                    box: {
+                        x: step.column === 0 ? columnOf(cell) * CELL : left,
+                        y: step.row === 0 ? rowOf(cell) * CELL : top,
+                        width: step.column === 0 ? CELL : MOUTH,
+                        height: step.row === 0 ? CELL : MOUTH
+                    }
                 }
             })
         )
@@ -223,6 +266,9 @@
                         height={CELL + CLIP_OVERLAP * 2}
                     ></rect>
                 {/each}
+                {#each mouths as mouth (mouth.key)}
+                    <rect {...mouth.box}></rect>
+                {/each}
             </clipPath>
             <radialGradient id="mx-piece-shadow">
                 <stop offset="0.55" stop-color="#2a1a08" stop-opacity="0.32"></stop>
@@ -240,6 +286,8 @@
 
         <g transform={view.planTransform}>
             <image href={LOOK_URLS[LAKE_LOOK]} {...PLAN} preserveAspectRatio="none" class="surface"
+            ></image>
+            <image href={LOOK_URLS[SHORE_LOOK]} {...PLAN} preserveAspectRatio="none" class="surface"
             ></image>
             <image
                 href={LOOK_URLS[PAVING_LOOK]}
@@ -261,6 +309,14 @@
         </g>
         {#each shore.sides as side (side.cell)}
             <rect {...side.shadow} fill="url(#mx-side-shadow)" class="surface"></rect>
+        {/each}
+        {#each shore.coast as edge (edge.cell)}
+            <image
+                href={LOOK_URLS[rubbleLook(edge.cell % WALL_VARIANTS)]}
+                {...edge.face}
+                preserveAspectRatio="none"
+                class="surface"
+            ></image>
         {/each}
         {#each shore.walls as wall (wall.cell)}
             <rect {...wall.shadow} fill="url(#mx-wall-shadow)" class="surface"></rect>
@@ -485,11 +541,11 @@
     }
 
     .kerb {
-        fill: #ddd3bb;
+        fill: #a5644f;
     }
 
     .kerb-edge {
-        fill: #8a7f6a;
+        fill: #5a3b2f;
     }
 
     .surface,
