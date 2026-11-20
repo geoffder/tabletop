@@ -41,14 +41,12 @@ export type TempleDesign = {
     stair: StairLook
 }
 
-export const PLAIN_STAIR: StairLook = { shade: 0, glint: 0, riser: 1, balustrade: false }
-
 export const DESIGN: TempleDesign = {
     base: 1,
     pips: 'carved',
     layout: 'cluster',
     shrines: false,
-    stair: PLAIN_STAIR
+    stair: { shade: 0.05, glint: 0.32, riser: 0.78, balustrade: false }
 }
 
 export function riseOf(tilt: number): number {
