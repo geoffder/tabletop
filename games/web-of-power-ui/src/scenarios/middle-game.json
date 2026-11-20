@@ -1,0 +1,349 @@
+{
+ "game": {
+  "id": "scenario-middle-game",
+  "isPublic": false,
+  "status": "started",
+  "typeId": "web-of-power",
+  "deleted": false,
+  "name": "Middle game",
+  "ownerId": "owner",
+  "players": [
+   {
+    "id": "player-1",
+    "name": "Alice",
+    "isHuman": true,
+    "status": "joined"
+   },
+   {
+    "id": "player-2",
+    "name": "Bob",
+    "isHuman": true,
+    "status": "joined"
+   },
+   {
+    "id": "player-3",
+    "name": "Carol",
+    "isHuman": true,
+    "status": "joined"
+   },
+   {
+    "id": "player-4",
+    "name": "Dan",
+    "isHuman": true,
+    "status": "joined"
+   }
+  ],
+  "config": {
+   "fasterVariant": false,
+   "openDiscard": true
+  },
+  "hotseat": false,
+  "winningPlayerIds": [],
+  "seed": 3367980177,
+  "activePlayerIds": [
+   "player-4"
+  ],
+  "createdAt": "2026-11-20T03:09:58.155Z",
+  "storage": "remote",
+  "category": "standard",
+  "startedAt": "2026-11-20T03:09:58.156Z",
+  "protectedInformation": true
+ },
+ "state": {
+  "systemVersion": 3,
+  "id": "vK75S_OvBzZpcHraD2QpZ",
+  "gameId": "scenario-middle-game",
+  "seed": 3367980177,
+  "prng": {
+   "seed": 3367980177,
+   "invocations": 917
+  },
+  "protectedPrng": {
+   "algorithm": "chacha20-v1",
+   "seed": "033aacbe6212a2c9bee0cb5c71682e564dd13d1188be676e6f5a533a83f821c3",
+   "invocations": 84
+  },
+  "masterSeed": "0123456789abcdef0123456789abcdef",
+  "activePlayerIds": [
+   "player-4"
+  ],
+  "winningPlayerIds": [],
+  "actionCount": 0,
+  "actionChecksum": 0,
+  "players": [
+   {
+    "playerId": "player-1",
+    "color": "green",
+    "hand": [
+     "frankreich",
+     "lothringen-italien",
+     "frankreich"
+    ],
+    "handCount": 3,
+    "score": 7
+   },
+   {
+    "playerId": "player-2",
+    "color": "yellow",
+    "hand": [
+     "franken-aragon",
+     "lothringen-italien",
+     "england-schwaben"
+    ],
+    "handCount": 3,
+    "score": 9
+   },
+   {
+    "playerId": "player-3",
+    "color": "blue",
+    "hand": [
+     "bayern-burgund",
+     "england-schwaben",
+     "frankreich"
+    ],
+    "handCount": 3,
+    "score": 7
+   },
+   {
+    "playerId": "player-4",
+    "color": "purple",
+    "hand": [
+     "lothringen-italien",
+     "frankreich",
+     "bayern-burgund"
+    ],
+    "handCount": 3,
+    "score": 9
+   }
+  ],
+  "machineState": "PlacingPieces",
+  "turnManager": {
+   "series": [
+    {
+     "type": "turn",
+     "playerId": "player-4",
+     "start": 0
+    }
+   ],
+   "turnOrder": [
+    "player-1",
+    "player-2",
+    "player-3",
+    "player-4"
+   ],
+   "turnCounts": {
+    "player-1": 9,
+    "player-2": 9,
+    "player-3": 9,
+    "player-4": 8
+   },
+   "seriesKeeps": "latest"
+  },
+  "cloisters": [
+   {
+    "abbey": "la-oliva",
+    "playerId": "player-1"
+   },
+   {
+    "abbey": "clairvaux",
+    "playerId": "player-2"
+   },
+   {
+    "abbey": "longpont",
+    "playerId": "player-3"
+   },
+   {
+    "abbey": "whitland",
+    "playerId": "player-4"
+   },
+   {
+    "abbey": "aiguebelle",
+    "playerId": "player-1"
+   },
+   {
+    "abbey": "fontevivo",
+    "playerId": "player-3"
+   },
+   {
+    "abbey": "lekno",
+    "playerId": "player-4"
+   },
+   {
+    "abbey": "molesmes",
+    "playerId": "player-2"
+   },
+   {
+    "abbey": "bontieu",
+    "playerId": "player-4"
+   },
+   {
+    "abbey": "san-martino",
+    "playerId": "player-1"
+   },
+   {
+    "abbey": "waldsassen",
+    "playerId": "player-4"
+   },
+   {
+    "abbey": "escarp",
+    "playerId": "player-1"
+   },
+   {
+    "abbey": "leubus",
+    "playerId": "player-2"
+   },
+   {
+    "abbey": "reinfeld",
+    "playerId": "player-3"
+   },
+   {
+    "abbey": "oliva",
+    "playerId": "player-4"
+   },
+   {
+    "abbey": "heiligenkreuz",
+    "playerId": "player-4"
+   },
+   {
+    "abbey": "loccum",
+    "playerId": "player-1"
+   },
+   {
+    "abbey": "locedio",
+    "playerId": "player-2"
+   },
+   {
+    "abbey": "eberbach",
+    "playerId": "player-3"
+   },
+   {
+    "abbey": "kirkstead",
+    "playerId": "player-1"
+   },
+   {
+    "abbey": "vallbona",
+    "playerId": "player-3"
+   },
+   {
+    "abbey": "lond",
+    "playerId": "player-4"
+   },
+   {
+    "abbey": "viktring",
+    "playerId": "player-2"
+   },
+   {
+    "abbey": "maulbronn",
+    "playerId": "player-3"
+   }
+  ],
+  "advisors": [
+   {
+    "country": "aragon",
+    "playerId": "player-2"
+   },
+   {
+    "country": "burgund",
+    "playerId": "player-1"
+   },
+   {
+    "country": "frankreich",
+    "playerId": "player-3"
+   },
+   {
+    "country": "frankreich",
+    "playerId": "player-4"
+   },
+   {
+    "country": "franken",
+    "playerId": "player-2"
+   },
+   {
+    "country": "england",
+    "playerId": "player-3"
+   },
+   {
+    "country": "franken",
+    "playerId": "player-1"
+   },
+   {
+    "country": "bayern",
+    "playerId": "player-2"
+   },
+   {
+    "country": "aragon",
+    "playerId": "player-3"
+   },
+   {
+    "country": "italien",
+    "playerId": "player-2"
+   },
+   {
+    "country": "bayern",
+    "playerId": "player-4"
+   },
+   {
+    "country": "schwaben",
+    "playerId": "player-2"
+   },
+   {
+    "country": "lothringen",
+    "playerId": "player-1"
+   },
+   {
+    "country": "schwaben",
+    "playerId": "player-3"
+   }
+  ],
+  "deck": {
+   "items": [
+    "frankreich",
+    "franken-aragon",
+    "bayern-burgund",
+    "bayern-burgund",
+    "lothringen-italien",
+    "frankreich",
+    "frankreich",
+    "bayern-burgund",
+    "franken-aragon",
+    "lothringen-italien",
+    "lothringen-italien",
+    "england-schwaben",
+    "england-schwaben",
+    "frankreich",
+    "bayern-burgund",
+    "lothringen-italien",
+    "franken-aragon",
+    "franken-aragon",
+    "lothringen-italien",
+    "bayern-burgund",
+    "england-schwaben"
+   ],
+   "remaining": 21
+  },
+  "display": [
+   "franken-aragon",
+   "bayern-burgund"
+  ],
+  "discard": [
+   "england-schwaben",
+   "franken-aragon",
+   "franken-aragon",
+   "england-schwaben",
+   "england-schwaben",
+   "bayern-burgund",
+   "bayern-burgund",
+   "franken-aragon",
+   "franken-aragon",
+   "franken-aragon",
+   "franken-aragon",
+   "bayern-burgund",
+   "england-schwaben",
+   "lothringen-italien",
+   "lothringen-italien"
+  ],
+  "deckExhaustions": 1,
+  "placements": []
+ },
+ "actions": []
+}
