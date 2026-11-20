@@ -15,15 +15,7 @@
     import { DESIGN, type TempleDesign, templeBounds } from '$lib/board/templeShape.js'
     import { ownerMark } from '$lib/board/templeMarks.js'
     import { renderPilli } from '$lib/board/pilliLight.js'
-    import {
-        PILLI_SHINE,
-        PILLI_STYLE,
-        type PilliStyle,
-        pilliBounds,
-        pilliLook,
-        pilliShineLook,
-        shineOver
-    } from '$lib/board/pilliShape.js'
+    import { pilliBounds, pilliLook, pilliShineLook, shineOver } from '$lib/board/pilliShape.js'
     import type { Box } from '$lib/board/view.js'
     import TempleMarks from '$lib/components/TempleMarks.svelte'
     import { CELL, FLAT, TILT } from '$lib/board/view.js'
@@ -38,14 +30,8 @@
     // Designs to compare, drawn after the saved looks so the render script need not wait.
     let previews: Record<string, string> | undefined = $state()
     type Figure = { url: string; shine: string; outline: string; box: Box }
+    // The saved figure in each colour, tilted and flat.
     let figures: Record<string, Figure> | undefined = $state()
-    // The wooden head's grain at two strengths, dry-brushed as the board shows them.
-    const FIGURE_STYLES: [string, PilliStyle][] = [
-        ['grain 0.5', { ...PILLI_STYLE, grain: 0.5 }],
-        ['grain 0.9', { ...PILLI_STYLE, grain: 0.9 }]
-    ]
-    const SHINES = [PILLI_SHINE]
-    const FIGURE_ROWS = FIGURE_STYLES.flatMap(([name]) => SHINES.map((shine) => ({ name, shine })))
     const FIGURE_COLORS: readonly Color[] = [
         Color.Green,
         Color.Red,
@@ -107,19 +93,22 @@
         }
         urls = drawn
         outlines = traced
+        figures = Object.fromEntries(
+            [TILT, FLAT].map((tilt) => {
+                const flat = tilt === FLAT
+                return [
+                    pilliLook(flat),
+                    {
+                        url: drawn[pilliLook(flat)],
+                        shine: drawn[pilliShineLook(flat)],
+                        outline: traced[pilliLook(flat)],
+                        box: pilliBounds(tilt)
+                    }
+                ]
+            })
+        )
         millis = Math.round(performance.now() - start)
         setTimeout(() => {
-            const drawnFigures: Record<string, Figure> = {}
-            for (const [name, style] of FIGURE_STYLES) {
-                const look = renderPilli(TILT, style)
-                drawnFigures[name] = {
-                    url: toUrl(look.bitmap, 0.92),
-                    shine: toUrl(look.shine, 0.92),
-                    outline: look.outline,
-                    box: pilliBounds(TILT)
-                }
-            }
-            figures = drawnFigures
             const designs: Record<string, string> = {}
             for (const { riser } of TREADS) {
                 for (const level of LEVELS) {
@@ -142,7 +131,7 @@
     </g>
 {/snippet}
 
-{#snippet pilli(figure: Figure, tilt: number, x: number, color: Color, shine: number)}
+{#snippet pilli(figure: Figure, tilt: number, x: number, color: Color)}
     <g transform="translate({x} 0)">
         <ellipse cx="1" cy="1" rx={CELL * 0.26} ry={CELL * 0.26 * tilt} fill="url(#temple-shadow)"
         ></ellipse>
@@ -152,21 +141,21 @@
             href={figure.shine}
             {...figure.box}
             preserveAspectRatio="none"
-            opacity={shineOver(PIGMENTS[color].fill, shine)}
+            opacity={shineOver(PIGMENTS[color].fill)}
         ></image>
     </g>
 {/snippet}
 
-{#snippet figureRow(name: string, tilt: number, shine: number)}
-    {@const figure = figures?.[name]}
+{#snippet figureRow(tilt: number)}
+    {@const figure = figures?.[pilliLook(tilt === FLAT)]}
     {#if figure}
         <tr>
-            <th>{name}, dry brush {shine}</th>
+            <th>{tilt === FLAT ? 'flat' : 'tilted'}</th>
             <td>
                 <svg viewBox="-20 -40 240 52" width="720" height="156">
                     <rect x="-20" y="-40" width="240" height="52" fill="#e6dcc4"></rect>
                     {#each FIGURE_COLORS as color, index (color)}
-                        {@render pilli(figure, tilt, index * 40, color, shine)}
+                        {@render pilli(figure, tilt, index * 40, color)}
                     {/each}
                 </svg>
             </td>
@@ -184,7 +173,7 @@
                         ></image>
                     {/if}
                     {#each FIGURE_COLORS as color, index (color)}
-                        {@render pilli(figure, tilt, index * 40, color, shine)}
+                        {@render pilli(figure, tilt, index * 40, color)}
                     {/each}
                 </svg>
             </td>
@@ -210,9 +199,8 @@
         <h2>Pilli Mexica</h2>
         <table class="designs">
             <tbody>
-                {#each FIGURE_ROWS as { name, shine } (`${name}-${shine}`)}
-                    {@render figureRow(name, TILT, shine)}
-                {/each}
+                {@render figureRow(TILT)}
+                {@render figureRow(FLAT)}
             </tbody>
         </table>
     {/if}

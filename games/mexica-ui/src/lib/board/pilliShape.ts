@@ -3,40 +3,10 @@ import { riseOf } from './templeShape.js'
 import { type Box, PILLI_SIZE } from './view.js'
 
 // A Pilli Mexica as a painted wooden figure, feet at the origin: x to the right, y towards the
-// viewer, z up, in board units at full size. A cloaked noble with a bare wooden face and a fan
-// of feathers behind the head.
-//   robe: a bell, or a pawn's concave flare on a ring at the foot.
-//   trim: raised lines round the hem, with triangles, a stepped fret or studs between them
-//     (hem), the cloak's opening down the front and a cord along the cape's edge.
-//   knot: the cloak's corners tied over the right shoulder or at the chest, as the Mexica
-//     fastened a cloak.
-//   arms: forearms meeting in front, wooden hands clasped.
-//   fan: a smooth fan, separate feathers, or a second, shorter row of feathers in front.
-//   grain: how strongly the turned wood of the head shows its growth rings.
-//   eyes: the fan painted in bands, a spot near each feather's tip.
-// It wears a gold circlet set with turquoise.
-export type PilliStyle = {
-    robe: 'bell' | 'pawn'
-    trim: boolean
-    hem: 'lines' | 'triangles' | 'fret' | 'studs'
-    knot: 'none' | 'shoulder' | 'chest'
-    arms: boolean
-    fan: 'plain' | 'feathers' | 'tiered'
-    grain: number
-    eyes: boolean
-}
-
-export const PILLI_STYLE: PilliStyle = {
-    robe: 'pawn',
-    trim: true,
-    hem: 'studs',
-    knot: 'none',
-    arms: false,
-    fan: 'tiered',
-    grain: 0.5,
-    eyes: false
-}
-
+// viewer, z up, in board units at full size: a noble in a robe flaring like a pawn's to a ring at
+// the foot, studs round the hem between raised lines, the cloak's opening down the front, a
+// cord along the cape's edge, a head of turned wood in a gold circlet set with turquoise, and
+// two rows of feathers behind.
 // How strongly the shine layer lies over the darkest paint.
 export const PILLI_SHINE = 0.3
 
