@@ -561,7 +561,7 @@ export function renderShore(pixels = SHORE_PIXELS): Bitmap {
 
 // A rock slide where a stretch of shore is cut short beside a canal's bank, round the corner of
 // land where the shore ends (board/spillShape.ts lays it out), lit as the shore's rocks are:
-// higher rocks lie over lower ones, all bedded in earth, darker and wetter towards its foot.
+// higher rocks lie over lower ones, all bedded in earth, their tones mixed as the shore's are.
 const SLIDE_HEIGHT = 6
 
 export function renderSpill(
@@ -572,7 +572,6 @@ export function renderSpill(
     pixels = SHORE_PIXELS * 2
 ): Bitmap {
     const [light, dark, earth] = [ROCK.light, ROCK.dark, ROCK.earth].map(linear)
-    const wetTint = linear(TURQUOISE.deep)
     const grit = noise2(97 + depth)
     const lumps = fractal(noise2(101 + depth), 2)
     const frame = spillFrame(out, end)
@@ -590,9 +589,7 @@ export function renderSpill(
     })
     return paint(spillBox(out, end, kind, depth), pixels, (x, y) => {
         const lump = (lumps(x * 0.45, y * 0.45) - 0.5) * 0.45
-        let top:
-            | { height: number; nx: number; ny: number; rim: number; tone: number; up: number }
-            | undefined
+        let top: { height: number; nx: number; ny: number; rim: number; tone: number } | undefined
         for (const rock of rocks) {
             const radius = rock.radius * (1 + lump)
             const dx = (x - rock.x) / radius
@@ -606,8 +603,7 @@ export function renderSpill(
                     nx: dx,
                     ny: dy,
                     rim: Math.sqrt(r2),
-                    tone: rock.tone,
-                    up: rock.height
+                    tone: rock.tone
                 }
             }
         }
@@ -624,9 +620,6 @@ export function renderSpill(
         let color = mix(dark, light, clamp(lit * (0.7 + top.tone * 0.45)))
         color = mix(color, earth, (grit(x * 1.3, y * 1.3) - 0.5) * 0.25 + 0.05)
         color = mix(color, [0, 0, 0], smoothstep(0.7, 1, top.rim) * 0.35)
-        const wet = 1 - smoothstep(0.1, 0.45, top.up)
-        color = mix(color, mix(color, wetTint, 0.35), wet)
-        color = mix(color, [0, 0, 0], wet * 0.2 + (1 - top.up) * 0.12)
         // Each rock's edge settles into the bed beneath it, or the water beyond.
         const solid = clamp((1 - top.rim) * 12)
         ground = mix(ground, color, solid)
