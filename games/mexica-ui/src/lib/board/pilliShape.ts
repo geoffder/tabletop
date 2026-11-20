@@ -6,7 +6,8 @@ import { type Box, PILLI_SIZE } from './view.js'
 // viewer, z up, in board units at full size. A cloaked noble with a bare wooden face and a fan
 // of feathers behind the head.
 //   robe: a bell, or a pawn's concave flare on a ring at the foot.
-//   trim: raised lines round the hem with a stepped fret or studs between them (hem), the cloak's opening down the front and a cord along the
+//   trim: raised lines round the hem, with triangles, a stepped fret or studs between them
+//     (hem), the cloak's opening down the front and a cord along the
 //     cape's edge.
 //   knot: the cloak's corners tied over the right shoulder or at the chest, as the Mexica
 //     fastened a cloak.
@@ -17,7 +18,7 @@ import { type Box, PILLI_SIZE } from './view.js'
 export type PilliStyle = {
     robe: 'bell' | 'pawn'
     trim: boolean
-    hem: 'fret' | 'studs' | 'lines'
+    hem: 'lines' | 'triangles' | 'fret' | 'studs'
     knot: 'none' | 'shoulder' | 'chest'
     arms: boolean
     fan: 'plain' | 'feathers' | 'tiered'
@@ -28,7 +29,7 @@ export type PilliStyle = {
 export const PILLI_STYLE: PilliStyle = {
     robe: 'pawn',
     trim: true,
-    hem: 'fret',
+    hem: 'lines',
     knot: 'none',
     arms: false,
     fan: 'tiered',
