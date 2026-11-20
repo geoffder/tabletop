@@ -21,6 +21,15 @@ export type Label = { key: string; text: string; at: Point }
 
 export type QuarterTurns = 0 | 1 | 2 | 3
 
+export type PlanStep = { column: number; row: number }
+
+const PLAN_STEPS: readonly PlanStep[] = [
+    { column: 0, row: 1 },
+    { column: 1, row: 0 },
+    { column: 0, row: -1 },
+    { column: -1, row: 0 }
+]
+
 // The board as one view shows it: seen from the near side of the table at `tilt` (1 is straight
 // down), turned `quarterTurns` quarter turns clockwise. Plan coordinates are in cells from the
 // top-left corner of the printed board.
@@ -32,6 +41,10 @@ export class BoardView {
     readonly frame: Box
     readonly viewBox: string
     readonly labels: Label[]
+    // Steps in plan columns and rows to the neighbouring cell just in front, and just to the
+    // right, on screen.
+    readonly nearer: PlanStep
+    readonly rightward: PlanStep
     // Places plan coordinates in board units (a cell is CELL wide) on screen.
     readonly planTransform: string
 
@@ -45,6 +58,8 @@ export class BoardView {
         this.width = (sideways ? BOARD_HEIGHT : BOARD_WIDTH) * CELL
         this.depth = (sideways ? BOARD_WIDTH : BOARD_HEIGHT) * CELL * tilt
         this.planTransform = this.makePlanTransform()
+        this.nearer = this.stepToward((point) => point.y)
+        this.rightward = this.stepToward((point) => point.x)
         this.labels = this.makeLabels()
         this.frame = this.makeFrame()
         this.viewBox = `${this.frame.x} ${this.frame.y} ${this.frame.width} ${this.frame.height}`
@@ -89,7 +104,7 @@ export class BoardView {
 
     // The tallest piece standing on a cell, as screen height above its centre.
     get headroom(): number {
-        return Math.max(this.lift(TIER_HEIGHT * 4), this.lift(BRIDGE_RISE) + PILLI_HEIGHT * 1.35)
+        return Math.max(this.lift(TIER_HEIGHT * 4), this.lift(BRIDGE_RISE) + PILLI_HEIGHT)
     }
 
     private turn(column: number, row: number): [number, number] {
@@ -103,6 +118,12 @@ export class BoardView {
             case 3:
                 return [row, BOARD_WIDTH - column]
         }
+    }
+
+    private stepToward(measure: (point: Point) => number): PlanStep {
+        const ahead = (step: PlanStep) =>
+            measure(this.at(step.column, step.row)) - measure(this.at(0, 0))
+        return PLAN_STEPS.reduce((best, step) => (ahead(step) > ahead(best) ? step : best))
     }
 
     // Written as a translation and an offset-free matrix: Firefox leaves a matrix's offset out
