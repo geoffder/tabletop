@@ -7,10 +7,22 @@
         renderLake,
         renderPaving,
         renderShore,
+        renderSlope,
+        renderSlopeCorner,
         STONES,
         TURQUOISE
     } from '$lib/board/surfaceTexture.js'
-    import { CANAL_LOOK, LAKE_LOOK, PAVING_LOOK, SHORE_LOOK, templeLook } from '$lib/board/looks.js'
+    import {
+        CANAL_LOOK,
+        LAKE_LOOK,
+        PAVING_LOOK,
+        SHORE_LOOK,
+        type SlopeCorner,
+        slopeCornerLook,
+        slopeLook,
+        type SlopeSide,
+        templeLook
+    } from '$lib/board/looks.js'
     import type { Bitmap } from '$lib/board/light.js'
     import { renderTemple } from '$lib/board/templeLight.js'
     import { DESIGN, type TempleDesign, templeBounds } from '$lib/board/templeShape.js'
@@ -43,6 +55,8 @@
     ]
 
     const LEVELS: readonly Level[] = [1, 2, 3, 4]
+    const SLOPE_SIDES: readonly SlopeSide[] = ['n', 'e', 's', 'w']
+    const SLOPE_CORNERS: readonly SlopeCorner[] = ['ne', 'nw', 'se', 'sw']
     const STRIP: readonly [Level, Color][] = [
         [1, Color.Green],
         [2, Color.Red],
@@ -80,6 +94,10 @@
         drawn[LAKE_LOOK] = toUrl(renderLake(TURQUOISE), 0.86)
         drawn[CANAL_LOOK] = toUrl(renderCanal(TURQUOISE), 0.86)
         drawn[SHORE_LOOK] = toUrl(renderShore(), 0.86)
+        for (const side of SLOPE_SIDES) drawn[slopeLook(side)] = toUrl(renderSlope(side), 0.9)
+        for (const corner of SLOPE_CORNERS) {
+            drawn[slopeCornerLook(corner)] = toUrl(renderSlopeCorner(corner), 0.9)
+        }
         for (const level of LEVELS) {
             for (const tilt of [TILT, FLAT]) {
                 drawn[templeLook(level, tilt === FLAT)] = toUrl(renderTemple(level, tilt), 0.9)

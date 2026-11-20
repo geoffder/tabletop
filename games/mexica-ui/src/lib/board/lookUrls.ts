@@ -7,6 +7,14 @@ import pilliFlat from '../images/looks/pilli-flat.webp'
 import pilliShine from '../images/looks/pilli-shine.webp'
 import pilliShineFlat from '../images/looks/pilli-shine-flat.webp'
 import shore from '../images/looks/shore.webp'
+import slopeCornerNe from '../images/looks/slope-corner-ne.webp'
+import slopeCornerNw from '../images/looks/slope-corner-nw.webp'
+import slopeCornerSe from '../images/looks/slope-corner-se.webp'
+import slopeCornerSw from '../images/looks/slope-corner-sw.webp'
+import slopeE from '../images/looks/slope-e.webp'
+import slopeN from '../images/looks/slope-n.webp'
+import slopeS from '../images/looks/slope-s.webp'
+import slopeW from '../images/looks/slope-w.webp'
 import temple1 from '../images/looks/temple-1.webp'
 import temple1Flat from '../images/looks/temple-1-flat.webp'
 import temple2 from '../images/looks/temple-2.webp'
@@ -25,6 +33,14 @@ export const LOOK_URLS: Record<string, string> = {
     'pilli-shine': pilliShine,
     'pilli-shine-flat': pilliShineFlat,
     shore: shore,
+    'slope-corner-ne': slopeCornerNe,
+    'slope-corner-nw': slopeCornerNw,
+    'slope-corner-se': slopeCornerSe,
+    'slope-corner-sw': slopeCornerSw,
+    'slope-e': slopeE,
+    'slope-n': slopeN,
+    'slope-s': slopeS,
+    'slope-w': slopeW,
     'temple-1': temple1,
     'temple-1-flat': temple1Flat,
     'temple-2': temple2,

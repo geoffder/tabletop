@@ -16,7 +16,18 @@
     import { BRIDGE_RISE, CELL, type PlanStep } from '$lib/board/view.js'
     import type { Point } from '@tabletop/common'
     import { LOOK_URLS } from '$lib/board/lookUrls.js'
-    import { CANAL_LOOK, LAKE_LOOK, PAVING_LOOK, SHORE_LOOK, templeLook } from '$lib/board/looks.js'
+    import {
+        CANAL_LOOK,
+        LAKE_LOOK,
+        PAVING_LOOK,
+        SHORE_LOOK,
+        type SlopeCorner,
+        slopeCornerLook,
+        slopeLook,
+        type SlopeSide,
+        SLOPE_WIDTH,
+        templeLook
+    } from '$lib/board/looks.js'
     import { DESIGN, templeBounds } from '$lib/board/templeShape.js'
     import { templeMark } from '$lib/board/templeMarks.js'
     import TempleMarks from './TempleMarks.svelte'
@@ -107,35 +118,30 @@
         )
     )
 
-    // A canal's banks slope down from the kerb to the water, faced with tezontle, on every side
-    // where it meets land; where two banks meet in a corner they are mitred. Each side's slope
-    // is lit by the way it faces in plan, as the paving is.
-    const TALUD = 7.5
-    type Side = 'n' | 'e' | 's' | 'w'
-    const SIDE_OF: Record<Side, PlanStep> = {
+    // A canal's banks slope down from the kerb to the water, faced with tezontle brick, on every
+    // side where it meets land; where two banks meet in a corner they are mitred, and where a
+    // canal turns round a corner of land its bank curves round it.
+    const TALUD = SLOPE_WIDTH
+    const SIDE_OF: Record<SlopeSide, PlanStep> = {
         n: { column: 0, row: -1 },
         e: { column: 1, row: 0 },
         s: { column: 0, row: 1 },
         w: { column: -1, row: 0 }
     }
     // Each side's ends, clockwise, and the sides it meets at them.
-    const ENDS: Record<Side, [Side, Side]> = {
+    const ENDS: Record<SlopeSide, [SlopeSide, SlopeSide]> = {
         n: ['w', 'e'],
         e: ['n', 's'],
         s: ['e', 'w'],
         w: ['s', 'n']
     }
-    // Down each slope, from the kerb to the water: lit facing up and to the left in plan.
-    const TALUD_GRADIENTS: {
-        side: Side
-        direction: { x1: number; y1: number; x2: number; y2: number }
-        top: string
-        face: string
-    }[] = [
-        { side: 'n', direction: { x1: 0, y1: 0, x2: 0, y2: 1 }, top: '#8e5442', face: '#5e3428' },
-        { side: 'e', direction: { x1: 1, y1: 0, x2: 0, y2: 0 }, top: '#c98a6e', face: '#a8644c' },
-        { side: 's', direction: { x1: 0, y1: 1, x2: 0, y2: 0 }, top: '#d29478', face: '#b26c52' },
-        { side: 'w', direction: { x1: 0, y1: 0, x2: 1, y2: 0 }, top: '#94594a', face: '#69392c' }
+    const SLOPE_SIDES: readonly SlopeSide[] = ['n', 'e', 's', 'w']
+    // Each corner of a cell and the two sides it lies between.
+    const SLOPE_CORNERS: readonly [SlopeCorner, SlopeSide, SlopeSide][] = [
+        ['ne', 'n', 'e'],
+        ['nw', 'n', 'w'],
+        ['se', 's', 'e'],
+        ['sw', 's', 'w']
     ]
     const isBankAt = (cell: Cell, step: PlanStep) => {
         const next = cellAt(columnOf(cell) + step.column, rowOf(cell) + step.row)
@@ -151,15 +157,14 @@
                 se: { x: x0 + CELL, y: y0 + CELL },
                 sw: { x: x0, y: y0 + CELL }
             }
-            const edges: Record<Side, [Point, Point]> = {
+            const edges: Record<SlopeSide, [Point, Point]> = {
                 n: [corners.nw, corners.ne],
                 e: [corners.ne, corners.se],
                 s: [corners.se, corners.sw],
                 w: [corners.sw, corners.nw]
             }
-            const banked = (side: Side) => isBankAt(cell, SIDE_OF[side])
-            const sides: Side[] = ['n', 'e', 's', 'w']
-            return sides.filter(banked).map((side) => {
+            const banked = (side: SlopeSide) => isBankAt(cell, SIDE_OF[side])
+            return SLOPE_SIDES.filter(banked).map((side) => {
                 const [a, b] = edges[side]
                 const step = SIDE_OF[side]
                 const inward = { x: -step.column, y: -step.row }
@@ -175,19 +180,41 @@
                     x: b.x + inward.x * TALUD - along.x * pullB,
                     y: b.y + inward.y * TALUD - along.y * pullB
                 }
-                const at = (from: Point, to: Point, share: number) =>
-                    `${from.x + (to.x - from.x) * share} ${from.y + (to.y - from.y) * share}`
-                const courses = [1 / 3, 2 / 3]
-                    .map((share) => `M${at(a, innerA, share)}L${at(b, innerB, share)}`)
-                    .join('')
                 return {
                     key: `${cell}-${side}`,
                     side,
-                    points: [a, b, innerB, innerA].map((p) => `${p.x},${p.y}`).join(' '),
-                    courses
+                    points: [a, b, innerB, innerA].map((p) => `${p.x},${p.y}`).join(' ')
                 }
             })
         })
+    )
+
+    // A curve of bank in the corner of a canal's cell wherever the canal runs on past both sides
+    // of that corner but the cell across the corner is land, its corner jutting into the canal.
+    const curves = $derived.by(() =>
+        [...layout.canals].flatMap((cell) =>
+            SLOPE_CORNERS.filter(([, up, beside]) => {
+                const across = { column: SIDE_OF[beside].column, row: SIDE_OF[up].row }
+                return (
+                    isCanalAt(cell, SIDE_OF[up]) &&
+                    isCanalAt(cell, SIDE_OF[beside]) &&
+                    isBankAt(cell, across)
+                )
+            }).map(([corner, up, beside]) => {
+                const east = beside === 'e'
+                const south = up === 's'
+                return {
+                    key: `${cell}-${corner}`,
+                    corner,
+                    box: {
+                        x: columnOf(cell) * CELL + (east ? CELL - TALUD : 0),
+                        y: rowOf(cell) * CELL + (south ? CELL - TALUD : 0),
+                        width: TALUD,
+                        height: TALUD
+                    }
+                }
+            })
+        )
     )
 
     // Where a canal opens into the lake, the lake runs in through the rocks of the shore to meet it.
@@ -296,12 +323,21 @@
                 <stop offset="0.55" stop-color="#2a1a08" stop-opacity="0.32"></stop>
                 <stop offset="1" stop-color="#2a1a08" stop-opacity="0"></stop>
             </radialGradient>
-            {#each TALUD_GRADIENTS as gradient (gradient.side)}
-                <linearGradient id="mx-talud-{gradient.side}" {...gradient.direction}>
-                    <stop offset="0" stop-color={gradient.top}></stop>
-                    <stop offset="0.7" stop-color={gradient.face}></stop>
-                    <stop offset="1" stop-color="#2f3530"></stop>
-                </linearGradient>
+            {#each SLOPE_SIDES as side (side)}
+                {@const runs = side === 'n' || side === 's'}
+                <pattern
+                    id="mx-slope-{side}"
+                    patternUnits="userSpaceOnUse"
+                    width={runs ? CELL : TALUD}
+                    height={runs ? TALUD : CELL}
+                >
+                    <image
+                        href={LOOK_URLS[slopeLook(side)]}
+                        width={runs ? CELL : TALUD}
+                        height={runs ? TALUD : CELL}
+                        preserveAspectRatio="none"
+                    ></image>
+                </pattern>
             {/each}
         </defs>
 
@@ -331,9 +367,16 @@
                 class="surface"
             ></image>
             {#each taluds as talud (talud.key)}
-                <polygon points={talud.points} fill="url(#mx-talud-{talud.side})" class="surface"
+                <polygon points={talud.points} fill="url(#mx-slope-{talud.side})" class="surface"
                 ></polygon>
-                <path d={talud.courses} class="surface talud-course"></path>
+            {/each}
+            {#each curves as curve (curve.key)}
+                <image
+                    href={LOOK_URLS[slopeCornerLook(curve.corner)]}
+                    {...curve.box}
+                    preserveAspectRatio="none"
+                    class="surface"
+                ></image>
             {/each}
             {#each kerbs as kerb (kerb.key)}
                 <rect {...kerb.stone} class="surface kerb"></rect>
@@ -553,18 +596,11 @@
     }
 
     .kerb {
-        fill: #a5644f;
-    }
-
-    .talud-course {
-        fill: none;
-        stroke: #3a2119;
-        stroke-opacity: 0.45;
-        stroke-width: 0.35;
+        fill: #a88676;
     }
 
     .kerb-edge {
-        fill: #5a3b2f;
+        fill: #6b5245;
     }
 
     .surface,
