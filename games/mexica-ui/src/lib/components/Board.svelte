@@ -223,8 +223,8 @@
                     ]}
                     x={curve.x}
                     y={curve.y}
-                    width={BANK}
-                    height={BANK}
+                    width={curve.size}
+                    height={curve.size}
                     preserveAspectRatio="none"
                     class="surface"
                 ></image>
