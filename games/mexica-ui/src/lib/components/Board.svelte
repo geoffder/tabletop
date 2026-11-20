@@ -16,6 +16,7 @@
     import { BRIDGE_RISE, CELL, type PlanStep } from '$lib/board/view.js'
     import type { Point } from '@tabletop/common'
     import { LOOK_URLS } from '$lib/board/lookUrls.js'
+    import { SHORE_ZONE, shoreDepth } from '$lib/board/surfaceTexture.js'
     import {
         CANAL_LOOK,
         LAKE_LOOK,
@@ -122,9 +123,6 @@
     // side where it meets land; where two banks meet in a corner they are mitred, and where a
     // canal turns round a corner of land its bank curves round it.
     const TALUD = SLOPE_WIDTH
-    // How far a canal's mouth runs out through the shore into the lake, and its banks with it.
-    const MOUTH = 11
-    const BANK_REACH = 5
     const SIDE_OF: Record<SlopeSide, PlanStep> = {
         n: { column: 0, row: -1 },
         e: { column: 1, row: 0 },
@@ -150,6 +148,13 @@
         const next = cellAt(columnOf(cell) + step.column, rowOf(cell) + step.row)
         return next !== undefined && isLand(next) && !layout.canals.has(next)
     }
+    // How far a bank laps over the cut edge of a shore beside it.
+    const OVERLAP = 5
+    const offset = (from: Point, toward: Point, by: number): Point => ({
+        x: from.x + toward.x * by,
+        y: from.y + toward.y * by
+    })
+    const shape = (points: Point[]) => points.map((p) => `${p.x},${p.y}`).join(' ')
     const taluds = $derived.by(() =>
         [...layout.canals].flatMap((cell) => {
             const x0 = columnOf(cell) * CELL
@@ -167,7 +172,7 @@
                 w: [corners.sw, corners.nw]
             }
             const banked = (side: SlopeSide) => isBankAt(cell, SIDE_OF[side])
-            return SLOPE_SIDES.filter(banked).map((side) => {
+            return SLOPE_SIDES.filter(banked).flatMap((side) => {
                 const [a, b] = edges[side]
                 const step = SIDE_OF[side]
                 const inward = { x: -step.column, y: -step.row }
@@ -176,14 +181,16 @@
                 const pullA = banked(before) ? TALUD : 0
                 const pullB = banked(after) ? TALUD : 0
                 // Where the canal opens into the lake past an end and the land beside it meets
-                // the lake there too, the bank runs on as far as the island's edge reaches.
-                const opensTo = (end: SlopeSide) => {
+                // the lake there too, the bank runs on out along the edge of that land's shore,
+                // as far as the shore reaches.
+                const opensTo = (end: SlopeSide, corner: Point) => {
                     const past = SIDE_OF[end]
                     const beyond = { column: past.column + step.column, row: past.row + step.row }
-                    return isLakeAt(cell, past) && isLakeAt(cell, beyond) ? BANK_REACH : 0
+                    if (!isLakeAt(cell, past) || !isLakeAt(cell, beyond)) return 0
+                    return shoreDepth(corner.x + past.column * 3, corner.y + past.row * 3) + 2
                 }
-                const outA = opensTo(before)
-                const outB = opensTo(after)
+                const outA = opensTo(before, a)
+                const outB = opensTo(after, b)
                 const startA = { x: a.x - along.x * outA, y: a.y - along.y * outA }
                 const endB = { x: b.x + along.x * outB, y: b.y + along.y * outB }
                 const innerA = {
@@ -194,28 +201,86 @@
                     x: endB.x + inward.x * TALUD - along.x * pullB,
                     y: endB.y + inward.y * TALUD - along.y * pullB
                 }
-                return {
-                    key: `${cell}-${side}`,
-                    side,
-                    points: [startA, endB, innerB, innerA].map((p) => `${p.x},${p.y}`).join(' ')
-                }
+                // Beyond the cell the bank also covers the straight edge where that land's shore
+                // is cut off at the canal's mouth.
+                const over = (from: Point, to: Point) =>
+                    shape([from, to, offset(to, inward, -OVERLAP), offset(from, inward, -OVERLAP)])
+                return [
+                    { key: `${cell}-${side}`, side, points: shape([startA, endB, innerB, innerA]) },
+                    ...(outA > 0
+                        ? [{ key: `${cell}-${side}-a`, side, points: over(startA, a) }]
+                        : []),
+                    ...(outB > 0 ? [{ key: `${cell}-${side}-b`, side, points: over(b, endB) }] : [])
+                ]
             })
         })
     )
 
-    // A curve of bank in the corner of a canal's cell wherever the water runs on past both sides
-    // of that corner, in the canal on at least one, but the cell across the corner is land, its
-    // corner jutting into the water.
+    // Where the coast turns an inside corner, the shores of the land on either side of the corner
+    // meet on the diagonal out from it. When a canal opens into the lake at such a corner, the
+    // shore of the land across the corner ends on that diagonal at the canal, and a bank runs
+    // along it as far as the shore reaches, its bricks turned to the diagonal.
+    const shoreEnds = $derived.by(() =>
+        [...layout.canals].flatMap((cell) =>
+            SLOPE_SIDES.filter((side) => isLakeAt(cell, SIDE_OF[side])).flatMap((side) => {
+                const step = SIDE_OF[side]
+                const x0 = columnOf(cell) * CELL
+                const y0 = rowOf(cell) * CELL
+                return ENDS[side]
+                    .filter((end) => {
+                        const past = SIDE_OF[end]
+                        const across = {
+                            column: past.column + step.column,
+                            row: past.row + step.row
+                        }
+                        return isBankAt(cell, across)
+                    })
+                    .map((end) => {
+                        const past = SIDE_OF[end]
+                        const corner = {
+                            x: x0 + (step.column > 0 || past.column > 0 ? CELL : 0),
+                            y: y0 + (step.row > 0 || past.row > 0 ? CELL : 0)
+                        }
+                        // Out along the diagonal into the lake, and across it towards the canal.
+                        const out = {
+                            x: (step.column - past.column) / Math.SQRT2,
+                            y: (step.row - past.row) / Math.SQRT2
+                        }
+                        const toward = {
+                            x: (-step.column - past.column) / Math.SQRT2,
+                            y: (-step.row - past.row) / Math.SQRT2
+                        }
+                        const reach =
+                            Math.SQRT2 *
+                            (shoreDepth(corner.x + out.x * 4, corner.y + out.y * 4) + 2)
+                        const tip = offset(corner, out, reach)
+                        // Turn the bricks of a bank sloping down the page to slope this way.
+                        const turn = Math.round((Math.atan2(-toward.x, toward.y) * 180) / Math.PI)
+                        return {
+                            key: `${cell}-${side}-${end}`,
+                            side: `diagonal-${turn}`,
+                            points: shape([
+                                offset(corner, toward, -OVERLAP),
+                                offset(tip, toward, -OVERLAP),
+                                offset(tip, toward, TALUD),
+                                offset(corner, toward, TALUD)
+                            ])
+                        }
+                    })
+            })
+        )
+    )
+    const DIAGONAL_TURNS = [45, -45, 135, -135]
+
+    // A curve of bank in the corner of a canal's cell wherever the canal runs on past both sides
+    // of that corner but the cell across the corner is land, its corner jutting into the canal.
     const curves = $derived.by(() =>
         [...layout.canals].flatMap((cell) =>
             SLOPE_CORNERS.filter(([, up, beside]) => {
                 const across = { column: SIDE_OF[beside].column, row: SIDE_OF[up].row }
-                const open = (side: SlopeSide) =>
-                    isCanalAt(cell, SIDE_OF[side]) || isLakeAt(cell, SIDE_OF[side])
                 return (
-                    open(up) &&
-                    open(beside) &&
-                    (isCanalAt(cell, SIDE_OF[up]) || isCanalAt(cell, SIDE_OF[beside])) &&
+                    isCanalAt(cell, SIDE_OF[up]) &&
+                    isCanalAt(cell, SIDE_OF[beside]) &&
                     isBankAt(cell, across)
                 )
             }).map(([corner, up, beside]) => {
@@ -235,23 +300,74 @@
         )
     )
 
-    // Where a canal opens into the lake, the lake runs in through the rocks of the shore to meet it.
-    const mouths = $derived(
-        [...layout.canals].flatMap((cell) =>
-            PLAN_SIDES.filter((step) => isLakeAt(cell, step)).map((step) => {
-                const left = columnOf(cell) * CELL + step.column * (step.column > 0 ? CELL : MOUTH)
-                const top = rowOf(cell) * CELL + step.row * (step.row > 0 ? CELL : MOUTH)
-                return {
-                    key: `${cell}-${step.column}-${step.row}`,
-                    box: {
-                        x: step.column === 0 ? columnOf(cell) * CELL : left,
-                        y: step.row === 0 ? rowOf(cell) * CELL : top,
-                        width: step.column === 0 ? CELL : MOUTH,
-                        height: step.row === 0 ? CELL : MOUTH
+    // The island as drawn: every square of land, and beyond each square that is not a canal the
+    // stones and rocks of its shore on the sides it meets the lake, round its corners where it
+    // meets the lake on both sides, and up to the diagonal where the coast turns an inside corner
+    // and another square's shore takes over. A canal's square has none, so its mouth opens onto
+    // the lake.
+    const isLandAt = (cell: Cell, column: number, row: number) => {
+        const next = cellAt(columnOf(cell) + column, rowOf(cell) + row)
+        return next !== undefined && isLand(next)
+    }
+    const landZones = $derived.by(() =>
+        LAND_CELLS.flatMap((cell) => {
+            const x0 = columnOf(cell) * CELL
+            const y0 = rowOf(cell) * CELL
+            const square = shape([
+                { x: x0, y: y0 },
+                { x: x0 + CELL, y: y0 },
+                { x: x0 + CELL, y: y0 + CELL },
+                { x: x0, y: y0 + CELL }
+            ])
+            if (layout.canals.has(cell)) return [{ key: `${cell}`, points: square }]
+            const reach = SHORE_ZONE
+            const corners = {
+                nw: { x: x0, y: y0 },
+                ne: { x: x0 + CELL, y: y0 },
+                se: { x: x0 + CELL, y: y0 + CELL },
+                sw: { x: x0, y: y0 + CELL }
+            }
+            const edges: Record<SlopeSide, [Point, Point]> = {
+                n: [corners.nw, corners.ne],
+                e: [corners.ne, corners.se],
+                s: [corners.se, corners.sw],
+                w: [corners.sw, corners.nw]
+            }
+            const strips = SLOPE_SIDES.filter((side) => isLakeAt(cell, SIDE_OF[side])).flatMap(
+                (side) => {
+                    const out = SIDE_OF[side]
+                    const outward = { x: out.column, y: out.row }
+                    const [a, b] = edges[side]
+                    const [before, after] = ENDS[side]
+                    const farEnd = (corner: Point, end: SlopeSide) => {
+                        const p = SIDE_OF[end]
+                        const far = offset(corner, outward, reach)
+                        const inside = isLandAt(cell, p.column + out.column, p.row + out.row)
+                        return inside ? offset(far, { x: -p.column, y: -p.row }, reach) : far
                     }
+                    const strip = [a, b, farEnd(b, after), farEnd(a, before)]
+                    // Round the corner beyond an end where the lake lies on both sides.
+                    const round = [before, after]
+                        .filter((end) => isLakeAt(cell, SIDE_OF[end]))
+                        .map((end) => {
+                            const p = SIDE_OF[end]
+                            const corner = end === before ? a : b
+                            const side2 = { x: p.column, y: p.row }
+                            return [
+                                corner,
+                                offset(corner, side2, reach),
+                                offset(offset(corner, side2, reach), outward, reach),
+                                offset(corner, outward, reach)
+                            ]
+                        })
+                    return [strip, ...round]
                 }
-            })
-        )
+            )
+            return [
+                { key: `${cell}`, points: square },
+                ...strips.map((strip, index) => ({ key: `${cell}-${index}`, points: shape(strip) }))
+            ]
+        })
     )
 
     const playerFill = (playerId?: string) =>
@@ -331,15 +447,31 @@
                     ></rect>
                 {/each}
             </clipPath>
-            <clipPath id="mx-mouth-clip">
-                {#each mouths as mouth (mouth.key)}
-                    <rect {...mouth.box}></rect>
+            <clipPath id="mx-land-clip">
+                {#each landZones as zone (zone.key)}
+                    <polygon points={zone.points}></polygon>
                 {/each}
             </clipPath>
             <radialGradient id="mx-piece-shadow">
                 <stop offset="0.55" stop-color="#2a1a08" stop-opacity="0.32"></stop>
                 <stop offset="1" stop-color="#2a1a08" stop-opacity="0"></stop>
             </radialGradient>
+            {#each DIAGONAL_TURNS as turn (turn)}
+                <pattern
+                    id="mx-slope-diagonal-{turn}"
+                    patternUnits="userSpaceOnUse"
+                    width={CELL}
+                    height={TALUD}
+                    patternTransform="rotate({turn})"
+                >
+                    <image
+                        href={LOOK_URLS[slopeLook('n')]}
+                        width={CELL}
+                        height={TALUD}
+                        preserveAspectRatio="none"
+                    ></image>
+                </pattern>
+            {/each}
             {#each SLOPE_SIDES as side (side)}
                 {@const runs = side === 'n' || side === 's'}
                 <pattern
@@ -361,21 +493,20 @@
         <g transform={view.planTransform}>
             <image href={LOOK_URLS[LAKE_LOOK]} {...PLAN} preserveAspectRatio="none" class="surface"
             ></image>
-            <image href={LOOK_URLS[SHORE_LOOK]} {...PLAN} preserveAspectRatio="none" class="surface"
-            ></image>
-            <image
-                href={LOOK_URLS[PAVING_LOOK]}
-                {...PLAN}
-                preserveAspectRatio="none"
-                class="surface"
-            ></image>
-            <image
-                href={LOOK_URLS[LAKE_LOOK]}
-                {...PLAN}
-                preserveAspectRatio="none"
-                clip-path="url(#mx-mouth-clip)"
-                class="surface"
-            ></image>
+            <g clip-path="url(#mx-land-clip)">
+                <image
+                    href={LOOK_URLS[SHORE_LOOK]}
+                    {...PLAN}
+                    preserveAspectRatio="none"
+                    class="surface"
+                ></image>
+                <image
+                    href={LOOK_URLS[PAVING_LOOK]}
+                    {...PLAN}
+                    preserveAspectRatio="none"
+                    class="surface"
+                ></image>
+            </g>
             <image
                 href={LOOK_URLS[CANAL_LOOK]}
                 {...PLAN}
@@ -383,7 +514,7 @@
                 clip-path="url(#mx-canal-clip)"
                 class="surface"
             ></image>
-            {#each taluds as talud (talud.key)}
+            {#each [...taluds, ...shoreEnds] as talud (talud.key)}
                 <polygon points={talud.points} fill="url(#mx-slope-{talud.side})" class="surface"
                 ></polygon>
             {/each}
