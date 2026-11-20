@@ -9,10 +9,13 @@ import {
     type Bitmap,
     clamp,
     dot,
+    fractal,
     linear,
     mix,
+    noise2,
     type Rgb,
     scale,
+    smoothstep,
     srgb,
     type Vec
 } from './light.js'
@@ -33,7 +36,6 @@ const WOOD = { light: linear('#e2bf91'), dark: linear('#b98a5a') }
 const GOLD = { light: linear('#f0c85a'), dark: linear('#8a5a1c') }
 // The light on a painted face turned up towards it shows the paint as it is.
 const FULL_LIGHT = 0.92
-const GLOSS = { strength: 0.22, power: 24 }
 
 // What a point of the figure is made of: paint, lightened (above 1) or darkened (below) by
 // what is painted there, bare wood or gold.
@@ -74,15 +76,33 @@ const opaque = (color: Rgb): Sample[] => [
 
 const NO_SHINE: Sample = { color: [1, 1, 1], alpha: 0 }
 
-// Dark paint hides the figure's shape and the details painted on it, so a second layer lights
-// it: along the edges turned from the viewer, broadly where the sun falls, more on lighter
-// details and less on darker ones. The board lays it over dark paint only.
-const SHINE = { rim: 0.6, rimPower: 2.5, sun: 0.32, lighter: 0.3, darker: 0.25 }
+// Dark paint hides the figure's shape and the details on it, so a second layer lights it as a
+// painter dry-brushes a miniature: pale paint caught on the edges and ridges that stand out,
+// more on those facing up, in streaks, and on the lighter details painted on it. The board lays
+// it over dark paint only.
+const DRY_BRUSH = { probe: 0.45, from: 0.3, to: 1.6, strength: 0.8, lighter: 0.25 }
+const brush = fractal(noise2(151), 3)
 
-function shineOf(normal: Vec, toward: Vec, sun: number, tone: number): Sample {
-    const rim = SHINE.rim * (1 - clamp(dot(normal, toward))) ** SHINE.rimPower
-    const detail = tone > 1.05 ? SHINE.lighter : tone < 0.95 ? -SHINE.darker : 0
-    return { color: [1, 1, 1], alpha: clamp(rim + SHINE.sun * sun ** 1.5 + detail) }
+// How sharply the surface bends outward at a point on it: positive on edges and ridges, about
+// 2 / radius on a ball, negative in grooves.
+function bend(p: Vec, scene: Scene): number {
+    const e = DRY_BRUSH.probe
+    let sum = -6 * scene(p)
+    for (const axis of [0, 1, 2]) {
+        const step: Vec = [0, 0, 0]
+        step[axis] = e
+        sum += scene(add(p, step)) + scene(add(p, scale(step, -1)))
+    }
+    return sum / (e * e)
+}
+
+function shineOf(p: Vec, normal: Vec, scene: Scene, tone: number): Sample {
+    const edge = smoothstep(DRY_BRUSH.from, DRY_BRUSH.to, bend(p, scene))
+    const up = 0.5 + 0.5 * clamp(normal[2])
+    // Strokes drawn up and down the figure.
+    const stroke = 0.35 + 0.65 * smoothstep(0.32, 0.68, brush(p[0] * 1.1 + p[1] * 1.1, p[2] * 0.3))
+    const detail = tone > 1.05 ? DRY_BRUSH.lighter : 0
+    return { color: [1, 1, 1], alpha: clamp(DRY_BRUSH.strength * edge * up * stroke + detail) }
 }
 
 // In sRGB, as the page lays it over the paint.
@@ -94,7 +114,6 @@ function shade(p: Vec, figure: Figure, toward: Vec): Sample[] {
     const finish = figure.finish(p)
     const bounce = add(scale(normal, 2 * dot(normal, LIGHT)), scale(LIGHT, -1))
     const facing = clamp(dot(bounce, toward))
-    const gloss = GLOSS.strength * facing ** GLOSS.power
     if (finish.kind === 'wood') {
         const grain = mix(WOOD.dark, WOOD.light, 0.55 + 0.45 * Math.sin(p[2] * 2.1 + p[0] * 0.4))
         return opaque(scale(grain, light * 1.05))
@@ -106,10 +125,11 @@ function shade(p: Vec, figure: Figure, toward: Vec): Sample[] {
     }
     // As a factor on the paint's sRGB colour; more than full light lightens it.
     const factor = ((light / FULL_LIGHT) * finish.tone) ** (1 / 2.2)
-    const white = clamp(gloss + Math.max(0, factor - 1) * 0.6)
+    // Matte paint: no gloss, only the light past full lightening it.
+    const white = clamp(Math.max(0, factor - 1) * 0.6)
     const keep = Math.min(factor, 1) * (1 - white)
     const alpha = 1 - keep
-    const shine = shineOf(normal, toward, sun, finish.tone)
+    const shine = shineOf(p, normal, figure.scene, finish.tone)
     if (alpha <= 0) return [{ color: [0, 0, 0], alpha: 0 }, shine]
     const grey = white / alpha
     return [{ color: [grey, grey, grey], alpha }, shine]
@@ -224,11 +244,33 @@ function body(style: PilliStyle, p: Vec): number {
     const cape = ellipsoid([p[0], p[1], p[2] - CAPE_AT], CAPE)
     let shape = blend(robe(style, p), cape, 1.6)
     if (style.arms) shape = blend(shape, arms(style, p), 0.7)
-    if (style.trim) shape = Math.min(shape, sphere(p, [2.9, 3.6, CAPE_AT + 0.4], 1.05))
+    if (style.trim) {
+        shape = Math.min(shape, sphere(p, [2.9, 3.6, CAPE_AT + 0.4], 1.05), cord(p))
+        shape -= relief(p)
+    }
     return shape
 }
 
 const ROBE_AT_HEM = 8
+const RELIEF = { fret: 0.32, opening: 0.28, cord: 0.5 }
+const CAPE_EDGE = CAPE_AT - CAPE[2] * 0.55
+
+// A cord along the cape's lower edge.
+function cord(p: Vec): number {
+    const cape = ellipsoid([p[0], p[1], p[2] - CAPE_AT], CAPE)
+    return length2(cape, p[2] - CAPE_EDGE) - RELIEF.cord
+}
+
+// The fret stands out from the hem and the cloak's opening is cut into its front.
+function relief(p: Vec): number {
+    if (p[2] > HEM.foot && p[2] < HEM.top) return fret(p) ? RELIEF.fret : 0
+    if (p[2] > HEM.top && p[2] < CAPE_AT - 2 && openingAt(p)) return -RELIEF.opening
+    return 0
+}
+
+function openingAt(p: Vec): boolean {
+    return p[1] > 0 && Math.abs(Math.atan2(p[0], p[1])) < 0.05
+}
 
 // The stepped fret: steps rising and falling round the hem, a lighter paint.
 function fret(p: Vec): boolean {
@@ -243,14 +285,13 @@ function bodyFinish(style: PilliStyle, p: Vec): Finish {
     if (style.arms && arms(style, p) < 0.2) return paint(0.95)
     if (style.trim) {
         if (p[2] > HEM.foot && p[2] < HEM.top) return paint(fret(p) ? 1.35 : 0.78)
-        const front = Math.abs(Math.atan2(p[0], p[1]))
-        if (p[2] > HEM.top && p[2] < CAPE_AT - 2 && front < 0.05) return paint(0.7)
+        if (p[2] > HEM.top && p[2] < CAPE_AT - 2 && openingAt(p)) return paint(0.7)
+        if (cord(p) < 0.15) return paint(1.2)
         if (sphere(p, [2.9, 3.6, CAPE_AT + 0.4], 1.05) < 0.2) return paint(1.25)
     }
     if (style.robe === 'pawn' && p[2] < PLINTH.height + 0.2) return paint(0.8)
     if (style.robe === 'bell' && p[2] < 2.4) return paint(0.72)
-    const capeEdge = Math.abs(p[2] - (CAPE_AT - CAPE[2] * 0.55))
-    if (capeEdge < 0.7) return paint(1.3)
+    if (!style.trim && Math.abs(p[2] - CAPE_EDGE) < 0.7) return paint(1.3)
     return paint()
 }
 
