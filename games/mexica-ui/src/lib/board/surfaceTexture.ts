@@ -135,29 +135,77 @@ function carving(dx: number, dy: number): number {
     return clamp(groove(13, 1.1) * 0.55 + groove(5.5, 1) * 0.5 + rays * 0.45)
 }
 
-export function renderLake(style: WaterStyle, pixels = LAKE_PIXELS): Bitmap {
+// Water lighter towards the shore, `shallows` from 0 out in the lake to 1 at its edge, under
+// a swell and slow waves that run on unbroken from the lake into the canals.
+function water(style: WaterStyle): (x: number, y: number, shallows: number) => Rgb {
     const [deep, open, shallow] = [style.deep, style.open, style.shallow].map(linear)
     const swell = fractal(noise2(5), 4)
     const warp = fractal(noise2(41), 3)
-    return paint(PLAN, pixels, (x, y) => {
-        const shore = Math.exp(-distanceToLand(x, y) / 24)
-        let color = mix(mix(deep, open, swell(x * 0.01, y * 0.01)), shallow, shore * 0.8)
+    return (x, y, shallows) => {
+        let color = mix(mix(deep, open, swell(x * 0.01, y * 0.01)), shallow, shallows * 0.8)
         const bend = (warp(x * 0.015, y * 0.015) - 0.5) * 10
         const wave = Math.sin(y * 0.12 + x * 0.02 + bend)
         color = mix(color, [1, 1, 1], smoothstep(0.7, 1, wave) * 0.03)
-        color = mix(color, [0, 0, 0], smoothstep(-0.7, -1, wave) * 0.03)
-        return { color, alpha: 1 }
-    })
+        return mix(color, [0, 0, 0], smoothstep(-0.7, -1, wave) * 0.03)
+    }
 }
 
-// Canal water: deeper and stiller than the lake, with no shallows along its walls.
-export function renderCanal(style: WaterStyle, pixels = LAKE_PIXELS): Bitmap {
-    const [deep, open] = [style.deep, style.open].map(linear)
-    const swell = fractal(noise2(7), 3)
+export function renderLake(style: WaterStyle, pixels = LAKE_PIXELS): Bitmap {
+    const at = water(style)
     return paint(PLAN, pixels, (x, y) => ({
-        color: mix(mix(deep, [0, 0, 0], 0.12), open, swell(x * 0.03, y * 0.03) * 0.35),
+        color: at(x, y, CANAL_SHALLOWS * Math.exp(-distanceToLand(x, y) / 24)),
         alpha: 1
     }))
+}
+
+// Canal water is the lake's water at the shore, so a canal opens into the lake with no change
+// of colour.
+const CANAL_SHALLOWS = 0.78
+
+export function renderCanal(style: WaterStyle, pixels = LAKE_PIXELS): Bitmap {
+    const at = water(style)
+    return paint(PLAN, pixels, (x, y) => ({ color: at(x, y, CANAL_SHALLOWS), alpha: 1 }))
+}
+
+export const WALL_PIXELS = 3
+
+// A stretch of the stone wall below a bank, one cell long and `height` tall on screen: two
+// courses of blocks of uneven length, the face in the shade of the light from beyond, a lit lip
+// along the top and a wet line where it meets the water.
+export function renderWall(
+    variant: number,
+    height: number,
+    style: StoneStyle,
+    pixels = WALL_PIXELS
+): Bitmap {
+    const [light, dark, mortar] = [style.light, style.dark, style.mortar].map(linear)
+    const wet = linear('#34423a')
+    const mottle = fractal(noise2(61 + variant), 3)
+    const courses = 2
+    const starts = Array.from({ length: courses }, (_, course) => {
+        const next = seededRandom(variant * 97 + course * 13 + 5)
+        const edges = [-next() * 6]
+        while (edges[edges.length - 1] < CELL) edges.push(edges[edges.length - 1] + 7 + next() * 7)
+        return edges
+    })
+    const tones = (course: number, block: number) =>
+        seededRandom(variant * 389 + course * 31 + block * 7 + 1)()
+    return paint({ x: 0, y: 0, width: CELL, height }, pixels, (x, y) => {
+        const t = y / height
+        const course = Math.min(courses - 1, Math.floor(t * courses))
+        const edges = starts[course]
+        let block = 0
+        while (edges[block + 1] <= x) block++
+        const toEdge = Math.min(x - edges[block], edges[block + 1] - x)
+        const toCourse = Math.abs(t * courses - Math.round(t * courses)) * (height / courses)
+        const joint = clamp(1 - Math.min(toEdge, course === 0 && t < 0.5 ? 9 : toCourse) / 0.35)
+        const tone = 0.25 + tones(course, block) * 0.5 + (mottle(x * 0.3, y * 0.3) - 0.5) * 0.3
+        let color = mix(mix(light, dark, clamp(tone)), mortar, joint * 0.8)
+        color = mix(color, [0, 0, 0], 0.5)
+        color = mix(color, light, (1 - smoothstep(0, 0.6, y)) * 0.7)
+        color = mix(color, wet, smoothstep(0.7, 1, t) * 0.75)
+        return { color, alpha: 1 }
+    })
 }
 
 function distanceToLand(x: number, y: number): number {

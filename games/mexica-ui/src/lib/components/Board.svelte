@@ -13,9 +13,16 @@
         placePoints
     } from '@tabletop/mexica'
     import { getGameSession } from '$lib/model/sessionContext.svelte.js'
-    import { BRIDGE_RISE, CELL, type PlanStep } from '$lib/board/view.js'
+    import { BANK_DEPTH, BRIDGE_RISE, CELL, type PlanStep } from '$lib/board/view.js'
     import { LOOK_URLS } from '$lib/board/lookUrls.js'
-    import { CANAL_LOOK, LAKE_LOOK, PAVING_LOOK, templeLook } from '$lib/board/looks.js'
+    import {
+        CANAL_LOOK,
+        LAKE_LOOK,
+        PAVING_LOOK,
+        templeLook,
+        WALL_VARIANTS,
+        wallLook
+    } from '$lib/board/looks.js'
     import { DESIGN, templeBounds } from '$lib/board/templeShape.js'
     import { templeMark } from '$lib/board/templeMarks.js'
     import TempleMarks from './TempleMarks.svelte'
@@ -64,7 +71,6 @@
         )
     })
 
-    const WALL = 0.22
     // Neighbouring canal cells overlap a little, or their clipped edges leave a seam.
     const CLIP_OVERLAP = 0.5
     const WALL_SHADOW = 7
@@ -77,7 +83,7 @@
     // A wall drops from each stretch of land to the water just in front of it on screen, and the
     // land shades the water beyond it from the light at the upper left.
     const shore = $derived.by(() => {
-        const height = view.lift(WALL)
+        const height = view.lift(BANK_DEPTH)
         const ground = LAND_CELLS.filter((cell) => !layout.canals.has(cell))
         const walls = ground
             .filter((cell) => isWaterAt(cell, view.nearer))
@@ -111,6 +117,35 @@
             })
         return { walls, sides }
     })
+
+    // A kerb of dressed stone along every edge where the paving meets water, in plan.
+    const KERB = { width: 2.6, line: 0.7 }
+    const PLAN_SIDES: readonly PlanStep[] = [
+        { column: 0, row: -1 },
+        { column: 1, row: 0 },
+        { column: 0, row: 1 },
+        { column: -1, row: 0 }
+    ]
+    const kerbs = $derived.by(() =>
+        LAND_CELLS.filter((cell) => !layout.canals.has(cell)).flatMap((cell) =>
+            PLAN_SIDES.filter((step) => isWaterAt(cell, step)).map((step) => {
+                const left = columnOf(cell) * CELL
+                const top = rowOf(cell) * CELL
+                const across = step.column !== 0
+                const far = step.column > 0 || step.row > 0
+                const offset = (width: number) => (far ? CELL - width : 0)
+                const strip = (width: number) =>
+                    across
+                        ? { x: left + offset(width), y: top, width, height: CELL }
+                        : { x: left, y: top + offset(width), width: CELL, height: width }
+                return {
+                    key: `${cell}-${step.column}-${step.row}`,
+                    stone: strip(KERB.width),
+                    edge: strip(KERB.line)
+                }
+            })
+        )
+    )
 
     const playerFill = (playerId?: string) =>
         playerId === undefined ? 'var(--mx-neutral)' : session.playerFill(playerId)
@@ -189,12 +224,6 @@
                     ></rect>
                 {/each}
             </clipPath>
-            <linearGradient id="mx-wall" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0" stop-color="#ddd3ba"></stop>
-                <stop offset="0.25" stop-color="#bdb093"></stop>
-                <stop offset="0.85" stop-color="#90846a"></stop>
-                <stop offset="1" stop-color="#4f5a52"></stop>
-            </linearGradient>
             <radialGradient id="mx-piece-shadow">
                 <stop offset="0.55" stop-color="#2a1a08" stop-opacity="0.32"></stop>
                 <stop offset="1" stop-color="#2a1a08" stop-opacity="0"></stop>
@@ -225,13 +254,22 @@
                 clip-path="url(#mx-canal-clip)"
                 class="surface"
             ></image>
+            {#each kerbs as kerb (kerb.key)}
+                <rect {...kerb.stone} class="surface kerb"></rect>
+                <rect {...kerb.edge} class="surface kerb-edge"></rect>
+            {/each}
         </g>
         {#each shore.sides as side (side.cell)}
             <rect {...side.shadow} fill="url(#mx-side-shadow)" class="surface"></rect>
         {/each}
         {#each shore.walls as wall (wall.cell)}
             <rect {...wall.shadow} fill="url(#mx-wall-shadow)" class="surface"></rect>
-            <rect {...wall.face} fill="url(#mx-wall)" class="surface"></rect>
+            <image
+                href={LOOK_URLS[wallLook(wall.cell % WALL_VARIANTS)]}
+                {...wall.face}
+                preserveAspectRatio="none"
+                class="surface"
+            ></image>
         {/each}
 
         {#if session.showCoordinates}
@@ -444,6 +482,14 @@
 
     .mx-board {
         display: block;
+    }
+
+    .kerb {
+        fill: #ddd3bb;
+    }
+
+    .kerb-edge {
+        fill: #8a7f6a;
     }
 
     .surface,

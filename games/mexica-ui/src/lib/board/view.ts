@@ -7,6 +7,8 @@ export const FLAT = 1
 
 export const TIER_HEIGHT = 0.26
 export const BRIDGE_RISE = 0.16
+// How far the water lies below the paving, as a share of a cell.
+export const BANK_DEPTH = 0.28
 // A Pilli Mexica's height and how far its headdress reaches back, as shares of a cell, at its
 // drawn size.
 export const PILLI_SIZE = 1.3
