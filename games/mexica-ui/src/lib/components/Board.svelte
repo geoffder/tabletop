@@ -234,7 +234,8 @@
                 <rect {...kerb.edge} class="surface kerb-edge"></rect>
             {/each}
             {#each works.joins as join (join.key)}
-                <polygon points={join.points} class="surface kerb"></polygon>
+                <polygon points={join.stone} class="surface kerb"></polygon>
+                <polygon points={join.edge} class="surface kerb-edge"></polygon>
             {/each}
             {#each works.spills as spill (spill.key)}
                 <image

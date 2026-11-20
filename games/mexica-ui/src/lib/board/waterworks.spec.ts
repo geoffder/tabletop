@@ -74,7 +74,7 @@ describe('waterworks', () => {
         expect(works.joins).toHaveLength(4)
         const [left, top] = [columnOf(canal) * CELL, rowOf(canal) * CELL]
         for (const join of works.joins) {
-            const points = join.points.split(' ').map((point) => point.split(',').map(Number))
+            const points = join.stone.split(' ').map((point) => point.split(',').map(Number))
             const outside = points.every(
                 ([x, y]) =>
                     x <= left + 1e-9 ||

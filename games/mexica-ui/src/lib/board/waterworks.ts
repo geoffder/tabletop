@@ -30,7 +30,7 @@ export type Curve = {
 export type Spill = { key: string; look: string; box: Box }
 export type Kerb = { key: string; stone: Box; edge: Box }
 // Where two kerbs meet round a corner of land, a quarter round of kerb joins them.
-export type KerbJoin = { key: string; points: string }
+export type KerbJoin = { key: string; stone: string; edge: string }
 export type Zone = { key: string; points: string }
 
 export type Waterworks = {
@@ -272,7 +272,7 @@ function kerbsOf(island: Island, spot: Spot): Kerb[] {
 
 // Where a water square meets land on both sides of a corner and across it, the kerbs on either
 // side each stop at the corner, leaving a notch of the square across between them: a quarter
-// round of kerb about the corner fills it.
+// round of kerb about the corner fills it, its edge rounding the corner with it.
 function joinsOf(island: Island, spot: Spot): KerbJoin[] {
     return CORNERS.flatMap(([corner, up, beside]) => {
         const across = plus(spot, plus(STEP[up], STEP[beside]))
@@ -284,14 +284,24 @@ function joinsOf(island: Island, spot: Spot): KerbJoin[] {
             return []
         const point = cornerOf(spot, up, beside)
         const [a, b] = [toward(up), toward(beside)]
-        const arc = Array.from({ length: 9 }, (_, index) => {
-            const angle = (index / 8) * (Math.PI / 2)
-            return {
-                x: point.x + (a.x * Math.cos(angle) + b.x * Math.sin(angle)) * KERB.width,
-                y: point.y + (a.y * Math.cos(angle) + b.y * Math.sin(angle)) * KERB.width
+        const round = (radius: number) =>
+            shape([
+                point,
+                ...Array.from({ length: 9 }, (_, index) => {
+                    const angle = (index / 8) * (Math.PI / 2)
+                    return {
+                        x: point.x + (a.x * Math.cos(angle) + b.x * Math.sin(angle)) * radius,
+                        y: point.y + (a.y * Math.cos(angle) + b.y * Math.sin(angle)) * radius
+                    }
+                })
+            ])
+        return [
+            {
+                key: `join-${keyOf(spot)}-${corner}`,
+                stone: round(KERB.width),
+                edge: round(KERB.line)
             }
-        })
-        return [{ key: `join-${keyOf(spot)}-${corner}`, points: shape([point, ...arc]) }]
+        ]
     })
 }
 
