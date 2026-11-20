@@ -3,6 +3,14 @@
 import { cellAt, columnOf, isLand, isPalace, isStart, PALACE_CENTRE, rowOf } from '@tabletop/mexica'
 import { CELL } from './view.js'
 import { SLOPE_WIDTH, type SlopeCorner, type SlopeSide } from './looks.js'
+import {
+    SPILL_HEAP,
+    spillBox,
+    spillFrame,
+    type SpillKind,
+    spillRocks,
+    toPlan
+} from './spillShape.js'
 import { PLAN } from './plan.js'
 import {
     type Bitmap,
@@ -480,59 +488,42 @@ export function renderShore(pixels = SHORE_PIXELS): Bitmap {
     })
 }
 
-// A spill of rocks where a stretch of shore is cut short, reaching out from the land towards
-// the side named, `reach` long, in plan: rocks heaped thickest by the land and thinning out,
-// packed in earth, lit as the shore's rocks are.
+// A spill of rocks where a stretch of shore is cut short beside a canal's bank, round the
+// corner of land where the shore ends (board/spillShape.ts lays it out), lit as the shore's rocks
+// are: the heap bedded in earth on the shore, the rocks spilt down the bank lying on its bricks.
 export function renderSpill(
-    side: 'n' | 'e' | 's' | 'w',
+    out: SlopeSide,
+    end: SlopeSide,
+    kind: SpillKind,
     variant: number,
-    reach: number,
     pixels = SHORE_PIXELS * 2
 ): Bitmap {
     const [light, dark, earth] = [ROCK.light, ROCK.dark, ROCK.earth].map(linear)
-    const wetTint = linear(TURQUOISE.deep)
     const grit = noise2(97 + variant)
     const lumps = fractal(noise2(101 + variant), 2)
-    const out = { n: [0, -1], s: [0, 1], e: [1, 0], w: [-1, 0] }[side]
-    const across = [-out[1], out[0]]
-    const half = reach / 2
-    const wide = reach * 0.4
-    const next = seededRandom(variant * 977 + 31)
-    // Rocks in rows out from the land, largest and most crowded near it.
-    const rocks: Rock[] = []
-    for (let row = 0; row < 5; row++) {
-        const along = -half + 1.5 + row * (reach / 5)
-        const count = 4 - Math.floor(row / 2)
-        for (let index = 0; index < count; index++) {
-            const sideways = (index / Math.max(1, count - 1) - 0.5) * wide * (1.4 - row * 0.15)
-            const jitter = (next() - 0.5) * 1.6
-            rocks.push({
-                x: out[0] * (along + jitter) + across[0] * (sideways + (next() - 0.5) * 1.5),
-                y: out[1] * (along + jitter) + across[1] * (sideways + (next() - 0.5) * 1.5),
-                radius: 2.9 - row * 0.32 + next() * 0.8,
-                tone: next()
-            })
-        }
-    }
-    const width = Math.max(Math.abs(out[0]) * reach, Math.abs(across[0]) * wide * 2) + 6
-    const height = Math.max(Math.abs(out[1]) * reach, Math.abs(across[1]) * wide * 2) + 6
-    const box = { x: -width / 2, y: -height / 2, width, height }
-    return paint(box, pixels, (x, y) => {
-        const lump = (lumps(x * 0.45, y * 0.45) - 0.5) * 0.5
+    const frame = spillFrame(out, end)
+    const rocks = spillRocks(kind, variant).map((rock, index) => ({
+        ...toPlan(frame, rock.u, rock.v),
+        radius: rock.radius,
+        tone: rock.tone,
+        heap: index < SPILL_HEAP
+    }))
+    return paint(spillBox(out, end, kind, variant), pixels, (x, y) => {
+        const lump = (lumps(x * 0.45, y * 0.45) - 0.5) * 0.45
         let top: { height: number; nx: number; ny: number; rim: number; tone: number } | undefined
+        let bedded = 0
         for (const rock of rocks) {
             const radius = rock.radius * (1 + lump)
             const dx = (x - rock.x) / radius
             const dy = (y - rock.y) / radius
             const r2 = dx * dx + dy * dy
+            if (rock.heap) bedded = Math.max(bedded, 1 - smoothstep(1, 1.5, Math.sqrt(r2)))
             if (r2 >= 1) continue
             const height = (1 - r2) ** 0.6 * radius
             if (top === undefined || height > top.height) {
                 top = { height, nx: dx, ny: dy, rim: Math.sqrt(r2), tone: rock.tone }
             }
         }
-        const along = x * out[0] + y * out[1]
-        const wet = smoothstep(0, half, along)
         if (top !== undefined) {
             const steep = (1.7 * top.rim) / Math.sqrt(1 - top.rim * top.rim + 0.08)
             const nx = top.nx * steep
@@ -543,15 +534,11 @@ export function renderSpill(
             let color = mix(dark, light, clamp(lit * (0.7 + top.tone * 0.45)))
             color = mix(color, earth, (grit(x * 1.3, y * 1.3) - 0.5) * 0.25 + 0.05)
             color = mix(color, [0, 0, 0], smoothstep(0.7, 1, top.rim) * 0.35)
-            color = mix(color, mix(color, wetTint, 0.3), wet * 0.6)
-            return { color, alpha: 1 }
+            // Each rock sits a little on its own shadow.
+            return { color, alpha: clamp((1 - top.rim) * 12) }
         }
-        // Earth between the rocks, thinning out away from the land and to the sides.
-        const sideways = Math.abs(x * across[0] + y * across[1]) / (wide * 1.2)
-        const reachOut = (along + half) / reach
-        const ground = (1 - smoothstep(0.55, 1, sideways)) * (1 - smoothstep(0.45, 0.85, reachOut))
         const color = mix(earth, [0, 0, 0], (grit(x * 0.9, y * 0.9) - 0.5) * 0.25 + 0.15)
-        return { color, alpha: ground * 0.9 }
+        return { color, alpha: bedded * 0.85 }
     })
 }
 

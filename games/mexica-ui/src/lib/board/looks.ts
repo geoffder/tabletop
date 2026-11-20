@@ -22,8 +22,11 @@ export function slopeCornerLook(corner: SlopeCorner): string {
     return `slope-corner-${corner}`
 }
 
-export const SPILL_VARIANTS = 3
-
-export function spillLook(side: SlopeSide, variant: number): string {
-    return `spill-${side}-${variant}`
+export function spillLook(
+    out: SlopeSide,
+    end: SlopeSide,
+    kind: 'across' | 'along',
+    variant: number
+): string {
+    return `spill-${out}-${end}-${kind}-${variant}`
 }
