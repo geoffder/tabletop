@@ -21,9 +21,7 @@
     }
 
     function markColor(entry: HistoryEntry): string {
-        return entry.kind === 'turn'
-            ? session.colors.getPlayerBgColorValue(entry.playerId)
-            : 'transparent'
+        return entry.kind === 'turn' ? session.playerFill(entry.playerId) : 'transparent'
     }
 </script>
 

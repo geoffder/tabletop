@@ -9,7 +9,7 @@
     const game = $derived(session.gameState)
     const shown = $derived(me !== undefined && game.machineState === 'Acting')
     const tokens = $derived(me === undefined ? 0 : game.getPlayerState(me).actionTokens)
-    const fill = $derived(me === undefined ? '#888' : session.colors.getPlayerBgColorValue(me))
+    const fill = $derived(me === undefined ? '#888' : session.playerFill(me))
     const left = (level: Level) => (me === undefined ? 0 : game.templesLeft(me, level))
     const usable = (level: Level) => session.templeLevels.includes(level)
 </script>
