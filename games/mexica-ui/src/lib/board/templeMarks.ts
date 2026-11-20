@@ -43,8 +43,8 @@ function roundedUnion(outlines: readonly { box: Box; round: number }[]): string 
 
 // The parts of a face either side of the stair in front of it.
 function besideStair(box: Box): Box[] {
-    const left = -TEMPLE.stairHalf
-    const right = TEMPLE.stairHalf
+    const left = -TEMPLE.stairHalf - TEMPLE.wall.width
+    const right = TEMPLE.stairHalf + TEMPLE.wall.width
     return [
         { ...box, width: Math.min(box.x + box.width, left) - box.x },
         { ...box, x: right, width: box.x + box.width - right }

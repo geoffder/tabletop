@@ -9,10 +9,12 @@ export const TEMPLE = {
     half: 0.4 * CELL,
     inset: 0.065 * CELL,
     tier: TIER_HEIGHT * CELL,
-    stairHalf: 0.11 * CELL,
-    stepsPerTier: 3,
+    stairHalf: 0.13 * CELL,
+    stairReach: 3,
+    stepsPerTier: 2,
+    wall: { width: 1.4, above: 1.2 },
     round: 1.4,
-    stairRound: 0.35
+    stairRound: 0.3
 }
 
 export function riseOf(tilt: number): number {
@@ -33,21 +35,28 @@ export function tierBlocks(level: Level): Block[] {
     })
 }
 
-// The stair up the front, from the base's front edge to the top tier's.
+// The stair up the front, from just before the base to the top tier's front edge, between
+// low walls a little higher than its steps.
 export function stairBlocks(level: Level): Block[] {
-    const front = TEMPLE.half
+    const front = TEMPLE.half + TEMPLE.stairReach
     const top = TEMPLE.half - TEMPLE.inset * (level - 1)
+    const peak = TEMPLE.tier * level
     const steps = TEMPLE.stepsPerTier * level
     const run = (front - top) / steps
-    const height = (TEMPLE.tier * level) / steps
-    return Array.from({ length: steps }, (_, step) => ({
-        x0: -TEMPLE.stairHalf,
-        x1: TEMPLE.stairHalf,
-        y0: top - TEMPLE.inset,
-        y1: front - run * step,
-        z0: 0,
-        z1: height * (step + 1)
-    }))
+    const rise = peak / steps
+    const half = TEMPLE.stairHalf
+    const wall = TEMPLE.wall
+    return Array.from({ length: steps }, (_, step) => {
+        const y0 = top - TEMPLE.inset
+        const y1 = front - run * step
+        const z1 = rise * (step + 1)
+        const wallTop = Math.min(z1 + wall.above, peak)
+        return [
+            { x0: -half, x1: half, y0, y1, z0: 0, z1 },
+            { x0: -half - wall.width, x1: -half, y0, y1, z0: 0, z1: wallTop },
+            { x0: half, x1: half + wall.width, y0, y1, z0: 0, z1: wallTop }
+        ]
+    }).flat()
 }
 
 export function templeBlocks(level: Level): Block[] {
