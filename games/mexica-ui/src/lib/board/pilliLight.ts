@@ -101,7 +101,7 @@ function shineOf(p: Vec, normal: Vec, scene: Scene, tone: number): Sample {
     const up = 0.5 + 0.5 * clamp(normal[2])
     // Strokes drawn up and down the figure.
     const stroke = 0.35 + 0.65 * smoothstep(0.32, 0.68, brush(p[0] * 1.1 + p[1] * 1.1, p[2] * 0.3))
-    const detail = tone > 1.05 ? DRY_BRUSH.lighter : 0
+    const detail = DRY_BRUSH.lighter * clamp((tone - 1) / 0.4)
     return { color: [1, 1, 1], alpha: clamp(DRY_BRUSH.strength * edge * up * stroke + detail) }
 }
 
@@ -206,7 +206,18 @@ const PLINTH = { height: 1.8, radius: 9.1, round: 0.7 }
 const CAPE: Vec = [6.4, 4.6, 2.9]
 const CAPE_AT = 15.6
 const HEAD = { radius: 3.7, at: [0, 0.3, 21.2] satisfies Vec }
-const HEM = { foot: 1.4, top: 3.8, period: 3.2 }
+// The band round the hem, clear of the ring at the foot: a raised line along each edge and
+// between them a stepped fret, repeating a whole number of times round the robe.
+const HEM = {
+    foot: 2.3,
+    top: 5.1,
+    repeats: 8,
+    steps: 2,
+    line: 0.32,
+    soft: 0.14,
+    studs: 18,
+    stud: 0.55
+}
 
 // The pawn's radius at a height: flaring out towards the foot.
 function pawnRadius(z: number): number {
@@ -319,15 +330,15 @@ function body(style: PilliStyle, p: Vec): number {
     if (style.arms) shape = blend(shape, arms(style, p), 0.7)
     if (style.trim) {
         shape = Math.min(shape, cord(p))
-        shape -= relief(p)
+        shape -= relief(style, p)
+        if (style.hem === 'studs') shape = Math.min(shape, studs(style, p))
     }
     const tied = knotOf(style)
     if (tied) shape = blend(shape, knot(tied, p), 0.25)
     return shape
 }
 
-const ROBE_AT_HEM = 8
-const RELIEF = { fret: 0.32, opening: 0.28, cord: 0.5 }
+const RELIEF = { fret: 0.26, line: 0.22, opening: 0.28, cord: 0.5 }
 const CAPE_EDGE = CAPE_AT - CAPE[2] * 0.55
 
 // A cord along the cape's lower edge.
@@ -336,9 +347,12 @@ function cord(p: Vec): number {
     return length2(cape, p[2] - CAPE_EDGE) - RELIEF.cord
 }
 
-// The fret stands out from the hem and the cloak's opening is cut into its front.
-function relief(p: Vec): number {
-    if (p[2] > HEM.foot && p[2] < HEM.top) return fret(p) ? RELIEF.fret : 0
+// The fret and the hem's edge lines stand out from the robe, and the cloak's opening is cut
+// into its front.
+function relief(style: PilliStyle, p: Vec): number {
+    if (p[2] > HEM.foot - HEM.line && p[2] < HEM.top + HEM.line) {
+        return Math.max(RELIEF.line * hemLine(p), RELIEF.fret * hemPattern(style, p))
+    }
     if (p[2] > HEM.top && p[2] < CAPE_AT - 2 && openingAt(p)) return -RELIEF.opening
     return 0
 }
@@ -347,13 +361,41 @@ function openingAt(p: Vec): boolean {
     return p[1] > 0 && Math.abs(Math.atan2(p[0], p[1])) < 0.05
 }
 
-// The stepped fret: steps rising and falling round the hem, a lighter paint.
-function fret(p: Vec): boolean {
-    const around = Math.atan2(p[0], p[1]) * ROBE_AT_HEM
-    const s = (((around / HEM.period) % 1) + 1) % 1
-    const h = (p[2] - HEM.foot) / (HEM.top - HEM.foot)
-    const step = Math.floor((s < 0.5 ? s : 1 - s) * 8) / 4
-    return h > 0.12 && h < 0.88 && h - 0.12 < step * 0.76 + 0.1
+// How fully a point is on one of the hem's edge lines, softened at their edges.
+function hemLine(p: Vec): number {
+    const off = Math.min(Math.abs(p[2] - HEM.foot), Math.abs(p[2] - HEM.top))
+    return 1 - smoothstep(HEM.line / 2 - HEM.soft, HEM.line / 2 + HEM.soft, off)
+}
+
+function hemPattern(style: PilliStyle, p: Vec): number {
+    return style.hem === 'fret' ? fret(p) : 0
+}
+
+// Round studs in a ring between the hem's lines, standing on the robe.
+function studs(style: PilliStyle, p: Vec): number {
+    const z = (HEM.foot + HEM.top) / 2
+    const turn = Math.atan2(p[0], p[1]) / (2 * Math.PI)
+    const nearest = (Math.round(turn * HEM.studs) / HEM.studs) * 2 * Math.PI
+    const r = robeRadius(style, z) - 0.1
+    const centre: Vec = [Math.sin(nearest) * r, Math.cos(nearest) * r, z]
+    return sphere(p, centre, HEM.stud)
+}
+
+// How fully a point is on the stepped fret: steps rising to a peak and falling again between
+// the edge lines, each step's edges softened.
+function fret(p: Vec): number {
+    const turn = (Math.atan2(p[0], p[1]) / (2 * Math.PI)) * HEM.repeats
+    const s = turn - Math.floor(turn)
+    const climb = (s < 0.5 ? s : 1 - s) * 2 * HEM.steps
+    const whole = Math.floor(climb)
+    const level = (whole + smoothstep(1 - 0.18, 1, climb - whole)) / HEM.steps
+    const inner = HEM.line
+    const height = HEM.top - HEM.foot - 2 * inner
+    const top = HEM.foot + inner + height * (0.2 + 0.8 * level)
+    const above = p[2] - (HEM.foot + inner)
+    return (
+        smoothstep(-HEM.soft, HEM.soft, above) * (1 - smoothstep(-HEM.soft, HEM.soft, p[2] - top))
+    )
 }
 
 function bodyFinish(style: PilliStyle, p: Vec): Finish {
@@ -361,7 +403,10 @@ function bodyFinish(style: PilliStyle, p: Vec): Finish {
     const tied = knotOf(style)
     if (tied && knot(tied, p) < 0.15) return paint(1.08)
     if (style.trim) {
-        if (p[2] > HEM.foot && p[2] < HEM.top) return paint(fret(p) ? 1.35 : 0.78)
+        if (p[2] > HEM.foot - HEM.line && p[2] < HEM.top + HEM.line) {
+            const studded = style.hem === 'studs' && studs(style, p) < 0.15 ? 1 : 0
+            return paint(0.8 + 0.45 * Math.max(hemPattern(style, p), hemLine(p), studded))
+        }
         if (p[2] > HEM.top && p[2] < CAPE_AT - 2 && openingAt(p)) return paint(0.7)
         if (cord(p) < 0.15) return paint(1.2)
     }

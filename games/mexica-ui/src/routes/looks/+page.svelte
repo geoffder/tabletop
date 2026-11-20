@@ -16,6 +16,7 @@
     import { ownerMark } from '$lib/board/templeMarks.js'
     import { renderPilli } from '$lib/board/pilliLight.js'
     import {
+        PILLI_SHINE,
         PILLI_STYLE,
         type PilliStyle,
         pilliBounds,
@@ -40,11 +41,11 @@
     let figures: Record<string, Figure> | undefined = $state()
     // Dry-brushed over the darker paints in a range of strengths.
     const FIGURE_STYLES: [string, PilliStyle][] = [
-        ['no knot', { ...PILLI_STYLE, knot: 'none' }],
-        ['shoulder knot', { ...PILLI_STYLE, knot: 'shoulder' }],
-        ['chest knot', { ...PILLI_STYLE, knot: 'chest' }]
+        ['fret', { ...PILLI_STYLE, hem: 'fret' }],
+        ['studs', { ...PILLI_STYLE, hem: 'studs' }],
+        ['lines', { ...PILLI_STYLE, hem: 'lines' }]
     ]
-    const SHINES = [0, 0.3]
+    const SHINES = [PILLI_SHINE]
     const FIGURE_ROWS = FIGURE_STYLES.flatMap(([name]) => SHINES.map((shine) => ({ name, shine })))
     const FIGURE_COLORS: readonly Color[] = [
         Color.Green,
