@@ -13,6 +13,7 @@ import {
     linear,
     mix,
     noise2,
+    normalize,
     type Rgb,
     scale,
     smoothstep,
@@ -23,7 +24,6 @@ import { PILLI_PIXELS, PILLI_STYLE, type PilliStyle, pilliBounds } from './pilli
 import { PILLI_SIZE } from './view.js'
 import {
     castRays,
-    LIGHT,
     normalAt,
     occlusion,
     outlineOf,
@@ -34,8 +34,8 @@ import {
 
 const WOOD = { light: linear('#e2bf91'), dark: linear('#b98a5a') }
 const GOLD = { light: linear('#f0c85a'), dark: linear('#8a5a1c') }
-// The light on a painted face turned up towards it shows the paint as it is.
-const FULL_LIGHT = 0.92
+// The light on a painted face turned towards it shows the paint as it is.
+const FULL_LIGHT = 0.95
 
 // What a point of the figure is made of: paint, lightened (above 1) or darkened (below) by
 // what is painted there, bare wood or gold.
@@ -105,28 +105,47 @@ function shineOf(p: Vec, normal: Vec, scene: Scene, tone: number): Sample {
     return { color: [1, 1, 1], alpha: clamp(DRY_BRUSH.strength * edge * up * stroke + detail) }
 }
 
+// Lit as ZÈRTZ lights its pieces: a key light from above, to the left and a little in front,
+// so the side towards the viewer shows its form; little light besides; the edges turned from
+// the viewer reflecting the room above and the paving below, as satin paint does.
+const KEY: Vec = normalize([-0.62, 0.24, 0.75])
+const AMBIENT = 0.22
+const ROOM = 0.32
+const PAVING = 0.5
+const SATIN = 0.45
+
+function fresnel(cosine: number): number {
+    return 0.04 + 0.96 * (1 - clamp(cosine)) ** 5
+}
+
 // In sRGB, as the page lays it over the paint.
 function shade(p: Vec, figure: Figure, toward: Vec): Sample[] {
     const normal = normalAt(p, figure.scene)
-    const sun = clamp(dot(normal, LIGHT)) * (0.3 + 0.7 * softShadow(p, normal, figure.scene))
-    const sky = 0.14 * Math.max(0, normal[1]) + 0.12 * Math.max(0, normal[2])
-    const light = (0.38 + 0.62 * sun + sky) * occlusion(p, normal, figure.scene)
+    const sun = clamp(dot(normal, KEY)) * softShadow(p, normal, figure.scene, KEY)
+    const occluded =
+        occlusion(p, normal, figure.scene) * (0.6 + 0.4 * smoothstep(-0.85, 0.2, normal[2]))
+    const sky = AMBIENT * (0.7 + 0.3 * normal[2])
+    const light = (sky + 0.95 * sun) * occluded
+    const mirror = add(scale(normal, 2 * dot(normal, toward)), scale(toward, -1))
+    const surround = ROOM + (PAVING - ROOM) * smoothstep(0, -0.35, mirror[2])
+    const glance = fresnel(dot(normal, toward)) * surround * occluded
     const finish = figure.finish(p)
-    const bounce = add(scale(normal, 2 * dot(normal, LIGHT)), scale(LIGHT, -1))
-    const facing = clamp(dot(bounce, toward))
     if (finish.kind === 'wood') {
         const grain = mix(WOOD.dark, WOOD.light, 0.55 + 0.45 * Math.sin(p[2] * 2.1 + p[0] * 0.4))
-        return opaque(scale(grain, light * 1.05))
+        const lit = scale(grain, light)
+        return opaque(add(lit, [glance * 0.3, glance * 0.3, glance * 0.3]))
     }
     if (finish.kind === 'gold') {
-        const metal = mix(GOLD.dark, GOLD.light, clamp(sun * 0.8 + facing ** 4 * 0.6))
-        const shine = 0.9 * facing ** 16
-        return opaque(add(scale(metal, 0.35 + 0.75 * light), [shine, shine * 0.9, shine * 0.6]))
+        const half = normalize(add(KEY, toward))
+        const facing = clamp(dot(normal, half))
+        const metal = mix(GOLD.dark, GOLD.light, clamp(sun * 0.7 + facing ** 4 * 0.5))
+        const shine = 0.8 * facing ** 24
+        return opaque(add(scale(metal, 0.3 + 0.8 * light), [shine, shine * 0.9, shine * 0.6]))
     }
-    // As a factor on the paint's sRGB colour; more than full light lightens it.
+    // As a factor on the paint's sRGB colour; more than full light, and the satin's
+    // reflections, lighten it.
     const factor = ((light / FULL_LIGHT) * finish.tone) ** (1 / 2.2)
-    // Matte paint: no gloss, only the light past full lightening it.
-    const white = clamp(Math.max(0, factor - 1) * 0.6)
+    const white = clamp(Math.max(0, factor - 1) * 0.6 + srgb(glance * SATIN))
     const keep = Math.min(factor, 1) * (1 - white)
     const alpha = 1 - keep
     const shine = shineOf(p, normal, figure.scene, finish.tone)
@@ -245,7 +264,7 @@ function body(style: PilliStyle, p: Vec): number {
     let shape = blend(robe(style, p), cape, 1.6)
     if (style.arms) shape = blend(shape, arms(style, p), 0.7)
     if (style.trim) {
-        shape = Math.min(shape, sphere(p, [2.9, 3.6, CAPE_AT + 0.4], 1.05), cord(p))
+        shape = Math.min(shape, cord(p))
         shape -= relief(p)
     }
     return shape
@@ -287,7 +306,6 @@ function bodyFinish(style: PilliStyle, p: Vec): Finish {
         if (p[2] > HEM.foot && p[2] < HEM.top) return paint(fret(p) ? 1.35 : 0.78)
         if (p[2] > HEM.top && p[2] < CAPE_AT - 2 && openingAt(p)) return paint(0.7)
         if (cord(p) < 0.15) return paint(1.2)
-        if (sphere(p, [2.9, 3.6, CAPE_AT + 0.4], 1.05) < 0.2) return paint(1.25)
     }
     if (style.robe === 'pawn' && p[2] < PLINTH.height + 0.2) return paint(0.8)
     if (style.robe === 'bell' && p[2] < 2.4) return paint(0.72)
