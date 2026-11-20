@@ -42,7 +42,8 @@
     // Dry-brushed over the darker paints in a range of strengths.
     const FIGURE_STYLES: [string, PilliStyle][] = [
         ['lines', { ...PILLI_STYLE, hem: 'lines' }],
-        ['triangles', { ...PILLI_STYLE, hem: 'triangles' }]
+        ['triangles', { ...PILLI_STYLE, hem: 'triangles' }],
+        ['studs', { ...PILLI_STYLE, hem: 'studs' }]
     ]
     const SHINES = [PILLI_SHINE]
     const FIGURE_ROWS = FIGURE_STYLES.flatMap(([name]) => SHINES.map((shine) => ({ name, shine })))
