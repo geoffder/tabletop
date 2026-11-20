@@ -1,4 +1,4 @@
-// A stone temple of brick courses, lit pixel by pixel by marching rays against rounded boxes.
+// A stone temple of cut blocks, lit pixel by pixel by marching rays against rounded boxes.
 // Only scripts/render-looks.mjs runs this, through the /looks page; rerun it after changing the
 // temple or its stone.
 import type { Level } from '@tabletop/mexica'
@@ -7,7 +7,9 @@ import {
     type Bitmap,
     clamp,
     dot,
+    fractal,
     linear,
+    noise2,
     mix,
     normalize,
     type Rgb,
@@ -26,14 +28,20 @@ const SUPERSAMPLE = 3
 const HIT = 0.004
 const FAR = 160
 
-const BRICK = { length: 8.3, joint: 0.34, round: 0.6 }
+const BLOCK = { shortest: 9, longest: 17, slabRow: 6.5, joint: 0.42, round: 0.7 }
 
-export type TempleStone = { light: string; dark: string; joint: string }
+export type TempleStone = { light: string; dark: string; joint: string; warm: string; cool: string }
 
-export const TEMPLE_STONE: TempleStone = { light: '#e2e1dc', dark: '#aeaca5', joint: '#8b8981' }
+export const TEMPLE_STONE: TempleStone = {
+    light: '#e4e2db',
+    dark: '#a19e95',
+    joint: '#5f5c55',
+    warm: '#d6c9b0',
+    cool: '#bfc3c4'
+}
 
 type Shape = { block: Block; round: number; tier: number }
-type Stone = { light: Rgb; dark: Rgb; joint: Rgb }
+type Stone = { light: Rgb; dark: Rgb; joint: Rgb; warm: Rgb; cool: Rgb }
 type Scene = (p: Vec) => number
 
 export function renderTemple(
@@ -51,7 +59,9 @@ export function renderTemple(
     const colors: Stone = {
         light: linear(stone.light),
         dark: linear(stone.dark),
-        joint: linear(stone.joint)
+        joint: linear(stone.joint),
+        warm: linear(stone.warm),
+        cool: linear(stone.cool)
     }
     const toward: Vec = [0, rise, tilt]
     const scene: Scene = (p) => nearest(p, shapes).distance
@@ -155,42 +165,83 @@ function softShadow(p: Vec, normal: Vec, scene: Scene): number {
 
 function shade(p: Vec, shapes: readonly Shape[], scene: Scene, stone: Stone): Rgb {
     const surface = normalAt(p, scene)
-    const brick = brickAt(p, surface, nearest(p, shapes).shape)
-    const normal = normalize(add(surface, brick.tip))
-    const base = mix(
-        mix(stone.light, stone.dark, 0.25 + brick.tone * 0.3),
-        stone.joint,
-        brick.joint
-    )
+    const cut = stoneAt(p, surface, nearest(p, shapes).shape)
+    const normal = normalize(add(surface, cut.tip))
+    const body = mix(stone.light, stone.dark, clamp(cut.tone))
+    const cast = mix(body, cut.hue > 0 ? stone.warm : stone.cool, Math.abs(cut.hue))
+    const base = mix(cast, stone.joint, cut.joint)
     const sun = clamp(dot(normal, LIGHT)) * (0.35 + 0.65 * softShadow(p, surface, scene))
     const sky = 0.12 * Math.max(0, normal[1]) + 0.1 * Math.max(0, normal[2])
     return scale(base, (0.4 + 0.6 * sun + sky) * occlusion(p, surface, scene))
 }
 
-// Bricks in courses round each tier, every other course set over by half a brick; on tops they
-// run left to right. Within `round` of a brick's edge its face rolls into the joint.
-function brickAt(p: Vec, normal: Vec, shape: Shape): { tip: Vec; joint: number; tone: number } {
+const mottle = fractal(noise2(97), 4)
+const pits = fractal(noise2(113), 3)
+const wander = noise2(127)
+const chips = noise2(131)
+
+// Where the blocks of one course start, from the left: lengths drawn from its own seed.
+function blockStarts(seed: number): number[] {
+    const next = seededRandom(seed)
+    const starts = [-40 - next() * BLOCK.longest]
+    while (starts[starts.length - 1] < 40) {
+        const length = BLOCK.shortest + next() * (BLOCK.longest - BLOCK.shortest)
+        starts.push(starts[starts.length - 1] + length)
+    }
+    return starts
+}
+
+const COURSES = new Map<number, number[]>()
+
+function courseStarts(seed: number): number[] {
+    let starts = COURSES.get(seed)
+    if (starts === undefined) {
+        starts = blockStarts(seed)
+        COURSES.set(seed, starts)
+    }
+    return starts
+}
+
+type Cut = { tip: Vec; joint: number; tone: number; hue: number }
+
+// Cut stone in courses of blocks of uneven length: each block's face sits at a slight tilt of
+// its own, is pitted and mottled, has a warmer or cooler cast, and wears unevenly into the
+// joints round it. The stair is smooth stone, so its steps read.
+function stoneAt(p: Vec, normal: Vec, shape: Shape): Cut {
     const onTop = normal[2] > 0.7
     const sideways = Math.abs(normal[0]) > 0.7
-    if (shape.tier < 0 || (!onTop && !sideways && Math.abs(normal[1]) <= 0.7))
-        return { tip: [0, 0, 0], joint: 0, tone: 0.5 }
+    if (shape.tier < 0 || (!onTop && !sideways && Math.abs(normal[1]) <= 0.7)) {
+        const tone = 0.3 + (mottle(p[0] * 0.3, p[2] * 0.3) - 0.5) * 0.25
+        return { tip: [0, 0, 0], joint: 0, tone, hue: 0 }
+    }
     const block = shape.block
-    const courseHeight = TEMPLE.tier / 2
     const uAxis: Vec = sideways ? [0, 1, 0] : [1, 0, 0]
     const vAxis: Vec = onTop ? [0, 1, 0] : [0, 0, 1]
-    const u = dot(p, uAxis) + 100
+    const u = dot(p, uAxis)
     const v = onTop ? p[1] - block.y0 : p[2] - block.z0
-    const rowHeight = courseHeight
-    const row = Math.floor(v / rowHeight)
-    const shifted = u + (row % 2 === 0 ? 0 : BRICK.length / 2)
-    const column = Math.floor(shifted / BRICK.length)
-    const fu = shifted - column * BRICK.length
-    const fv = v - row * rowHeight
-    const edges = [fu, BRICK.length - fu, fv, rowHeight - fv]
+    const courseHeight = onTop ? BLOCK.slabRow : block.z1 - block.z0
+    const course = Math.floor(v / courseHeight)
+    const seed = (shape.tier + 3) * 7919 + course * 131 + (onTop ? 17 : sideways ? 29 : 0)
+    const starts = courseStarts(seed)
+    let index = 0
+    while (starts[index + 1] <= u) index++
+    const fu = u - starts[index]
+    const length = starts[index + 1] - starts[index]
+    const fv = v - course * courseHeight
+    const draw = seededRandom(seed * 31 + index * 7 + 1)
+    const [r1, r2, r3, r4, r5] = [draw(), draw(), draw(), draw(), draw()]
+    const jitter = (wander(u * 0.35 + seed, v * 0.35) - 0.5) * 0.6
+    const edges = [fu, length - fu, fv, courseHeight - fv].map((edge) => edge + jitter)
     const toEdge = Math.min(...edges)
     const out = [scale(uAxis, -1), uAxis, scale(vAxis, -1), vAxis][edges.indexOf(toEdge)]
-    const roll = toEdge < BRICK.round ? (1 - toEdge / BRICK.round) ** 2 * 0.8 : 0
-    const joint = clamp(1 - (toEdge - BRICK.joint / 2) / 0.12)
-    const tone = seededRandom((shape.tier + 3) * 7919 + row * 131 + column * 17 + (onTop ? 5 : 0))()
-    return { tip: scale(out, roll), joint: joint * 0.85, tone }
+    const chipped = chips(u * 0.3, v * 0.3 + seed) > 0.72 ? 1.8 : 1
+    const wear = BLOCK.round * (0.6 + r3 * 0.9) * chipped
+    const roll = toEdge < wear ? (1 - toEdge / wear) ** 2 * 0.85 : 0
+    const joint = clamp(1 - (toEdge - BLOCK.joint / 2) / 0.15)
+    const pit = (du: number, dv: number) => pits(u * 0.9 + du, v * 0.9 + seed + dv)
+    const pitU = (pit(0.4, 0) - pit(-0.4, 0)) * 1.4
+    const pitV = (pit(0, 0.4) - pit(0, -0.4)) * 1.4
+    const tilt = add(scale(uAxis, (r1 - 0.5) * 0.16 + pitU), scale(vAxis, (r2 - 0.5) * 0.16 + pitV))
+    const tone = 0.08 + r4 * 0.5 + (mottle(u * 0.25, v * 0.25 + seed) - 0.5) * 0.5
+    return { tip: add(tilt, scale(out, roll)), joint: joint * 0.9, tone, hue: (r5 - 0.5) * 0.7 }
 }
