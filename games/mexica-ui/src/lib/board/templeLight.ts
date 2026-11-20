@@ -18,7 +18,20 @@ import {
     type Vec
 } from './light.js'
 import { seededRandom } from './random.js'
-import { type Block, riseOf, stairBlocks, TEMPLE, templeBounds, tierBlocks } from './templeShape.js'
+import {
+    type Block,
+    DESIGN,
+    doorwayBlocks,
+    peakOf,
+    pipCentres,
+    riseOf,
+    shrineBlocks,
+    stairBlocks,
+    TEMPLE,
+    type TempleDesign,
+    templeBounds,
+    tierBlocks
+} from './templeShape.js'
 
 export const TEMPLE_PIXELS = 3
 
@@ -43,19 +56,47 @@ export const TEMPLE_STONE: TempleStone = {
 type Shape = { block: Block; round: number; tier: number }
 type Stone = { light: Rgb; dark: Rgb; joint: Rgb; warm: Rgb; cool: Rgb }
 type Scene = (p: Vec) => number
+// Hollows cut out of the stone: shrine doorways and the pips on the top.
+type Hollow = (p: Vec) => number
 
 export function renderTemple(
     level: Level,
     tilt: number,
+    design: TempleDesign = DESIGN,
     stone = TEMPLE_STONE,
     pixels = TEMPLE_PIXELS
 ): Bitmap {
-    const box = templeBounds(level, tilt)
+    const box = templeBounds(level, tilt, design)
     const rise = riseOf(tilt)
     const shapes: Shape[] = [
-        ...tierBlocks(level).map((block, tier) => ({ block, round: TEMPLE.round, tier })),
-        ...stairBlocks(level).map((block) => ({ block, round: TEMPLE.stairRound, tier: -1 }))
+        ...tierBlocks(level, design).map((block, tier) => ({ block, round: TEMPLE.round, tier })),
+        ...stairBlocks(level, design).map((block) => ({
+            block,
+            round: TEMPLE.stairRound,
+            tier: -1
+        })),
+        ...shrineBlocks(level, design).map((block, index) => ({
+            block,
+            round: 0.6,
+            tier: level + index
+        }))
     ]
+    const doorways = doorwayBlocks(level, design)
+    const peak = peakOf(level, design)
+    const pips = design.pips === 'carved' ? pipCentres(level, design) : []
+    const hollow: Hollow = (p) =>
+        Math.min(
+            ...doorways.map((block) => roundedBox(p, block, 0.3)),
+            ...pips.map(
+                (pip) =>
+                    Math.hypot(
+                        p[0] - pip.x,
+                        p[1] - pip.y,
+                        p[2] - (peak + pip.radius - TEMPLE.pip.depth)
+                    ) - pip.radius
+            ),
+            Infinity
+        )
     const colors: Stone = {
         light: linear(stone.light),
         dark: linear(stone.dark),
@@ -64,7 +105,7 @@ export function renderTemple(
         cool: linear(stone.cool)
     }
     const toward: Vec = [0, rise, tilt]
-    const scene: Scene = (p) => nearest(p, shapes).distance
+    const scene: Scene = (p) => Math.max(nearest(p, shapes).distance, -hollow(p))
     const width = Math.ceil(box.width * pixels)
     const height = Math.ceil(box.height * pixels)
     const data = new Uint8ClampedArray(width * height * 4)
@@ -81,7 +122,7 @@ export function renderTemple(
                     const start = add([px, py / tilt, 0], scale(toward, FAR / 2))
                     const point = march(start, scale(toward, -1), scene)
                     if (point === undefined) continue
-                    sum = add(sum, shade(point, shapes, scene, colors))
+                    sum = add(sum, shade(point, shapes, scene, hollow, colors))
                     cover++
                 }
             }
@@ -163,7 +204,7 @@ function softShadow(p: Vec, normal: Vec, scene: Scene): number {
     return clamp(light)
 }
 
-function shade(p: Vec, shapes: readonly Shape[], scene: Scene, stone: Stone): Rgb {
+function shade(p: Vec, shapes: readonly Shape[], scene: Scene, hollow: Hollow, stone: Stone): Rgb {
     const surface = normalAt(p, scene)
     const cut = stoneAt(p, surface, nearest(p, shapes).shape)
     const normal = normalize(add(surface, cut.tip))
@@ -172,7 +213,8 @@ function shade(p: Vec, shapes: readonly Shape[], scene: Scene, stone: Stone): Rg
     const base = mix(cast, stone.joint, cut.joint)
     const sun = clamp(dot(normal, LIGHT)) * (0.35 + 0.65 * softShadow(p, surface, scene))
     const sky = 0.12 * Math.max(0, normal[1]) + 0.1 * Math.max(0, normal[2])
-    return scale(base, (0.4 + 0.6 * sun + sky) * occlusion(p, surface, scene))
+    const inside = hollow(p) < 0.25 ? 0.4 : 1
+    return scale(base, (0.4 + 0.6 * sun + sky) * occlusion(p, surface, scene) * inside)
 }
 
 const mottle = fractal(noise2(97), 4)
