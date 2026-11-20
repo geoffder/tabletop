@@ -1,4 +1,8 @@
-import { GameSession, undoableStagedSelection } from '@tabletop/frontend-components'
+import {
+    GameSession,
+    type TitlePreferences,
+    undoableStagedSelection
+} from '@tabletop/frontend-components'
 import {
     ActionType,
     areAdjacent,
@@ -15,6 +19,8 @@ import {
     type Level,
     LEVELS,
     type MexicaGameState,
+    MexicaPreferenceDefinition,
+    type MexicaPreferences,
     type Move,
     MoveBridge,
     MovePilli,
@@ -27,6 +33,7 @@ import {
     type MexicaSelection,
     type Tool
 } from './stagedSelection.js'
+import { boardView, type BoardView, quarterTurnsOf } from '$lib/board/view.js'
 
 type SessionOptions = ConstructorParameters<
     typeof GameSession<MexicaGameState, HydratedMexicaGameState>
@@ -54,6 +61,35 @@ export class MexicaGameSession extends GameSession<MexicaGameState, HydratedMexi
                 (selection) => this.select(selection)
             )
         )
+    }
+
+    readonly preferences: TitlePreferences<typeof MexicaPreferences> = this.createPreferences(
+        MexicaPreferenceDefinition
+    )
+
+    showCoordinates: boolean = $derived(this.preferences.values.showCoordinates)
+    flatBoard: boolean = $derived(this.preferences.values.flatBoard)
+    rotatedBoard: boolean = $derived(this.preferences.values.rotatedBoard)
+    farSide: boolean = $derived(this.preferences.values.farSide)
+
+    view: BoardView = $derived(
+        boardView(this.flatBoard, quarterTurnsOf(this.rotatedBoard, this.farSide))
+    )
+
+    toggleCoordinates() {
+        this.preferences.set({ showCoordinates: !this.showCoordinates })
+    }
+
+    toggleFlatBoard() {
+        this.preferences.set({ flatBoard: !this.flatBoard })
+    }
+
+    toggleRotatedBoard() {
+        this.preferences.set({ rotatedBoard: !this.rotatedBoard })
+    }
+
+    toggleFarSide() {
+        this.preferences.set({ farSide: !this.farSide })
     }
 
     canChooseStart = $derived(this.canAct(ActionType.ChooseStart))

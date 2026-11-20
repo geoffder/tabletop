@@ -1,9 +1,7 @@
 <script lang="ts">
     import {
-        BOARD_HEIGHT,
-        BOARD_WIDTH,
+        type Axis,
         type Cell,
-        cellAt,
         cellName,
         columnOf,
         isPalace,
@@ -16,7 +14,7 @@
         placePoints
     } from '@tabletop/mexica'
     import { getGameSession } from '$lib/model/sessionContext.svelte.js'
-    import { CELL, TILTED } from '$lib/board/view.js'
+    import { CELL } from '$lib/board/view.js'
     import {
         bridgePaths,
         octagon,
@@ -28,20 +26,7 @@
     } from '$lib/board/shapes.js'
 
     const session = getGameSession()
-    const view = TILTED
-
-    // Room for labels on the left and top, and for the tallest pieces on the far row.
-    const LEFT = 26
-    const TOP = 30
-    const RIGHT = 10
-    const BOTTOM = 34
-    const frame = {
-        x: -LEFT,
-        y: -TOP,
-        width: view.width + LEFT + RIGHT,
-        height: view.depth + TOP + BOTTOM
-    }
-    const viewBox = `${frame.x} ${frame.y} ${frame.width} ${frame.height}`
+    const view = $derived(session.view)
 
     const game = $derived(session.gameState)
     const layout = $derived(game.layout())
@@ -49,7 +34,7 @@
     type Raised =
         | { kind: 'temple'; cell: Cell; level: Level; playerId?: string }
         | { kind: 'pilli'; cell: Cell; playerId: string; onBridge: boolean }
-        | { kind: 'bridge'; cell: Cell; axis: import('@tabletop/mexica').Axis }
+        | { kind: 'bridge'; cell: Cell; axis: Axis }
 
     // Everything standing on the board, far rows first so nearer pieces stand in front.
     const raised: Raised[] = $derived.by(() => {
@@ -75,7 +60,9 @@
                 }))
         ]
         const order = { bridge: 0, temple: 1, pilli: 2 }
-        return pieces.sort((a, b) => rowOf(a.cell) - rowOf(b.cell) || order[a.kind] - order[b.kind])
+        return pieces.sort(
+            (a, b) => view.centre(a.cell).y - view.centre(b.cell).y || order[a.kind] - order[b.kind]
+        )
     })
 
     const canalTiles = $derived(game.canals)
@@ -84,18 +71,12 @@
         const columns = cells.map(columnOf)
         const rows = cells.map(rowOf)
         const inset = 0.05
-        const left = Math.min(...columns) + inset
-        const top = Math.min(...rows) + inset
-        const right = Math.max(...columns) + 1 - inset
-        const bottom = Math.max(...rows) + 1 - inset
-        const a = view.at(left, top)
-        const b = view.at(right, bottom)
-        return { x: a.x, y: a.y, width: b.x - a.x, height: b.y - a.y }
-    }
-
-    function cellRect(cell: Cell) {
-        const corner = view.corner(cell)
-        return { x: corner.x, y: corner.y, width: CELL, height: view.cellDepth }
+        return view.planBox(
+            Math.min(...columns) + inset,
+            Math.min(...rows) + inset,
+            Math.max(...columns) + 1 - inset,
+            Math.max(...rows) + 1 - inset
+        )
     }
 
     const playerFill = (playerId?: string) =>
@@ -137,50 +118,47 @@
 
     // The Emperor's commands, in the lake at the bottom right as on the printed board.
     const display = $derived(game.display)
-    const DISPLAY_ORIGIN = view.at(14.9, 10.8)
-    const SLOT = 1.42 * CELL
+    const DISPLAY = { left: 14.9, top: 10.8, slot: 1.42, columns: 4, rows: 2 }
+    const displayBox = $derived(
+        view.planBox(
+            DISPLAY.left,
+            DISPLAY.top,
+            DISPLAY.left + DISPLAY.slot * DISPLAY.columns,
+            DISPLAY.top + DISPLAY.slot * DISPLAY.rows
+        )
+    )
+    const SLOT = DISPLAY.slot * CELL
     function slotCentre(index: number) {
-        const column = index % 4
-        const row = Math.floor(index / 4)
-        return {
-            x: DISPLAY_ORIGIN.x + SLOT * (column + 0.5),
-            y: DISPLAY_ORIGIN.y + SLOT * view.tilt * (row + 0.5)
-        }
+        return view.at(
+            DISPLAY.left + DISPLAY.slot * ((index % DISPLAY.columns) + 0.5),
+            DISPLAY.top + DISPLAY.slot * (Math.floor(index / DISPLAY.columns) + 0.5)
+        )
     }
 
-    const columns = Array.from({ length: BOARD_WIDTH }, (_, column) => column)
-    const rows = Array.from({ length: BOARD_HEIGHT }, (_, row) => row)
     const landCells = LAND_CELLS
 </script>
 
 <div class="tap-off" role="presentation" onclick={onTap}>
     <svg
         class="mx-board"
-        {viewBox}
-        width={frame.width}
-        height={frame.height}
+        viewBox={view.viewBox}
+        width={view.frame.width}
+        height={view.frame.height}
         role="group"
         aria-label="The island of Tenochtitlan"
     >
         <rect x={0} y={0} width={view.width} height={view.depth} class="lake" rx="6"></rect>
 
-        {#each columns as column (column)}
-            <text class="label" x={view.at(column + 0.5, 0).x} y={-10} dy="4.2" text-anchor="middle"
-                >{String.fromCharCode(65 + column)}</text
-            >
-        {/each}
-        {#each rows as row (row)}
-            <text
-                class="label"
-                x={-LEFT / 2}
-                y={view.at(0, row + 0.5).y}
-                dy="4.2"
-                text-anchor="middle">{row + 1}</text
-            >
-        {/each}
+        {#if session.showCoordinates}
+            {#each view.labels as label (label.key)}
+                <text class="label" x={label.at.x} y={label.at.y} dy="4.2" text-anchor="middle"
+                    >{label.text}</text
+                >
+            {/each}
+        {/if}
 
         {#each landCells as cell (cell)}
-            {@const rect = cellRect(cell)}
+            {@const rect = view.cellBox(cell)}
             <rect {...rect} class="land" class:palace={isPalace(cell)} class:start={isStart(cell)}
             ></rect>
         {/each}
@@ -239,7 +217,7 @@
             {/if}
         {/each}
         {#each chosen as cell (cell)}
-            {@const rect = cellRect(cell)}
+            {@const rect = view.cellBox(cell)}
             <rect
                 x={rect.x + 2}
                 y={rect.y + 2}
@@ -253,7 +231,7 @@
         {#each raised as piece (`${piece.kind}-${piece.cell}`)}
             {@const centre = view.centre(piece.cell)}
             {#if piece.kind === 'bridge'}
-                {@const paths = bridgePaths(view, centre, piece.axis)}
+                {@const paths = bridgePaths(view, centre, view.screenAxis(piece.axis))}
                 {#if paths.far}<path d={paths.far} class="bridge-far"></path>{/if}
                 <path d={paths.top} class="bridge-top"></path>
                 {#if paths.near}<path d={paths.near} class="bridge-near"></path>{/if}
@@ -268,7 +246,8 @@
                     class="shadow"
                 ></ellipse>
                 {#each templeTiers(view, centre, piece.level) as tier, index (index)}
-                    <rect {...tier.front} style:fill class="tier-front"></rect>
+                    <rect {...tier.front} style:fill class="tier-edge"></rect>
+                    <rect {...tier.front} class="tier-front"></rect>
                     <rect {...tier.top} style:fill class="tier-top"></rect>
                 {/each}
                 {#each roofDots(view, centre, piece.level) as dot, index (index)}
@@ -304,10 +283,10 @@
         <!-- The Emperor's commands: the districts still to be founded. -->
         <g class="display">
             <rect
-                x={DISPLAY_ORIGIN.x - 4}
-                y={DISPLAY_ORIGIN.y - 4}
-                width={SLOT * 4 + 8}
-                height={SLOT * 2 * view.tilt + 8}
+                x={displayBox.x - 4}
+                y={displayBox.y - 4}
+                width={displayBox.width + 8}
+                height={displayBox.height + 8}
                 rx="8"
                 class="display-frame"
             ></rect>
@@ -331,7 +310,7 @@
 
         <!-- Hit areas over every cell, nearest last. -->
         {#each landCells as cell (cell)}
-            {@const rect = cellRect(cell)}
+            {@const rect = view.cellBox(cell)}
             {@const active = choosable.has(cell)}
             <rect
                 {...rect}
@@ -350,7 +329,7 @@
             ></rect>
         {/each}
         {#each [...layout.bridges.keys()] as cell (cell)}
-            {@const rect = cellRect(cell)}
+            {@const rect = view.cellBox(cell)}
             {@const active = choosable.has(cell)}
             {#if active}
                 <rect
@@ -366,7 +345,7 @@
         {/each}
         {#if session.tool === 'bridge' || session.tool === 'moveBridge'}
             {#each [...layout.canals] as cell (cell)}
-                {@const rect = cellRect(cell)}
+                {@const rect = view.cellBox(cell)}
                 {#if choosable.has(cell) && !layout.bridges.has(cell)}
                     <rect
                         {...rect}
@@ -474,10 +453,13 @@
         fill: rgb(30 20 10 / 0.22);
     }
 
-    .tier-front {
+    .tier-edge {
         stroke: rgb(0 0 0 / 0.55);
         stroke-width: 0.8;
-        filter: brightness(0.78);
+    }
+
+    .tier-front {
+        fill: rgb(0 0 0 / 0.22);
     }
 
     .tier-top {
@@ -496,17 +478,15 @@
     }
 
     .bridge-far {
-        fill: var(--mx-bridge);
+        fill: var(--mx-bridge-shade);
         stroke: var(--mx-bridge-ink);
         stroke-width: 0.8;
-        filter: brightness(0.8);
     }
 
     .bridge-near {
-        fill: var(--mx-bridge-top);
+        fill: var(--mx-bridge-light);
         stroke: var(--mx-bridge-ink);
         stroke-width: 0.8;
-        filter: brightness(1.12);
     }
 
     .bridge-top {
