@@ -38,12 +38,12 @@
     let previews: Record<string, string> | undefined = $state()
     type Figure = { url: string; shine: string; outline: string; box: Box }
     let figures: Record<string, Figure> | undefined = $state()
-    // With and without arms, under a range of shine on the darker paints.
+    // With and without arms, dry-brushed over the darker paints in a range of strengths.
     const FIGURE_STYLES: [string, PilliStyle][] = [
         ['no arms', PILLI_STYLE],
         ['arms', { ...PILLI_STYLE, arms: true }]
     ]
-    const SHINES = [0, 0.35, 0.7, 1]
+    const SHINES = [0, 0.5, 0.8, 1.1]
     const FIGURE_ROWS = FIGURE_STYLES.flatMap(([name]) => SHINES.map((shine) => ({ name, shine })))
     const FIGURE_COLORS: readonly Color[] = [
         Color.Green,
@@ -160,7 +160,7 @@
     {@const figure = figures?.[name]}
     {#if figure}
         <tr>
-            <th>{name}, shine {shine}</th>
+            <th>{name}, dry brush {shine}</th>
             <td>
                 <svg viewBox="-20 -40 240 52" width="720" height="156">
                     <rect x="-20" y="-40" width="240" height="52" fill="#e6dcc4"></rect>
