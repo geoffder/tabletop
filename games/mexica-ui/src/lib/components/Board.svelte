@@ -23,6 +23,7 @@
         PAVING_LOOK,
         SHORE_LOOK,
         slopeCornerLook,
+        slopeCoveLook,
         slopeLook,
         templeLook
     } from '$lib/board/looks.js'
@@ -215,7 +216,11 @@
             {/each}
             {#each works.curves as curve (curve.key)}
                 <image
-                    href={LOOK_URLS[slopeCornerLook(curve.corner)]}
+                    href={LOOK_URLS[
+                        curve.bend === 'inside'
+                            ? slopeCoveLook(curve.corner)
+                            : slopeCornerLook(curve.corner)
+                    ]}
                     x={curve.x}
                     y={curve.y}
                     width={BANK}

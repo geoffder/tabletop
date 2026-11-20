@@ -30,3 +30,7 @@ export function spillLook(
 ): string {
     return `spill-${out}-${end}-${kind}-${variant}`
 }
+
+export function slopeCoveLook(corner: SlopeCorner): string {
+    return `slope-cove-${corner}`
+}
