@@ -15,17 +15,11 @@
     import { getGameSession } from '$lib/model/sessionContext.svelte.js'
     import { CELL, type PlanStep } from '$lib/board/view.js'
     import { LOOK_URLS } from '$lib/board/lookUrls.js'
-    import { CANAL_LOOK, LAKE_LOOK, PAVING_LOOK } from '$lib/board/looks.js'
+    import { CANAL_LOOK, LAKE_LOOK, PAVING_LOOK, templeLook } from '$lib/board/looks.js'
+    import { templeBounds } from '$lib/board/templeShape.js'
+    import { TEMPLE_TINT, templeMark } from '$lib/board/templeMarks.js'
     import { PLAN } from '$lib/board/plan.js'
-    import {
-        bridgePaths,
-        octagon,
-        PILLI_PATH,
-        PILLI_SCALE,
-        PLUME_PATH,
-        roofDots,
-        templeTiers
-    } from '$lib/board/shapes.js'
+    import { bridgePaths, octagon, PILLI_PATH, PILLI_SCALE, PLUME_PATH } from '$lib/board/shapes.js'
 
     const session = getGameSession()
     const view = $derived(session.view)
@@ -200,6 +194,10 @@
                 <stop offset="0.85" stop-color="#90846a"></stop>
                 <stop offset="1" stop-color="#4f5a52"></stop>
             </linearGradient>
+            <radialGradient id="mx-piece-shadow">
+                <stop offset="0.55" stop-color="#2a1a08" stop-opacity="0.32"></stop>
+                <stop offset="1" stop-color="#2a1a08" stop-opacity="0"></stop>
+            </radialGradient>
             <linearGradient id="mx-side-shadow" x1="0" y1="0" x2="1" y2="0">
                 <stop offset="0" stop-color="#062c3a" stop-opacity="0.3"></stop>
                 <stop offset="1" stop-color="#062c3a" stop-opacity="0"></stop>
@@ -295,28 +293,31 @@
                 {#if paths.near}<path d={paths.near} class="bridge-near"></path>{/if}
                 {#if paths.body}<path d={paths.body} class="bridge"></path>{/if}
             {:else if piece.kind === 'temple'}
-                {@const fill = playerFill(piece.playerId)}
-                <ellipse
-                    cx={centre.x}
-                    cy={centre.y + 1}
-                    rx={CELL * 0.46}
-                    ry={CELL * 0.46 * view.tilt}
-                    class="shadow"
-                ></ellipse>
-                {#each templeTiers(view, centre, piece.level) as tier, index (index)}
-                    <rect {...tier.front} style:fill class="tier-edge"></rect>
-                    <rect {...tier.front} class="tier-front"></rect>
-                    <rect {...tier.top} style:fill class="tier-top"></rect>
-                {/each}
-                {#each roofDots(view, centre, piece.level) as dot, index (index)}
+                {@const mark = templeMark(piece.level, view.tilt)}
+                <g transform="translate({centre.x} {centre.y})" class="piece">
                     <ellipse
-                        cx={dot.x}
-                        cy={dot.y}
-                        rx={CELL * 0.035}
-                        ry={CELL * 0.035 * view.tilt}
-                        class="roof-dot"
+                        cx="2"
+                        cy="2"
+                        rx={CELL * 0.5}
+                        ry={CELL * 0.5 * view.tilt}
+                        fill="url(#mx-piece-shadow)"
                     ></ellipse>
-                {/each}
+                    <image
+                        href={LOOK_URLS[templeLook(piece.level, view.flat)]}
+                        {...templeBounds(piece.level, view.tilt)}
+                        preserveAspectRatio="none"
+                    ></image>
+                    {#if piece.playerId !== undefined}
+                        <path d={mark.tops} fill={playerFill(piece.playerId)} opacity={TEMPLE_TINT}
+                        ></path>
+                        <path
+                            d={mark.fronts}
+                            fill={playerFill(piece.playerId)}
+                            opacity={TEMPLE_TINT}
+                        ></path>
+                        <path d={mark.fronts} class="temple-face-shade"></path>
+                    {/if}
+                </g>
             {:else}
                 {@const lift = piece.onBridge ? view.lift(0.16) : 0}
                 <ellipse
@@ -436,8 +437,14 @@
         display: block;
     }
 
-    .surface {
+    .surface,
+    .piece {
         pointer-events: none;
+    }
+
+    .temple-face-shade {
+        fill: #000;
+        opacity: 0.13;
     }
 
     .label {
@@ -478,24 +485,6 @@
 
     .shadow {
         fill: rgb(30 20 10 / 0.22);
-    }
-
-    .tier-edge {
-        stroke: rgb(0 0 0 / 0.55);
-        stroke-width: 0.8;
-    }
-
-    .tier-front {
-        fill: rgb(0 0 0 / 0.22);
-    }
-
-    .tier-top {
-        stroke: rgb(0 0 0 / 0.55);
-        stroke-width: 0.8;
-    }
-
-    .roof-dot {
-        fill: rgb(0 0 0 / 0.55);
     }
 
     .bridge {

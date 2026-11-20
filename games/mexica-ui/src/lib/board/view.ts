@@ -5,7 +5,7 @@ export const CELL = 40
 export const TILT = 0.75
 export const FLAT = 1
 
-export const TIER_HEIGHT = 0.17
+export const TIER_HEIGHT = 0.26
 export const BRIDGE_RISE = 0.16
 export const PILLI_HEIGHT = 0.62 * CELL
 
