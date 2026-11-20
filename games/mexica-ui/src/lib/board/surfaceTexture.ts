@@ -2,7 +2,7 @@
 // scripts/render-looks.mjs runs this, through the /looks page; rerun it after changing either.
 import { cellAt, columnOf, isLand, isPalace, isStart, PALACE_CENTRE, rowOf } from '@tabletop/mexica'
 import { CELL } from './view.js'
-import { SLOPE_WIDTH, type SlopeCorner, type SlopeSide } from './looks.js'
+import { COVE_TOE, SLOPE_WIDTH, type SlopeCorner, type SlopeSide } from './looks.js'
 import {
     SPILL_HEAP,
     spillBox,
@@ -254,6 +254,9 @@ export function renderCanal(style: WaterStyle, pixels = LAKE_PIXELS): Bitmap {
 }
 
 export const SLOPE_PIXELS = 4
+// As the kerbs along the canals' banks.
+const COVE_KERB = { width: 2.6, line: 0.7 }
+const COVE_FILL: 'kerb' | 'paving' = 'kerb'
 
 // The tezontle bricks facing a canal's sloping banks, in plan, quietened so they sit below the
 // paving rather than stand out from it.
@@ -323,28 +326,44 @@ export function renderSlope(side: SlopeSide, pixels = SLOPE_PIXELS): Bitmap {
 // named.
 export function renderSlopeCove(corner: SlopeCorner, pixels = SLOPE_PIXELS): Bitmap {
     const mottle = fractal(noise2(77), 3)
-    const top = linear('#a88676')
-    // The inner point, across the tile from the corner of land.
-    const cx = corner === 'ne' || corner === 'se' ? 0 : SLOPE_WIDTH
-    const cy = corner === 'se' || corner === 'sw' ? 0 : SLOPE_WIDTH
+    const [kerb, kerbEdge, paving] = ['#a88676', '#6b5245', STONES.limestone.light].map(linear)
+    // The bank's top bends round the corner of land, its foot round a point further out by the
+    // toe, both about the same centre across the tile from the corner of land.
+    const size = SLOPE_WIDTH + COVE_TOE
+    const cx = corner === 'ne' || corner === 'se' ? 0 : size
+    const cy = corner === 'se' || corner === 'sw' ? 0 : size
     const step = 1 / pixels
-    return paint({ x: 0, y: 0, width: SLOPE_WIDTH, height: SLOPE_WIDTH }, pixels, (x, y) => {
+    return paint({ x: 0, y: 0, width: size, height: size }, pixels, (x, y) => {
         const dx = x - cx
         const dy = y - cy
         const r = Math.hypot(dx, dy)
-        const across = SLOPE_WIDTH - r
+        const across = size - r
+        const water = clamp((across - SLOPE_WIDTH) / step + 0.5)
+        if (water >= 1) return { color: [0, 0, 0], alpha: 0 }
         const angle = Math.atan2(Math.abs(dy), Math.abs(dx))
+        const along = angle * Math.max(r, 2)
         const brick = brickAt(
-            angle * Math.max(r, 2),
-            Math.max(0, across),
+            along,
+            clamp(across, 0, SLOPE_WIDTH),
             (Math.PI / 2) * Math.max(r, 2),
             9
         )
-        // Down the slope is towards the inner point.
+        // Down the slope is towards the centre.
         const facing = r > 0 ? (-dx / r) * LIGHT_2D.x + (-dy / r) * LIGHT_2D.y : 0
-        const slope = brickColor(brick, Math.max(0, across), facing, mottle(x * 0.4, y * 0.4))
+        const slope = brickColor(
+            brick,
+            clamp(across, 0, SLOPE_WIDTH),
+            facing,
+            mottle(x * 0.4, y * 0.4)
+        )
+        // Behind the bank's top the kerb fills the corner, or runs round the curve, its edge to
+        // the water, with the paving filling the corner beyond.
         const onTop = clamp(-across / step + 0.5)
-        return { color: mix(slope, top, onTop), alpha: 1 }
+        const pastEdge = clamp((-across - COVE_KERB.line) / step + 0.5)
+        const pastKerb = clamp((-across - COVE_KERB.width) / step + 0.5)
+        const top =
+            COVE_FILL === 'kerb' ? kerb : mix(mix(kerbEdge, kerb, pastEdge), paving, pastKerb)
+        return { color: mix(slope, top, onTop), alpha: 1 - water }
     })
 }
 

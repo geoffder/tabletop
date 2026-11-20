@@ -31,6 +31,9 @@ export function spillLook(
     return `spill-${out}-${end}-${kind}-${variant}`
 }
 
+// How far an inside corner's cove rounds the bank's foot at the water: 0 leaves it square.
+export const COVE_TOE = 8
+
 export function slopeCoveLook(corner: SlopeCorner): string {
     return `slope-cove-${corner}`
 }

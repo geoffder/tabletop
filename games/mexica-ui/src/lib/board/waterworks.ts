@@ -4,7 +4,7 @@ import { SLOPE_WIDTH, type SlopeCorner, type SlopeSide } from './looks.js'
 import { SHORE_ZONE } from './surfaceTexture.js'
 import { type Box, CELL } from './view.js'
 import { SPILL_VARIANTS, spillBox, type SpillKind } from './spillShape.js'
-import { spillLook } from './looks.js'
+import { COVE_TOE, spillLook } from './looks.js'
 
 // The island's built edges, in plan, for a set of canals.
 //
@@ -25,6 +25,7 @@ export type Curve = {
     bend: 'outside' | 'inside'
     x: number
     y: number
+    size: number
 }
 export type Spill = { key: string; look: string; box: Box }
 export type Kerb = { key: string; stone: Box; edge: Box }
@@ -156,17 +157,24 @@ export function waterworks(landCells: readonly Cell[], canals: ReadonlySet<Cell>
 function banksOf(island: Island, spot: Spot): Bank[] {
     const banked = (side: SlopeSide) => island.ground(plus(spot, STEP[side]))
     const edges = edgesOf(spot)
+    // Each bank stops short of an inside corner, where the cove takes over.
+    const cove = BANK_WIDTH + COVE_TOE
     return SIDES.filter(banked).map((side) => {
         const [a, b] = edges[side]
         const inward = { x: -STEP[side].column, y: -STEP[side].row }
         const along = { x: (b.x - a.x) / CELL, y: (b.y - a.y) / CELL }
         const [before, after] = ENDS[side]
-        const innerA = offset(offset(a, inward, BANK_WIDTH), along, banked(before) ? BANK_WIDTH : 0)
-        const innerB = offset(offset(b, inward, BANK_WIDTH), along, banked(after) ? -BANK_WIDTH : 0)
+        const startA = offset(a, along, banked(before) ? cove : 0)
+        const endB = offset(b, along, banked(after) ? -cove : 0)
         return {
             key: `bank-${keyOf(spot)}-${side}`,
             slope: side,
-            points: shape([a, b, innerB, innerA])
+            points: shape([
+                startA,
+                endB,
+                offset(endB, inward, BANK_WIDTH),
+                offset(startA, inward, BANK_WIDTH)
+            ])
         }
     })
 }
@@ -175,13 +183,17 @@ function banksOf(island: Island, spot: Spot): Bank[] {
 // of that corner but the square across the corner is land, its corner jutting into the water;
 // and a cove wherever the square meets land on both sides of a corner.
 function curvesOf(island: Island, spot: Spot): Curve[] {
-    const at = (corner: SlopeCorner, up: SlopeSide, beside: SlopeSide, bend: Curve['bend']) => ({
-        key: `curve-${keyOf(spot)}-${corner}`,
-        corner,
-        bend,
-        x: spot.column * CELL + (beside === 'e' ? CELL - BANK_WIDTH : 0),
-        y: spot.row * CELL + (up === 's' ? CELL - BANK_WIDTH : 0)
-    })
+    const at = (corner: SlopeCorner, up: SlopeSide, beside: SlopeSide, bend: Curve['bend']) => {
+        const size = bend === 'inside' ? BANK_WIDTH + COVE_TOE : BANK_WIDTH
+        return {
+            key: `curve-${keyOf(spot)}-${corner}`,
+            corner,
+            bend,
+            x: spot.column * CELL + (beside === 'e' ? CELL - size : 0),
+            y: spot.row * CELL + (up === 's' ? CELL - size : 0),
+            size
+        }
+    }
     return CORNERS.flatMap(([corner, up, beside]) => {
         const across = plus(spot, plus(STEP[up], STEP[beside]))
         const above = plus(spot, STEP[up])
