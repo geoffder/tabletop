@@ -71,8 +71,7 @@ export function renderTemple(
     const box = templeBounds(level, tilt, design)
     const rise = riseOf(tilt)
     const stair = stairParts(level, design)
-    const shadowed = design.stair === 'treads' || design.stair === 'combined'
-    const heavy = design.stair === 'balustrade'
+    const heavy = design.stair.balustrade
     const shaped = (block: Block, round: number, tier: number) => ({
         block,
         round,
@@ -85,7 +84,7 @@ export function renderTemple(
         ...stair.steps.map((block) => ({
             ...shaped(block, TEMPLE.stairRound, -1),
             tone: heavy ? 0.12 : 0.3,
-            riser: shadowed ? 0.55 : 1
+            riser: design.stair.riser
         })),
         ...stair.walls.map((block) => ({
             ...shaped(block, TEMPLE.stairRound, -1),
