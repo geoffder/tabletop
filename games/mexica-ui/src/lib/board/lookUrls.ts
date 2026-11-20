@@ -14,6 +14,9 @@ import temple3 from '../images/looks/temple-3.webp'
 import temple3Flat from '../images/looks/temple-3-flat.webp'
 import temple4 from '../images/looks/temple-4.webp'
 import temple4Flat from '../images/looks/temple-4-flat.webp'
+import wall0 from '../images/looks/wall-0.webp'
+import wall1 from '../images/looks/wall-1.webp'
+import wall2 from '../images/looks/wall-2.webp'
 
 export const LOOK_URLS: Record<string, string> = {
     canal: canal,
@@ -30,5 +33,8 @@ export const LOOK_URLS: Record<string, string> = {
     'temple-3': temple3,
     'temple-3-flat': temple3Flat,
     'temple-4': temple4,
-    'temple-4-flat': temple4Flat
+    'temple-4-flat': temple4Flat,
+    'wall-0': wall0,
+    'wall-1': wall1,
+    'wall-2': wall2
 }

@@ -6,19 +6,27 @@
         renderCanal,
         renderLake,
         renderPaving,
+        renderWall,
         STONES,
         TURQUOISE
     } from '$lib/board/surfaceTexture.js'
-    import { CANAL_LOOK, LAKE_LOOK, PAVING_LOOK, templeLook } from '$lib/board/looks.js'
+    import {
+        CANAL_LOOK,
+        LAKE_LOOK,
+        PAVING_LOOK,
+        templeLook,
+        WALL_VARIANTS,
+        wallLook
+    } from '$lib/board/looks.js'
     import type { Bitmap } from '$lib/board/light.js'
     import { renderTemple } from '$lib/board/templeLight.js'
-    import { DESIGN, type TempleDesign, templeBounds } from '$lib/board/templeShape.js'
+    import { DESIGN, riseOf, type TempleDesign, templeBounds } from '$lib/board/templeShape.js'
     import { ownerMark } from '$lib/board/templeMarks.js'
     import { renderPilli } from '$lib/board/pilliLight.js'
     import { pilliBounds, pilliLook, pilliShineLook, shineOver } from '$lib/board/pilliShape.js'
     import type { Box } from '$lib/board/view.js'
     import TempleMarks from '$lib/components/TempleMarks.svelte'
-    import { CELL, FLAT, TILT } from '$lib/board/view.js'
+    import { BANK_DEPTH, CELL, FLAT, TILT } from '$lib/board/view.js'
     import { PIGMENTS } from '$lib/model/palette.js'
     import '../../app.css'
 
@@ -78,6 +86,10 @@
         drawn[PAVING_LOOK] = toUrl(renderPaving(STONES.limestone), 0.86)
         drawn[LAKE_LOOK] = toUrl(renderLake(TURQUOISE), 0.86)
         drawn[CANAL_LOOK] = toUrl(renderCanal(TURQUOISE), 0.86)
+        const bank = BANK_DEPTH * CELL * riseOf(TILT)
+        for (let variant = 0; variant < WALL_VARIANTS; variant++) {
+            drawn[wallLook(variant)] = toUrl(renderWall(variant, bank, STONES.limestone), 0.9)
+        }
         for (const level of LEVELS) {
             for (const tilt of [TILT, FLAT]) {
                 drawn[templeLook(level, tilt === FLAT)] = toUrl(renderTemple(level, tilt), 0.9)
