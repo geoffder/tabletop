@@ -1,3 +1,4 @@
+import { linear } from './light.js'
 import { riseOf } from './templeShape.js'
 import { type Box, PILLI_SIZE } from './view.js'
 
@@ -21,13 +22,16 @@ export type PilliStyle = {
 }
 
 export const PILLI_STYLE: PilliStyle = {
-    robe: 'bell',
-    trim: false,
+    robe: 'pawn',
+    trim: true,
     arms: false,
-    fan: 'plain',
-    headband: false,
+    fan: 'tiered',
+    headband: true,
     eyes: false
 }
+
+// How strongly the shine layer lies over the darkest paint.
+export const PILLI_SHINE = 0.7
 
 export const PILLI_PIXELS = 3
 
@@ -50,4 +54,15 @@ export function pilliBounds(tilt: number): Box {
 
 export function pilliLook(flat: boolean): string {
     return `pilli${flat ? '-flat' : ''}`
+}
+
+export function pilliShineLook(flat: boolean): string {
+    return `pilli-shine${flat ? '-flat' : ''}`
+}
+
+// The shine over a paint colour: full over black, fading out by mid-tones.
+export function shineOver(fill: string, strength = PILLI_SHINE): number {
+    const [r, g, b] = linear(fill)
+    const luminance = 0.2126 * r + 0.7152 * g + 0.0722 * b
+    return strength * Math.max(0, 1 - luminance / 0.4)
 }

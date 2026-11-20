@@ -22,7 +22,7 @@
     import { PLAN } from '$lib/board/plan.js'
     import { bridgePaths, octagon } from '$lib/board/shapes.js'
     import { LOOK_OUTLINES } from '$lib/board/lookOutlines.js'
-    import { pilliBounds, pilliLook } from '$lib/board/pilliShape.js'
+    import { pilliBounds, pilliLook, pilliShineLook, shineOver } from '$lib/board/pilliShape.js'
 
     const session = getGameSession()
     const view = $derived(session.view)
@@ -337,6 +337,12 @@
                         href={LOOK_URLS[look]}
                         {...pilliBounds(view.tilt)}
                         preserveAspectRatio="none"
+                    ></image>
+                    <image
+                        href={LOOK_URLS[pilliShineLook(view.flat)]}
+                        {...pilliBounds(view.tilt)}
+                        preserveAspectRatio="none"
+                        opacity={shineOver(playerFill(piece.playerId))}
                     ></image>
                 </g>
             {/if}

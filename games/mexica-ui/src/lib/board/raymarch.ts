@@ -71,20 +71,20 @@ export type Sample = { color: Rgb; alpha: number }
 // Which of the supersamples met the piece, row by row, `columns` to a row.
 export type Hits = { columns: number; rows: number; at: Uint8Array }
 
-// Seen at `tilt`, `pixels` to a board unit: each pixel averages its supersamples' colours,
-// weighted by how opaque each is.
+// Seen at `tilt`, `pixels` to a board unit, in as many layers as `shade` gives samples: each
+// pixel of a layer averages its supersamples' colours, weighted by how opaque each is.
 export function castRays(
     box: Box,
     tilt: number,
     pixels: number,
     scene: Scene,
-    shade: (p: Vec) => Sample,
+    shade: (p: Vec) => Sample[],
     encode: (channel: number) => number = srgb
-): { bitmap: Bitmap; hits: Hits } {
+): { bitmaps: Bitmap[]; hits: Hits } {
     const toward: Vec = [0, Math.sqrt(1 - tilt * tilt), tilt]
     const width = Math.ceil(box.width * pixels)
     const height = Math.ceil(box.height * pixels)
-    const data = new Uint8ClampedArray(width * height * 4)
+    const layers: Uint8ClampedArray[] = []
     const hits = {
         columns: width * SUPERSAMPLE,
         rows: height * SUPERSAMPLE,
@@ -92,8 +92,8 @@ export function castRays(
     }
     for (let row = 0; row < height; row++) {
         for (let column = 0; column < width; column++) {
-            let sum: Rgb = [0, 0, 0]
-            let cover = 0
+            const sums: Rgb[] = []
+            const covers: number[] = []
             for (let sy = 0; sy < SUPERSAMPLE; sy++) {
                 for (let sx = 0; sx < SUPERSAMPLE; sx++) {
                     const px = box.x + (column + (sx + 0.5) / SUPERSAMPLE) / pixels
@@ -104,21 +104,27 @@ export function castRays(
                     const point = march(start, scale(toward, -1), scene)
                     if (point === undefined) continue
                     hits.at[(row * SUPERSAMPLE + sy) * hits.columns + column * SUPERSAMPLE + sx] = 1
-                    const { color, alpha } = shade(point)
-                    sum = add(sum, scale(color, alpha))
-                    cover += alpha
+                    shade(point).forEach(({ color, alpha }, layer) => {
+                        sums[layer] = add(sums[layer] ?? [0, 0, 0], scale(color, alpha))
+                        covers[layer] = (covers[layer] ?? 0) + alpha
+                    })
                 }
             }
-            if (cover === 0) continue
-            const at = (row * width + column) * 4
-            const color = scale(sum, 1 / cover)
-            data[at] = encode(color[0]) * 255
-            data[at + 1] = encode(color[1]) * 255
-            data[at + 2] = encode(color[2]) * 255
-            data[at + 3] = (cover / SUPERSAMPLE ** 2) * 255
+            covers.forEach((cover, layer) => {
+                layers[layer] ??= new Uint8ClampedArray(width * height * 4)
+                if (cover === 0) return
+                const data = layers[layer]
+                const at = (row * width + column) * 4
+                const color = scale(sums[layer], 1 / cover)
+                data[at] = encode(color[0]) * 255
+                data[at + 1] = encode(color[1]) * 255
+                data[at + 2] = encode(color[2]) * 255
+                data[at + 3] = (cover / SUPERSAMPLE ** 2) * 255
+            })
         }
     }
-    return { bitmap: { x: box.x, y: box.y, width, height, data }, hits }
+    const bitmaps = layers.map((data) => ({ x: box.x, y: box.y, width, height, data }))
+    return { bitmaps, hits }
 }
 
 type Flat = [number, number]

@@ -115,10 +115,9 @@ export function renderTemple(
         cool: linear(stone.cool)
     }
     const scene: Scene = (p) => Math.max(nearest(p, shapes).distance, -hollow(p))
-    return castRays(box, tilt, pixels, scene, (p) => ({
-        color: shade(p, shapes, scene, hollow, colors),
-        alpha: 1
-    })).bitmap
+    return castRays(box, tilt, pixels, scene, (p) => [
+        { color: shade(p, shapes, scene, hollow, colors), alpha: 1 }
+    ]).bitmaps[0]
 }
 
 function nearest(p: Vec, shapes: readonly Shape[]): { distance: number; shape: Shape } {
