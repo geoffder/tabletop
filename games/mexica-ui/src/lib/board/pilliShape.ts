@@ -7,18 +7,14 @@ import { type Box, PILLI_SIZE } from './view.js'
 // of feathers behind the head.
 //   robe: a bell, or a pawn's concave flare on a ring at the foot.
 //   trim: raised lines round the hem, with triangles, a stepped fret or studs between them
-//     (hem), the cloak's opening down the front and a cord along the
-//     cape's edge.
+//     (hem), the cloak's opening down the front and a cord along the cape's edge.
 //   knot: the cloak's corners tied over the right shoulder or at the chest, as the Mexica
 //     fastened a cloak.
 //   arms: forearms meeting in front, wooden hands clasped.
 //   fan: a smooth fan, separate feathers, or a second, shorter row of feathers in front.
-//   head: bare wood, or black hair with a fringe; with a nose and painted eyes (face); or with
-//     a band of black paint across the eyes as well (painted).
-//   headband: a gold band round the head with a jewel at the front; a thinner circlet higher
-//     on the brow with a medallion; the xiuhuitzolli, the pointed turquoise diadem of the
-//     Mexica rulers; or the band with ear spools.
+//   grain: how strongly the turned wood of the head shows its growth rings.
 //   eyes: the fan painted in bands, a spot near each feather's tip.
+// It wears a gold circlet set with turquoise.
 export type PilliStyle = {
     robe: 'bell' | 'pawn'
     trim: boolean
@@ -26,8 +22,7 @@ export type PilliStyle = {
     knot: 'none' | 'shoulder' | 'chest'
     arms: boolean
     fan: 'plain' | 'feathers' | 'tiered'
-    head: 'plain' | 'hair' | 'face' | 'painted'
-    headband: 'none' | 'band' | 'circlet' | 'diadem' | 'spools'
+    grain: number
     eyes: boolean
 }
 
@@ -38,8 +33,7 @@ export const PILLI_STYLE: PilliStyle = {
     knot: 'none',
     arms: false,
     fan: 'tiered',
-    head: 'plain',
-    headband: 'band',
+    grain: 0.5,
     eyes: false
 }
 
