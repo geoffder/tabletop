@@ -14,6 +14,14 @@
     import { renderTemple } from '$lib/board/templeLight.js'
     import { DESIGN, type TempleDesign, templeBounds } from '$lib/board/templeShape.js'
     import { ownerMark } from '$lib/board/templeMarks.js'
+    import { renderPilli } from '$lib/board/pilliLight.js'
+    import {
+        PILLI_DESIGNS,
+        type PilliDesign,
+        pilliBounds,
+        pilliLook
+    } from '$lib/board/pilliShape.js'
+    import type { Box } from '$lib/board/view.js'
     import TempleMarks from '$lib/components/TempleMarks.svelte'
     import { CELL, FLAT, TILT } from '$lib/board/view.js'
     import { PIGMENTS } from '$lib/model/palette.js'
@@ -21,9 +29,21 @@
 
     // For scripts/render-looks.mjs to save as the images the game shows.
     let urls: Record<string, string> | undefined = $state()
+    // Each figure's outline, which the board fills with its owner's colour under the image.
+    let outlines: Record<string, string> | undefined = $state()
     let millis = $state(0)
     // Designs to compare, drawn after the saved looks so the render script need not wait.
     let previews: Record<string, string> | undefined = $state()
+    type Figure = { url: string; outline: string; box: Box }
+    let figures: Record<string, Figure> | undefined = $state()
+    const FIGURE_COLORS: readonly Color[] = [
+        Color.Green,
+        Color.Red,
+        Color.Yellow,
+        Color.Blue,
+        Color.White,
+        Color.Black
+    ]
 
     const LEVELS: readonly Level[] = [1, 2, 3, 4]
     const STRIP: readonly [Level, Color][] = [
@@ -67,9 +87,29 @@
                 drawn[templeLook(level, tilt === FLAT)] = toUrl(renderTemple(level, tilt), 0.9)
             }
         }
+        const traced: Record<string, string> = {}
+        for (const tilt of [TILT, FLAT]) {
+            const name = pilliLook(tilt === FLAT)
+            const look = renderPilli(tilt)
+            drawn[name] = toUrl(look.bitmap, 0.92)
+            traced[name] = look.outline
+        }
         urls = drawn
+        outlines = traced
         millis = Math.round(performance.now() - start)
         setTimeout(() => {
+            const drawnFigures: Record<string, Figure> = {}
+            for (const design of PILLI_DESIGNS) {
+                for (const tilt of [TILT, FLAT]) {
+                    const look = renderPilli(tilt, design)
+                    drawnFigures[pilliLook(tilt === FLAT, design)] = {
+                        url: toUrl(look.bitmap, 0.92),
+                        outline: look.outline,
+                        box: pilliBounds(tilt, design)
+                    }
+                }
+            }
+            figures = drawnFigures
             const designs: Record<string, string> = {}
             for (const { riser } of TREADS) {
                 for (const level of LEVELS) {
@@ -92,10 +132,54 @@
     </g>
 {/snippet}
 
+{#snippet pilli(figure: Figure, tilt: number, x: number, color: Color)}
+    <g transform="translate({x} 0)">
+        <ellipse cx="1" cy="1" rx={CELL * 0.26} ry={CELL * 0.26 * tilt} fill="url(#temple-shadow)"
+        ></ellipse>
+        <path d={figure.outline} fill={PIGMENTS[color].fill} fill-rule="evenodd"></path>
+        <image href={figure.url} {...figure.box} preserveAspectRatio="none"></image>
+    </g>
+{/snippet}
+
+{#snippet figureRow(design: PilliDesign, tilt: number)}
+    {@const figure = figures?.[pilliLook(tilt === FLAT, design)]}
+    {#if figure}
+        <tr>
+            <th>{design}{tilt === FLAT ? ', flat' : ''}</th>
+            <td>
+                <svg viewBox="-20 -40 240 52" width="720" height="156">
+                    <rect x="-20" y="-40" width="240" height="52" fill="#e6dcc4"></rect>
+                    {#each FIGURE_COLORS as color, index (color)}
+                        {@render pilli(figure, tilt, index * 40, color)}
+                    {/each}
+                </svg>
+            </td>
+            <td>
+                <!-- At the size a desktop board shows them, on the paving. -->
+                <svg viewBox="-20 -40 240 56" width="336" height="78">
+                    {#if urls}
+                        <image
+                            href={urls[PAVING_LOOK]}
+                            x="-60"
+                            y="-140"
+                            width="840"
+                            height="420"
+                            preserveAspectRatio="none"
+                        ></image>
+                    {/if}
+                    {#each FIGURE_COLORS as color, index (color)}
+                        {@render pilli(figure, tilt, index * 40, color)}
+                    {/each}
+                </svg>
+            </td>
+        </tr>
+    {/if}
+{/snippet}
+
 <main class="looks">
     {#if urls}
         <p>Drawn in {millis} ms.</p>
-        <section data-looks={JSON.stringify(urls)}>
+        <section data-looks={JSON.stringify(urls)} data-outlines={JSON.stringify(outlines)}>
             {#each [PAVING_LOOK, LAKE_LOOK, CANAL_LOOK] as name (name)}
                 <figure>
                     <img src={urls[name]} alt={name} />
@@ -105,6 +189,19 @@
         </section>
     {:else}
         <p>Drawing…</p>
+    {/if}
+    {#if figures}
+        <h2>Pilli Mexica</h2>
+        <table class="designs">
+            <tbody>
+                {#each PILLI_DESIGNS as design (design)}
+                    {@render figureRow(design, TILT)}
+                {/each}
+                {#each PILLI_DESIGNS as design (design)}
+                    {@render figureRow(design, FLAT)}
+                {/each}
+            </tbody>
+        </table>
     {/if}
     {#if previews && urls}
         {@const drawn = previews}

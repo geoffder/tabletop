@@ -14,7 +14,6 @@ import {
     normalize,
     type Rgb,
     scale,
-    srgb,
     type Vec
 } from './light.js'
 import { seededRandom } from './random.js'
@@ -24,7 +23,6 @@ import {
     doorwayBlocks,
     peakOf,
     pipCentres,
-    riseOf,
     shrineBlocks,
     stairParts,
     TEMPLE,
@@ -32,14 +30,17 @@ import {
     templeBounds,
     tierBlocks
 } from './templeShape.js'
+import {
+    castRays,
+    LIGHT,
+    normalAt,
+    occlusion,
+    roundedBox,
+    type Scene,
+    softShadow
+} from './raymarch.js'
 
 export const TEMPLE_PIXELS = 3
-
-// From above, to the left and beyond the board, as the paving's light.
-const LIGHT: Vec = normalize([-0.5, -0.45, 0.74])
-const SUPERSAMPLE = 3
-const HIT = 0.004
-const FAR = 160
 
 const BLOCK = { shortest: 9, longest: 17, slabRow: 6.5, joint: 0.42, round: 0.7 }
 
@@ -57,7 +58,6 @@ export const TEMPLE_STONE: TempleStone = {
 // faces of its steps towards the viewer.
 type Shape = { block: Block; round: number; tier: number; tone: number; riser: number }
 type Stone = { light: Rgb; dark: Rgb; joint: Rgb; warm: Rgb; cool: Rgb }
-type Scene = (p: Vec) => number
 // Hollows cut out of the stone: shrine doorways and the pips on the top.
 type Hollow = (p: Vec) => number
 
@@ -69,7 +69,6 @@ export function renderTemple(
     pixels = TEMPLE_PIXELS
 ): Bitmap {
     const box = templeBounds(level, tilt, design)
-    const rise = riseOf(tilt)
     const stair = stairParts(level, design)
     const heavy = design.stair.balustrade
     const shaped = (block: Block, round: number, tier: number) => ({
@@ -115,46 +114,11 @@ export function renderTemple(
         warm: linear(stone.warm),
         cool: linear(stone.cool)
     }
-    const toward: Vec = [0, rise, tilt]
     const scene: Scene = (p) => Math.max(nearest(p, shapes).distance, -hollow(p))
-    const width = Math.ceil(box.width * pixels)
-    const height = Math.ceil(box.height * pixels)
-    const data = new Uint8ClampedArray(width * height * 4)
-    for (let row = 0; row < height; row++) {
-        for (let column = 0; column < width; column++) {
-            let sum: Rgb = [0, 0, 0]
-            let cover = 0
-            for (let sy = 0; sy < SUPERSAMPLE; sy++) {
-                for (let sx = 0; sx < SUPERSAMPLE; sx++) {
-                    const px = box.x + (column + (sx + 0.5) / SUPERSAMPLE) / pixels
-                    const py = box.y + (row + (sy + 0.5) / SUPERSAMPLE) / pixels
-                    // The pixel's ray meets the ground at (px, py / tilt, 0) and runs along
-                    // `toward`; start well in front of the temple and march back.
-                    const start = add([px, py / tilt, 0], scale(toward, FAR / 2))
-                    const point = march(start, scale(toward, -1), scene)
-                    if (point === undefined) continue
-                    sum = add(sum, shade(point, shapes, scene, hollow, colors))
-                    cover++
-                }
-            }
-            if (cover === 0) continue
-            const at = (row * width + column) * 4
-            const color = scale(sum, 1 / cover)
-            data[at] = srgb(color[0]) * 255
-            data[at + 1] = srgb(color[1]) * 255
-            data[at + 2] = srgb(color[2]) * 255
-            data[at + 3] = (cover / SUPERSAMPLE ** 2) * 255
-        }
-    }
-    return { x: box.x, y: box.y, width, height, data }
-}
-
-function roundedBox(p: Vec, block: Block, round: number): number {
-    const qx = Math.abs(p[0] - (block.x0 + block.x1) / 2) - ((block.x1 - block.x0) / 2 - round)
-    const qy = Math.abs(p[1] - (block.y0 + block.y1) / 2) - ((block.y1 - block.y0) / 2 - round)
-    const qz = Math.abs(p[2] - (block.z0 + block.z1) / 2) - ((block.z1 - block.z0) / 2 - round)
-    const outside = Math.hypot(Math.max(qx, 0), Math.max(qy, 0), Math.max(qz, 0))
-    return outside + Math.min(Math.max(qx, qy, qz), 0) - round
+    return castRays(box, tilt, pixels, scene, (p) => ({
+        color: shade(p, shapes, scene, hollow, colors),
+        alpha: 1
+    })).bitmap
 }
 
 function nearest(p: Vec, shapes: readonly Shape[]): { distance: number; shape: Shape } {
@@ -168,51 +132,6 @@ function nearest(p: Vec, shapes: readonly Shape[]): { distance: number; shape: S
         }
     }
     return { distance, shape }
-}
-
-function march(from: Vec, direction: Vec, scene: Scene): Vec | undefined {
-    let travelled = 0
-    for (let step = 0; step < 200 && travelled < FAR; step++) {
-        const p = add(from, scale(direction, travelled))
-        if (p[2] < -0.01) return undefined
-        const d = scene(p)
-        if (d < HIT) return p
-        travelled += d
-    }
-    return undefined
-}
-
-function normalAt(p: Vec, scene: Scene): Vec {
-    const e = 0.01
-    return normalize([
-        scene([p[0] + e, p[1], p[2]]) - scene([p[0] - e, p[1], p[2]]),
-        scene([p[0], p[1] + e, p[2]]) - scene([p[0], p[1] - e, p[2]]),
-        scene([p[0], p[1], p[2] + e]) - scene([p[0], p[1], p[2] - e])
-    ])
-}
-
-function occlusion(p: Vec, normal: Vec, scene: Scene): number {
-    let shade = 0
-    let weight = 1
-    for (let step = 1; step <= 5; step++) {
-        const reach = step * 0.9
-        shade += weight * (reach - scene(add(p, scale(normal, reach))))
-        weight *= 0.55
-    }
-    return clamp(1 - shade * 0.2)
-}
-
-function softShadow(p: Vec, normal: Vec, scene: Scene): number {
-    let light = 1
-    let travelled = 0.15
-    const from = add(p, scale(normal, 0.05))
-    for (let step = 0; step < 48 && travelled < 60; step++) {
-        const d = scene(add(from, scale(LIGHT, travelled)))
-        if (d < 0.001) return 0
-        light = Math.min(light, (6 * d) / travelled)
-        travelled += Math.max(d, 0.08)
-    }
-    return clamp(light)
 }
 
 function shade(p: Vec, shapes: readonly Shape[], scene: Scene, hollow: Hollow, stone: Stone): Rgb {
