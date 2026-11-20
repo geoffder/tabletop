@@ -2,6 +2,7 @@
 // scripts/render-looks.mjs runs this, through the /looks page; rerun it after changing either.
 import { cellAt, columnOf, isLand, isPalace, isStart, PALACE_CENTRE, rowOf } from '@tabletop/mexica'
 import { CELL } from './view.js'
+import { SLOPE_WIDTH, type SlopeCorner, type SlopeSide } from './looks.js'
 import { PLAN } from './plan.js'
 import {
     type Bitmap,
@@ -242,6 +243,86 @@ const CANAL_SHALLOWS = SHORE_SHALLOWS
 export function renderCanal(style: WaterStyle, pixels = LAKE_PIXELS): Bitmap {
     const at = water(style)
     return paint(PLAN, pixels, (x, y) => ({ color: at(x, y, CANAL_SHALLOWS), alpha: 1 }))
+}
+
+export const SLOPE_PIXELS = 4
+
+// The tezontle bricks facing a canal's sloping banks, in plan, quietened so they sit below the
+// paving rather than stand out from it.
+const BRICK = { light: '#a27866', dark: '#7a5545', mortar: '#5b473c', wet: '#3c3d36' }
+const BRICK_COURSES = 2
+
+type Brick = { joint: number; tone: number }
+
+// The brick at `along` the bank and `across` it, from the kerb (0) to the water (SLOPE_WIDTH),
+// in a run of bricks `run` long that starts and ends on a joint.
+function brickAt(along: number, across: number, run: number, seed: number): Brick {
+    const depth = SLOPE_WIDTH / BRICK_COURSES
+    const course = Math.min(BRICK_COURSES - 1, Math.floor(across / depth))
+    const next = seededRandom(seed * 97 + course * 13 + 5)
+    const offset = course % 2 === 0 ? 0 : 2.5 + next() * 2
+    const edges = [0]
+    let at = offset
+    while (at < run - 2.5) {
+        if (at > 0) edges.push(at)
+        at += 4.5 + next() * 3
+    }
+    edges.push(run)
+    let index = 0
+    while (index < edges.length - 2 && edges[index + 1] <= along) index++
+    const toEdge = Math.min(along - edges[index], edges[index + 1] - along)
+    const toCourse = Math.min(across - course * depth, (course + 1) * depth - across)
+    const joint = clamp(1 - Math.min(toEdge, toCourse) / 0.3)
+    return { joint, tone: seededRandom(seed * 389 + course * 31 + index * 7 + 1)() }
+}
+
+function brickColor(brick: Brick, across: number, facing: number, mottle: number): Rgb {
+    const [light, dark, mortar, wet] = [BRICK.light, BRICK.dark, BRICK.mortar, BRICK.wet].map(
+        linear
+    )
+    let color = mix(light, dark, clamp(0.2 + brick.tone * 0.55 + (mottle - 0.5) * 0.3))
+    color = mix(color, mortar, brick.joint * 0.75)
+    color = mix(color, facing > 0 ? [1, 1, 1] : [0, 0, 0], Math.abs(facing) * 0.14)
+    color = mix(color, [1, 1, 1], (1 - smoothstep(0, 1.5, across)) * 0.12)
+    return mix(color, wet, smoothstep(0.6, 1, across / SLOPE_WIDTH) * 0.5)
+}
+
+// The sloping bank on one side of a canal, as a tile one cell along it; it slopes down away from
+// the kerb, and is lit by which way it faces as the paving is.
+export function renderSlope(side: SlopeSide, pixels = SLOPE_PIXELS): Bitmap {
+    const mottle = fractal(noise2(71), 3)
+    const runs = side === 'n' || side === 's'
+    const box = runs
+        ? { x: 0, y: 0, width: CELL, height: SLOPE_WIDTH }
+        : { x: 0, y: 0, width: SLOPE_WIDTH, height: CELL }
+    const down = { n: [0, 1], s: [0, -1], w: [1, 0], e: [-1, 0] }[side]
+    const facing = down[0] * LIGHT_2D.x + down[1] * LIGHT_2D.y
+    return paint(box, pixels, (x, y) => {
+        const along = runs ? x : y
+        const across = { n: y, s: SLOPE_WIDTH - y, w: x, e: SLOPE_WIDTH - x }[side]
+        const brick = brickAt(along, across, CELL, 1)
+        return { color: brickColor(brick, across, facing, mottle(x * 0.4, y * 0.4)), alpha: 1 }
+    })
+}
+
+// Where a canal turns round a corner of land, its bank curves round the corner: a quarter of a
+// ring of bricks round the corner, which lies at the tile's corner named.
+export function renderSlopeCorner(corner: SlopeCorner, pixels = SLOPE_PIXELS): Bitmap {
+    const mottle = fractal(noise2(73), 3)
+    const cx = corner === 'ne' || corner === 'se' ? SLOPE_WIDTH : 0
+    const cy = corner === 'se' || corner === 'sw' ? SLOPE_WIDTH : 0
+    const step = 1 / pixels
+    return paint({ x: 0, y: 0, width: SLOPE_WIDTH, height: SLOPE_WIDTH }, pixels, (x, y) => {
+        const dx = x - cx
+        const dy = y - cy
+        const r = Math.hypot(dx, dy)
+        const alpha = clamp((SLOPE_WIDTH - r) / step + 0.5)
+        if (alpha <= 0) return { color: [0, 0, 0], alpha: 0 }
+        const angle = Math.atan2(Math.abs(dy), Math.abs(dx))
+        const brick = brickAt(angle * Math.max(r, 2), r, (Math.PI / 2) * Math.max(r, 2), 3)
+        const facing = r > 0 ? (dx / r) * LIGHT_2D.x + (dy / r) * LIGHT_2D.y : 0
+        return { color: brickColor(brick, r, facing, mottle(x * 0.4, y * 0.4)), alpha }
+    })
 }
 
 export const SHORE_PIXELS = 2
