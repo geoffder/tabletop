@@ -6,6 +6,7 @@
         card,
         chosen = false,
         dimmed = false,
+        pile = false,
         label,
         onclick
     }: {
@@ -13,6 +14,8 @@
         card?: CardColor
         chosen?: boolean
         dimmed?: boolean
+        // The top of a face-up pile: it lies askew and a little faded.
+        pile?: boolean
         label?: string
         onclick?: () => void
     } = $props()
@@ -57,6 +60,7 @@
         class:back={!card}
         class:chosen
         class:dimmed
+        class:pile
         style:background={card ? `var(--wop-${card})` : undefined}
         aria-label={label ?? (card ? names.join(' or ') : 'deck')}
         aria-pressed={chosen}
@@ -67,6 +71,7 @@
         class="card"
         class:back={!card}
         class:dimmed
+        class:pile
         style:background={card ? `var(--wop-${card})` : undefined}
         aria-label={label ?? (card ? names.join(' or ') : 'deck')}
         role="img"
@@ -79,8 +84,8 @@
     .card {
         position: relative;
         display: block;
-        width: 54px;
-        height: 81px;
+        width: var(--wop-card-width, 54px);
+        height: calc(var(--wop-card-width, 54px) * 1.5);
         flex-shrink: 0;
         padding: 0;
         border-radius: 6px;
@@ -92,13 +97,6 @@
             opacity 0.15s;
     }
 
-    @media (max-width: 639px) {
-        .card {
-            width: 46px;
-            height: 69px;
-        }
-    }
-
     .art {
         display: block;
         width: 100%;
@@ -107,6 +105,11 @@
 
     .card.back {
         background: #2e6fb0;
+    }
+
+    .card.pile:not(.back) {
+        transform: rotate(-6deg);
+        opacity: 0.82;
     }
 
     .card.dimmed {
