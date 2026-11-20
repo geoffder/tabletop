@@ -20,7 +20,7 @@ import {
     srgb,
     type Vec
 } from './light.js'
-import { PILLI_PIXELS, PILLI_STYLE, type PilliStyle, pilliBounds } from './pilliShape.js'
+import { PILLI_PIXELS, pilliBounds } from './pilliShape.js'
 import { PILLI_SIZE } from './view.js'
 import {
     castRays,
@@ -35,16 +35,16 @@ import {
 const WOOD = { light: linear('#e2bf91'), dark: linear('#b98a5a'), late: linear('#93683f') }
 // Turned wood: growth rings round the upright axis the head was turned on, wandering a little,
 // so the top shows rings and the sides streaks, and the wood itself mottled; matte.
-const WOOD_GRAIN = { spacing: 0.55, wander: 1.4, mottle: 0.3 }
+const WOOD_GRAIN = { spacing: 0.55, wander: 1.4, mottle: 0.3, strength: 0.5 }
 const grainNoise = fractal(noise2(173), 3)
 
-function woodAt(p: Vec, strength: number): Rgb {
+function woodAt(p: Vec): Rgb {
     const wander = (grainNoise(p[0] * 0.35 + p[1] * 0.35, p[2] * 0.12) - 0.5) * WOOD_GRAIN.wander
     const radius = length2(p[0] - HEAD.at[0], p[1] - HEAD.at[1]) + wander
     const ring = 0.5 + 0.5 * Math.sin((radius / WOOD_GRAIN.spacing) * 2 * Math.PI)
     const tone = 0.6 + (grainNoise(p[0] * 0.8 + 5, p[2] * 0.8) - 0.5) * WOOD_GRAIN.mottle * 2
     const body = mix(WOOD.dark, WOOD.light, clamp(tone))
-    return mix(body, WOOD.late, smoothstep(0.55, 0.95, ring) * strength)
+    return mix(body, WOOD.late, smoothstep(0.55, 0.95, ring) * WOOD_GRAIN.strength)
 }
 const GOLD = { light: linear('#f0c85a'), dark: linear('#8a5a1c') }
 const TURQUOISE = { light: linear('#4cc3b4'), dark: linear('#0f5e5a') }
@@ -60,13 +60,9 @@ type Figure = { scene: Scene; finish: (p: Vec) => Finish }
 // The figure's light over its paint, a second layer of light for dark paint, and its outline.
 export type PilliLook = { bitmap: Bitmap; shine: Bitmap; outline: string }
 
-export function renderPilli(
-    tilt: number,
-    style: PilliStyle = PILLI_STYLE,
-    pixels = PILLI_PIXELS
-): PilliLook {
+export function renderPilli(tilt: number, pixels = PILLI_PIXELS): PilliLook {
     const box = pilliBounds(tilt)
-    const full = figureOf(style)
+    const full = FIGURE
     const figure: Figure = {
         scene: (p) => full.scene(scale(p, 1 / PILLI_SIZE)) * PILLI_SIZE,
         finish: (p) => full.finish(scale(p, 1 / PILLI_SIZE))
@@ -77,7 +73,7 @@ export function renderPilli(
         tilt,
         pixels,
         figure.scene,
-        (p) => shade(p, figure, toward, style.grain),
+        (p) => shade(p, figure, toward),
         (channel) => clamp(channel)
     )
     return { bitmap: bitmaps[0], shine: bitmaps[1], outline: outlineOf(hits, box, pixels) }
@@ -136,7 +132,7 @@ function fresnel(cosine: number): number {
 }
 
 // In sRGB, as the page lays it over the paint.
-function shade(p: Vec, figure: Figure, toward: Vec, grain: number): Sample[] {
+function shade(p: Vec, figure: Figure, toward: Vec): Sample[] {
     const normal = normalAt(p, figure.scene)
     const sun = clamp(dot(normal, KEY)) * softShadow(p, normal, figure.scene, KEY)
     const occluded =
@@ -148,7 +144,7 @@ function shade(p: Vec, figure: Figure, toward: Vec, grain: number): Sample[] {
     const glance = sheen * ROOM * (1 - smoothstep(0, -0.35, mirror[2]))
     const below = sheen * PAVING * smoothstep(0, -0.35, mirror[2]) * SATIN
     const finish = figure.finish(p)
-    if (finish.kind === 'wood') return opaque(scale(woodAt(p, grain), light))
+    if (finish.kind === 'wood') return opaque(scale(woodAt(p), light))
     if (finish.kind === 'gold') {
         const half = normalize(add(KEY, toward))
         const facing = clamp(dot(normal, half))
@@ -221,65 +217,36 @@ const WOODEN: Finish = { kind: 'wood', tone: 1 }
 const GILT: Finish = { kind: 'gold', tone: 1 }
 const STONE: Finish = { kind: 'turquoise', tone: 1 }
 
-// The robe up to the neck, the cape over the shoulders, the head on top.
-const ROBE = { foot: 8.6, neck: 4.6, height: 15.5, round: 1.3 }
+// The robe flares like a pawn's down to a ring at the foot, a cape lies over the shoulders, and
+// the head stands clear of the cape on a short neck.
+const ROBE = { foot: 8.6, neck: 4.6, height: 15.5 }
 const PLINTH = { height: 1.8, radius: 9.1, round: 0.45 }
 const CAPE: Vec = [6.4, 4.6, 2.9]
 const CAPE_AT = 15.6
-// The head stands clear of the cape on a short neck, so its face shows from the table's side.
+const CAPE_EDGE = CAPE_AT - CAPE[2] * 0.55
 const HEAD = { radius: 3.7, at: [0, 0.3, 22.4] satisfies Vec }
 const NECK = { from: [0, 0.1, 17.6] satisfies Vec, radius: 1.9 }
-// The band round the hem, clear of the ring at the foot: a raised line along each edge and
-// between them a stepped fret, repeating a whole number of times round the robe.
-const HEM = {
-    foot: 2.3,
-    top: 5.1,
-    repeats: 8,
-    steps: 2,
-    line: 0.32,
-    soft: 0.14,
-    bevel: 0.3,
-    studs: 18,
-    stud: 0.55,
-    teeth: 12
-}
+// A band round the hem, clear of the ring at the foot: a raised line along each edge and a
+// ring of studs between them.
+const HEM = { foot: 2.3, top: 5.1, line: 0.32, soft: 0.14, studs: 18, stud: 0.55 }
+const RELIEF = { line: 0.22, opening: 0.28, cord: 0.5 }
 
-// The pawn's radius at a height: flaring out towards the foot.
-function pawnRadius(z: number): number {
+// The robe's radius at a height: flaring out towards the foot.
+function robeRadius(z: number): number {
     const t = clamp(z / ROBE.height)
     return ROBE.neck + (ROBE.foot - 0.5 - ROBE.neck) * (1 - t) ** 2
 }
 
-function pawnSlope(z: number): number {
+function robeSlope(z: number): number {
     const t = clamp(z / ROBE.height)
     return (-2 * (ROBE.foot - 0.5 - ROBE.neck) * (1 - t)) / ROBE.height
 }
 
-function robeRadius(style: PilliStyle, z: number): number {
-    if (style.robe === 'pawn') return pawnRadius(z)
-    return ROBE.foot + ((ROBE.neck - ROBE.foot) * z) / ROBE.height
-}
-
-function robe(style: PilliStyle, p: Vec): number {
-    if (style.robe === 'bell') {
-        return frustum(p, 0, ROBE.height, ROBE.foot, ROBE.neck, ROBE.round)
-    }
-    const r = length2(p[0], p[1])
-    const flare = (r - pawnRadius(p[2])) / Math.hypot(1, pawnSlope(p[2]))
+function robe(p: Vec): number {
+    const flare = (length2(p[0], p[1]) - robeRadius(p[2])) / Math.hypot(1, robeSlope(p[2]))
     const body = Math.max(flare, p[2] - ROBE.height)
     const plinth = frustum(p, 0, PLINTH.height, PLINTH.radius, PLINTH.radius - 0.3, PLINTH.round)
     return blend(body, plinth, 0.35)
-}
-
-// Forearms from the shoulders to hands clasped in front, standing just off the robe.
-function armEnds(style: PilliStyle): { shoulder: Vec; wrist: Vec; hands: Vec } {
-    const wristZ = 10.6
-    const front = robeRadius(style, wristZ) + 1.1
-    return {
-        shoulder: [5.4, 2.6, 14.2],
-        wrist: [1.5, front, wristZ],
-        hands: [0, front + 0.3, wristZ - 0.2]
-    }
 }
 
 function capsule(p: Vec, a: Vec, b: Vec, radius: number): number {
@@ -289,85 +256,15 @@ function capsule(p: Vec, a: Vec, b: Vec, radius: number): number {
     return Math.hypot(ap[0] - ab[0] * t, ap[1] - ab[1] * t, ap[2] - ab[2] * t) - radius
 }
 
-// A capsule narrowing from radius `ra` at `a` to `rb` at `b`: close to a distance where the
-// taper is gentle.
-function taper(p: Vec, a: Vec, b: Vec, ra: number, rb: number): number {
-    const ab: Vec = [b[0] - a[0], b[1] - a[1], b[2] - a[2]]
-    const ap: Vec = [p[0] - a[0], p[1] - a[1], p[2] - a[2]]
-    const t = clamp(dot(ap, ab) / dot(ab, ab))
-    const off = Math.hypot(ap[0] - ab[0] * t, ap[1] - ab[1] * t, ap[2] - ab[2] * t)
-    return (off - (ra + (rb - ra) * t)) * 0.9
-}
-
-// The cloak's two corners tied in a knot, over the right shoulder or at the chest: two loops
-// either side of the knot, and the two ends hanging down over the robe.
-type Knot = { core: Vec; ends: [Vec, Vec] }
-const KNOT = 1.5
-
-function knotOf(style: PilliStyle): Knot | undefined {
-    if (style.knot === 'none') return undefined
-    const [x, z] = style.knot === 'shoulder' ? [-2.7, CAPE_AT + 0.5] : [0, CAPE_AT - 0.7]
-    const onCape = (x: number, z: number) =>
-        CAPE[1] * Math.sqrt(Math.max(0, 1 - (x / CAPE[0]) ** 2 - ((z - CAPE_AT) / CAPE[2]) ** 2))
-    const onRobe = (x: number, z: number) =>
-        Math.sqrt(Math.max(0, robeRadius(style, z) ** 2 - x * x))
-    const end = (dx: number, drop: number): Vec => {
-        const ex = x + dx
-        const ez = z - drop
-        return [ex, Math.max(onRobe(ex, ez), onCape(ex, ez)) + 0.3 * KNOT, ez]
-    }
-    return {
-        core: [x, onCape(x, z) + 0.45 * KNOT, z],
-        ends: [end(-0.8 * KNOT, 3.4 * KNOT), end(0.7 * KNOT, 3 * KNOT)]
-    }
-}
-
-function knot(knot: Knot, p: Vec): number {
-    const c = knot.core
-    const at = (dx: number, dy: number, dz: number): Vec => [
-        p[0] - c[0] - dx * KNOT,
-        p[1] - c[1] - dy * KNOT,
-        p[2] - c[2] - dz * KNOT
-    ]
-    const sized = (radii: Vec): Vec => scale(radii, KNOT)
-    const core = ellipsoid(at(0, 0, 0), sized([0.95, 0.7, 0.8]))
-    const loops = Math.min(
-        ellipsoid(at(-0.95, -0.15, 0.25), sized([0.75, 0.5, 0.62])),
-        ellipsoid(at(0.95, -0.15, 0.15), sized([0.75, 0.5, 0.62]))
-    )
-    const start = (dx: number): Vec => [c[0] + dx * KNOT, c[1] + 0.15 * KNOT, c[2] - 0.55 * KNOT]
-    const ends = Math.min(
-        taper(p, start(-0.35), knot.ends[0], 0.55 * KNOT, 0.3 * KNOT),
-        taper(p, start(0.35), knot.ends[1], 0.55 * KNOT, 0.3 * KNOT)
-    )
-    return Math.min(blend(core, loops, 0.35 * KNOT), blend(core, ends, 0.3 * KNOT))
-}
-
-function arms(style: PilliStyle, p: Vec): number {
-    const { shoulder, wrist } = armEnds(style)
-    const mirrored: Vec = [Math.abs(p[0]), p[1], p[2]]
-    return capsule(mirrored, shoulder, wrist, 1.35)
-}
-
-function body(style: PilliStyle, p: Vec): number {
+function body(p: Vec): number {
     const cape = ellipsoid([p[0], p[1], p[2] - CAPE_AT], CAPE)
-    let shape = blend(robe(style, p), cape, 1.6)
-    if (style.arms) shape = blend(shape, arms(style, p), 0.7)
-    if (style.trim) {
-        shape = Math.min(shape, cord(p))
-        // The relief's slopes make the distance change faster than distance, so rays step
-        // more carefully over it, or some stop inside and take a false shadow.
-        const raised = relief(style, p)
-        if (raised !== 0) shape = (shape - raised) * 0.6
-        if (style.hem === 'studs') shape = Math.min(shape, studs(style, p))
-    }
-    const tied = knotOf(style)
-    if (tied) shape = blend(shape, knot(tied, p), 0.25)
-    return shape
+    let shape = Math.min(blend(robe(p), cape, 1.6), cord(p))
+    // The relief's slopes make the distance change faster than distance, so rays step more
+    // carefully over it, or some stop inside and take a false shadow.
+    const raised = relief(p)
+    if (raised !== 0) shape = (shape - raised) * 0.6
+    return Math.min(shape, studs(p))
 }
-
-const RELIEF = { fret: 0.26, line: 0.22, opening: 0.28, cord: 0.5 }
-const CAPE_EDGE = CAPE_AT - CAPE[2] * 0.55
 
 // A cord along the cape's lower edge.
 function cord(p: Vec): number {
@@ -375,12 +272,9 @@ function cord(p: Vec): number {
     return length2(cape, p[2] - CAPE_EDGE) - RELIEF.cord
 }
 
-// The fret and the hem's edge lines stand out from the robe, and the cloak's opening is cut
-// into its front.
-function relief(style: PilliStyle, p: Vec): number {
-    if (p[2] > HEM.foot - HEM.line && p[2] < HEM.top + HEM.line) {
-        return Math.max(RELIEF.line * hemLine(p), RELIEF.fret * hemPattern(style, p))
-    }
+// The hem's edge lines stand out from the robe, and the cloak's opening is cut into its front.
+function relief(p: Vec): number {
+    if (p[2] > HEM.foot - HEM.line && p[2] < HEM.top + HEM.line) return RELIEF.line * hemLine(p)
     if (p[2] > HEM.top && p[2] < CAPE_AT - 2 && openingAt(p)) return -RELIEF.opening
     return 0
 }
@@ -395,70 +289,22 @@ function hemLine(p: Vec): number {
     return 1 - smoothstep(HEM.line / 2 - HEM.soft, HEM.line / 2 + HEM.soft, off)
 }
 
-function hemPattern(style: PilliStyle, p: Vec): number {
-    if (style.hem === 'fret') return fret(p)
-    if (style.hem === 'triangles') return triangles(style, p)
-    return 0
-}
-
-// Raised triangles standing on the lower line, their tips just short of the upper one.
-function triangles(style: PilliStyle, p: Vec): number {
-    const turn = (Math.atan2(p[0], p[1]) / (2 * Math.PI)) * HEM.teeth
-    const s = turn - Math.floor(turn)
-    const floor = HEM.foot + HEM.line
-    const height = HEM.top - HEM.line - floor - 0.25
-    const top = floor + height * (1 - Math.abs(2 * s - 1))
-    // Across the slanted edges rather than straight down.
-    const width = (2 * Math.PI * robeRadius(style, p[2])) / HEM.teeth
-    const slant = 1 / Math.hypot(1, (2 * height) / width)
-    return (
-        smoothstep(-HEM.bevel, HEM.bevel, (top - p[2]) * slant) *
-        smoothstep(-HEM.bevel, HEM.bevel, p[2] - floor)
-    )
-}
-
 // Round studs in a ring between the hem's lines, standing on the robe.
-function studs(style: PilliStyle, p: Vec): number {
+function studs(p: Vec): number {
     const z = (HEM.foot + HEM.top) / 2
     const turn = Math.atan2(p[0], p[1]) / (2 * Math.PI)
     const nearest = (Math.round(turn * HEM.studs) / HEM.studs) * 2 * Math.PI
-    const r = robeRadius(style, z) - 0.1
-    const centre: Vec = [Math.sin(nearest) * r, Math.cos(nearest) * r, z]
-    return sphere(p, centre, HEM.stud)
+    const r = robeRadius(z) - 0.1
+    return sphere(p, [Math.sin(nearest) * r, Math.cos(nearest) * r, z], HEM.stud)
 }
 
-// How fully a point is on the stepped fret: steps rising to a peak and falling again between
-// the edge lines, each step's edges softened.
-function fret(p: Vec): number {
-    const turn = (Math.atan2(p[0], p[1]) / (2 * Math.PI)) * HEM.repeats
-    const s = turn - Math.floor(turn)
-    const climb = (s < 0.5 ? s : 1 - s) * 2 * HEM.steps
-    const whole = Math.floor(climb)
-    const level = (whole + smoothstep(1 - 0.18, 1, climb - whole)) / HEM.steps
-    const inner = HEM.line
-    const height = HEM.top - HEM.foot - 2 * inner
-    const top = HEM.foot + inner + height * (0.2 + 0.8 * level)
-    const above = p[2] - (HEM.foot + inner)
-    return (
-        smoothstep(-HEM.bevel, HEM.bevel, above) *
-        (1 - smoothstep(-HEM.bevel, HEM.bevel, p[2] - top))
-    )
-}
-
-function bodyFinish(style: PilliStyle, p: Vec): Finish {
-    if (style.arms && arms(style, p) < 0.2) return paint(0.95)
-    const tied = knotOf(style)
-    if (tied && knot(tied, p) < 0.15) return paint(1.08)
-    if (style.trim) {
-        if (p[2] > HEM.foot - HEM.line && p[2] < HEM.top + HEM.line) {
-            const studded = style.hem === 'studs' && studs(style, p) < 0.15 ? 1 : 0
-            return paint(0.8 + 0.45 * Math.max(hemPattern(style, p), hemLine(p), studded))
-        }
-        if (p[2] > HEM.top && p[2] < CAPE_AT - 2 && openingAt(p)) return paint(0.7)
-        if (cord(p) < 0.15) return paint(1.2)
+function bodyFinish(p: Vec): Finish {
+    if (p[2] > HEM.foot - HEM.line && p[2] < HEM.top + HEM.line) {
+        const studded = studs(p) < 0.15 ? 1 : 0
+        return paint(0.8 + 0.45 * Math.max(hemLine(p), studded))
     }
-    if (style.robe === 'bell' && p[2] < 2.4) return paint(0.72)
-    if (!style.trim && Math.abs(p[2] - CAPE_EDGE) < 0.7) return paint(1.3)
+    if (p[2] > HEM.top && p[2] < CAPE_AT - 2 && openingAt(p)) return paint(0.7)
+    if (cord(p) < 0.15) return paint(1.2)
     return paint()
 }
 
@@ -471,7 +317,6 @@ const NECKED: Part = {
     distance: (p) => blend(head(p), capsule(p, NECK.from, HEAD.at, NECK.radius), 0.6),
     finish: () => WOODEN
 }
-
 // A gold circlet high on the brow: a flat strip following the curve of the head, its edges
 // rounded, with a medallion set with turquoise at the front.
 const CIRCLET = { rise: 1.9, height: 0.95, depth: 0.32, round: 0.14, medallion: 1.05, disc: 0.32 }
@@ -507,8 +352,8 @@ const CIRCLETED: Part = {
     finish: (p) => (medallion(p, CIRCLET.medallion * 0.55, CIRCLET.disc + 0.1) < 0 ? STONE : GILT)
 }
 
-// A fan stands behind the head, leaning back; its feathers spread from a point below its
-// centre.
+// Two rows of feathers stand behind the head, leaning back, the front row shorter and lighter;
+// each row's feathers spread from a point below its centre.
 type Fan = { centre: Vec; radii: Vec; lean: number; spacing: number; tone: number }
 const BACK_FAN: Fan = {
     centre: [0, -3.4, 25],
@@ -541,13 +386,6 @@ function fanPoint(fan: Fan, p: Vec): FanPoint {
     return { q, angle, along, reach, across }
 }
 
-function plainFan(fan: Fan, p: Vec): number {
-    const { q, angle } = fanPoint(fan, p)
-    const tips = Math.abs(Math.sin((angle * 9) / 1.2)) * 0.7
-    const radii: Vec = [fan.radii[0] - tips, fan.radii[1], fan.radii[2] - tips]
-    return ellipsoid(q, radii) * 0.8
-}
-
 // Separate feathers, each rounded across its width and parted from the next towards its tip.
 function featherFan(fan: Fan, p: Vec): number {
     const { q, along, reach, across } = fanPoint(fan, p)
@@ -559,53 +397,37 @@ function featherFan(fan: Fan, p: Vec): number {
     return Math.max(leaf, parting)
 }
 
-function fanFinish(style: PilliStyle, fan: Fan, p: Vec): Finish {
-    const { across, reach, along } = fanPoint(fan, p)
-    if (style.fan === 'plain') {
-        if (reach > 0.78) return paint(1.45)
-        return paint(1 + 0.1 * Math.cos(across * Math.PI * 2 * 2.5))
-    }
-    if (style.eyes) {
-        const spot = length2(across * fan.spacing * along, (reach - 0.66) * fan.radii[2])
-        if (spot < 0.62) return paint(0.45)
-        if (spot < 0.95) return paint(1.5)
-        if (reach < 0.36) return paint(0.72 * fan.tone)
-    }
+function fanFinish(fan: Fan, p: Vec): Finish {
+    const { across, reach } = fanPoint(fan, p)
     if (reach > 0.84) return paint(1.45)
     if (Math.abs(across) < 0.05 && reach > 0.2) return paint(0.8 * fan.tone)
     return paint(fan.tone)
 }
 
-function figureOf(style: PilliStyle): Figure {
-    const fans = style.fan === 'tiered' ? [BACK_FAN, FRONT_FAN] : [BACK_FAN]
-    const shapeOf = style.fan === 'plain' ? plainFan : featherFan
-    const parts: Part[] = [
-        { distance: (p) => body(style, p), finish: (p) => bodyFinish(style, p) },
-        NECKED,
-        ...fans.map((fan) => ({
-            distance: (p: Vec) => shapeOf(fan, p),
-            finish: (p: Vec) => fanFinish(style, fan, p)
-        }))
-    ]
-    if (style.arms) {
-        const hands = armEnds(style).hands
-        parts.push({ distance: (p) => sphere(p, hands, 1.5), finish: () => WOODEN })
-    }
-    parts.push(CIRCLETED)
-    const nearest = (p: Vec) => {
-        let best = parts[0]
-        let distance = Infinity
-        for (const part of parts) {
-            const d = part.distance(p)
-            if (d < distance) {
-                distance = d
-                best = part
-            }
+const PARTS: Part[] = [
+    { distance: body, finish: bodyFinish },
+    NECKED,
+    ...[BACK_FAN, FRONT_FAN].map((fan) => ({
+        distance: (p: Vec) => featherFan(fan, p),
+        finish: (p: Vec) => fanFinish(fan, p)
+    })),
+    CIRCLETED
+]
+
+function nearestPart(p: Vec): { part: Part; distance: number } {
+    let part = PARTS[0]
+    let distance = Infinity
+    for (const candidate of PARTS) {
+        const d = candidate.distance(p)
+        if (d < distance) {
+            distance = d
+            part = candidate
         }
-        return { best, distance }
     }
-    return {
-        scene: (p) => Math.max(nearest(p).distance, -p[2]),
-        finish: (p) => nearest(p).best.finish(p)
-    }
+    return { part, distance }
+}
+
+const FIGURE: Figure = {
+    scene: (p) => Math.max(nearestPart(p).distance, -p[2]),
+    finish: (p) => nearestPart(p).part.finish(p)
 }
