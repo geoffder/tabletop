@@ -7,9 +7,11 @@ export const FLAT = 1
 
 export const TIER_HEIGHT = 0.26
 export const BRIDGE_RISE = 0.16
-// A Pilli Mexica's height and how far its headdress reaches back, as shares of a cell.
-export const PILLI_HEIGHT = 0.8
-export const PILLI_DEPTH = 0.24
+// A Pilli Mexica's height and how far its headdress reaches back, as shares of a cell, at its
+// drawn size.
+export const PILLI_SIZE = 1.3
+export const PILLI_HEIGHT = 0.8 * PILLI_SIZE
+export const PILLI_DEPTH = 0.24 * PILLI_SIZE
 
 const LABEL_SIZE = 12
 const LABEL_GAP = 8
