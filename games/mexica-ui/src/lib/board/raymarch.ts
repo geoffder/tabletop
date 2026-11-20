@@ -51,17 +51,17 @@ export function occlusion(p: Vec, normal: Vec, scene: Scene): number {
     return clamp(1 - shade * 0.2)
 }
 
-export function softShadow(p: Vec, normal: Vec, scene: Scene): number {
-    let light = 1
+export function softShadow(p: Vec, normal: Vec, scene: Scene, light: Vec = LIGHT): number {
+    let lit = 1
     let travelled = 0.15
     const from = add(p, scale(normal, 0.05))
     for (let step = 0; step < 48 && travelled < 60; step++) {
-        const d = scene(add(from, scale(LIGHT, travelled)))
+        const d = scene(add(from, scale(light, travelled)))
         if (d < 0.001) return 0
-        light = Math.min(light, (6 * d) / travelled)
+        lit = Math.min(lit, (6 * d) / travelled)
         travelled += Math.max(d, 0.08)
     }
-    return clamp(light)
+    return clamp(lit)
 }
 
 // What a ray shows where it meets the piece: a colour in the space `encode` takes to bytes,

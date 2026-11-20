@@ -6,8 +6,8 @@ import { type Box, PILLI_SIZE } from './view.js'
 // viewer, z up, in board units at full size. A cloaked noble with a bare wooden face and a fan
 // of feathers behind the head.
 //   robe: a bell, or a pawn's concave flare on a ring at the foot.
-//   trim: a stepped fret round the hem, the cloak's opening down the front and a knot on the
-//     shoulder.
+//   trim: a stepped fret round the hem, the cloak's opening down the front and a cord along the
+//     cape's edge.
 //   arms: forearms meeting in front, wooden hands clasped.
 //   fan: a smooth fan, separate feathers, or a second, shorter row of feathers in front.
 //   headband: a gold band round the head with a jewel at the front.
