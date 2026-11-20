@@ -21,7 +21,7 @@ export const LAKE_PIXELS = 1
 
 export type StoneStyle = { light: string; dark: string; mortar: string; palace: string }
 
-// Limestone is the board's paving; the warmer stones are kept to compare against the temples.
+// The board is paved in warm25; the others are kept to compare against the temples.
 export const STONES = {
     limestone: { light: '#ece5d2', dark: '#cfc4a8', mortar: '#a69a80', palace: '#a9a59b' },
     warm25: { light: '#ece0c6', dark: '#cfbe9c', mortar: '#a49476', palace: '#aca597' },

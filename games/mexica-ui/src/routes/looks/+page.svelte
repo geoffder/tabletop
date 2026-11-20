@@ -27,7 +27,7 @@
     onMount(() => {
         const start = performance.now()
         const drawn: Record<string, string> = {}
-        drawn[PAVING_LOOK] = toUrl(renderPaving(STONES.limestone), 0.86)
+        drawn[PAVING_LOOK] = toUrl(renderPaving(STONES.warm25), 0.86)
         drawn[LAKE_LOOK] = toUrl(renderLake(TURQUOISE), 0.86)
         drawn[CANAL_LOOK] = toUrl(renderCanal(TURQUOISE), 0.86)
         urls = drawn
