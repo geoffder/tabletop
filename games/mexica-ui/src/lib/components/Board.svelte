@@ -16,15 +16,15 @@
     import { BRIDGE_RISE, CELL, type PlanStep } from '$lib/board/view.js'
     import type { Point } from '@tabletop/common'
     import { LOOK_URLS } from '$lib/board/lookUrls.js'
-    import { BANK_WIDTH, PIER_RADIUS, SIDES, waterworks } from '$lib/board/waterworks.js'
+    import { BANK_WIDTH, SIDES, SPILL_BOX, waterworks } from '$lib/board/waterworks.js'
     import {
         CANAL_LOOK,
         LAKE_LOOK,
         PAVING_LOOK,
-        PIER_LOOK,
         SHORE_LOOK,
         slopeCornerLook,
         slopeLook,
+        spillLook,
         templeLook
     } from '$lib/board/looks.js'
     import { DESIGN, templeBounds } from '$lib/board/templeShape.js'
@@ -229,13 +229,14 @@
                 <rect {...kerb.stone} class="surface kerb"></rect>
                 <rect {...kerb.edge} class="surface kerb-edge"></rect>
             {/each}
-            {#each works.piers as pier (pier.key)}
+            {#each works.spills as spill (spill.key)}
+                {@const look = spillLook(spill.side, spill.variant)}
                 <image
-                    href={LOOK_URLS[PIER_LOOK]}
-                    x={pier.x - PIER_RADIUS}
-                    y={pier.y - PIER_RADIUS}
-                    width={PIER_RADIUS * 2}
-                    height={PIER_RADIUS * 2}
+                    href={LOOK_URLS[look]}
+                    x={spill.x - SPILL_BOX[spill.side].width / 2}
+                    y={spill.y - SPILL_BOX[spill.side].height / 2}
+                    width={SPILL_BOX[spill.side].width}
+                    height={SPILL_BOX[spill.side].height}
                     preserveAspectRatio="none"
                     class="surface"
                 ></image>

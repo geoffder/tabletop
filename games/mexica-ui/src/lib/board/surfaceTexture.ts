@@ -327,34 +327,6 @@ export function renderSlopeCorner(corner: SlopeCorner, pixels = SLOPE_PIXELS): B
     })
 }
 
-// A pier head at the end of a jetty, seen from above: a round of tezontle brick capped with a
-// slab of the paving's limestone, lit from the upper left.
-export function renderPier(radius: number, pixels = SLOPE_PIXELS): Bitmap {
-    const mottle = fractal(noise2(79), 3)
-    const cap = linear(STONES.limestone.light)
-    const capDark = linear(STONES.limestone.dark)
-    const step = 1 / pixels
-    return paint({ x: 0, y: 0, width: radius * 2, height: radius * 2 }, pixels, (x, y) => {
-        const dx = x - radius
-        const dy = y - radius
-        const r = Math.hypot(dx, dy)
-        const alpha = clamp((radius - r) / step + 0.5)
-        if (alpha <= 0) return { color: [0, 0, 0], alpha: 0 }
-        const facing = r > 0 ? (dx / r) * LIGHT_2D.x + (dy / r) * LIGHT_2D.y : 0
-        const top = radius * 0.62
-        if (r < top) {
-            // The cap's edge rounds over, lit on the side towards the light.
-            const round = smoothstep(top - 1.4, top, r)
-            let color = mix(cap, capDark, 0.25 + (mottle(x * 0.5, y * 0.5) - 0.5) * 0.4)
-            color = mix(color, facing > 0 ? [1, 1, 1] : [0, 0, 0], Math.abs(facing) * round * 0.35)
-            return { color, alpha }
-        }
-        const angle = Math.atan2(dy, dx)
-        const brick = brickAt((angle + Math.PI) * r, r - top, 2 * Math.PI * r, 5)
-        return { color: brickColor(brick, r - top, facing, mottle(x * 0.4, y * 0.4)), alpha }
-    })
-}
-
 export const SHORE_PIXELS = 2
 
 // The island's natural shore, in plan: a bank of rough rocks of uneven width standing out from
@@ -505,6 +477,81 @@ export function renderShore(pixels = SHORE_PIXELS): Bitmap {
             }
         }
         return { color, alpha: ground }
+    })
+}
+
+// A spill of rocks where a stretch of shore is cut short, reaching out from the land towards
+// the side named, `reach` long, in plan: rocks heaped thickest by the land and thinning out,
+// packed in earth, lit as the shore's rocks are.
+export function renderSpill(
+    side: 'n' | 'e' | 's' | 'w',
+    variant: number,
+    reach: number,
+    pixels = SHORE_PIXELS * 2
+): Bitmap {
+    const [light, dark, earth] = [ROCK.light, ROCK.dark, ROCK.earth].map(linear)
+    const wetTint = linear(TURQUOISE.deep)
+    const grit = noise2(97 + variant)
+    const lumps = fractal(noise2(101 + variant), 2)
+    const out = { n: [0, -1], s: [0, 1], e: [1, 0], w: [-1, 0] }[side]
+    const across = [-out[1], out[0]]
+    const half = reach / 2
+    const wide = reach * 0.4
+    const next = seededRandom(variant * 977 + 31)
+    // Rocks in rows out from the land, largest and most crowded near it.
+    const rocks: Rock[] = []
+    for (let row = 0; row < 5; row++) {
+        const along = -half + 1.5 + row * (reach / 5)
+        const count = 4 - Math.floor(row / 2)
+        for (let index = 0; index < count; index++) {
+            const sideways = (index / Math.max(1, count - 1) - 0.5) * wide * (1.4 - row * 0.15)
+            const jitter = (next() - 0.5) * 1.6
+            rocks.push({
+                x: out[0] * (along + jitter) + across[0] * (sideways + (next() - 0.5) * 1.5),
+                y: out[1] * (along + jitter) + across[1] * (sideways + (next() - 0.5) * 1.5),
+                radius: 2.9 - row * 0.32 + next() * 0.8,
+                tone: next()
+            })
+        }
+    }
+    const width = Math.max(Math.abs(out[0]) * reach, Math.abs(across[0]) * wide * 2) + 6
+    const height = Math.max(Math.abs(out[1]) * reach, Math.abs(across[1]) * wide * 2) + 6
+    const box = { x: -width / 2, y: -height / 2, width, height }
+    return paint(box, pixels, (x, y) => {
+        const lump = (lumps(x * 0.45, y * 0.45) - 0.5) * 0.5
+        let top: { height: number; nx: number; ny: number; rim: number; tone: number } | undefined
+        for (const rock of rocks) {
+            const radius = rock.radius * (1 + lump)
+            const dx = (x - rock.x) / radius
+            const dy = (y - rock.y) / radius
+            const r2 = dx * dx + dy * dy
+            if (r2 >= 1) continue
+            const height = (1 - r2) ** 0.6 * radius
+            if (top === undefined || height > top.height) {
+                top = { height, nx: dx, ny: dy, rim: Math.sqrt(r2), tone: rock.tone }
+            }
+        }
+        const along = x * out[0] + y * out[1]
+        const wet = smoothstep(0, half, along)
+        if (top !== undefined) {
+            const steep = (1.7 * top.rim) / Math.sqrt(1 - top.rim * top.rim + 0.08)
+            const nx = top.nx * steep
+            const ny = top.ny * steep
+            const length = Math.hypot(nx, ny, 1)
+            const facing = (-nx * LIGHT_2D.x - ny * LIGHT_2D.y) / length
+            const lit = clamp(0.42 + facing * 0.55 + (1 / length) * 0.15)
+            let color = mix(dark, light, clamp(lit * (0.7 + top.tone * 0.45)))
+            color = mix(color, earth, (grit(x * 1.3, y * 1.3) - 0.5) * 0.25 + 0.05)
+            color = mix(color, [0, 0, 0], smoothstep(0.7, 1, top.rim) * 0.35)
+            color = mix(color, mix(color, wetTint, 0.3), wet * 0.6)
+            return { color, alpha: 1 }
+        }
+        // Earth between the rocks, thinning out away from the land and to the sides.
+        const sideways = Math.abs(x * across[0] + y * across[1]) / (wide * 1.2)
+        const reachOut = (along + half) / reach
+        const ground = (1 - smoothstep(0.55, 1, sideways)) * (1 - smoothstep(0.45, 0.85, reachOut))
+        const color = mix(earth, [0, 0, 0], (grit(x * 0.9, y * 0.9) - 0.5) * 0.25 + 0.15)
+        return { color, alpha: ground * 0.9 }
     })
 }
 

@@ -2,7 +2,6 @@
 import canal from '../images/looks/canal.webp'
 import lake from '../images/looks/lake.webp'
 import paving from '../images/looks/paving.webp'
-import pier from '../images/looks/pier.webp'
 import pilli from '../images/looks/pilli.webp'
 import pilliFlat from '../images/looks/pilli-flat.webp'
 import pilliShine from '../images/looks/pilli-shine.webp'
@@ -16,6 +15,18 @@ import slopeE from '../images/looks/slope-e.webp'
 import slopeN from '../images/looks/slope-n.webp'
 import slopeS from '../images/looks/slope-s.webp'
 import slopeW from '../images/looks/slope-w.webp'
+import spillE0 from '../images/looks/spill-e-0.webp'
+import spillE1 from '../images/looks/spill-e-1.webp'
+import spillE2 from '../images/looks/spill-e-2.webp'
+import spillN0 from '../images/looks/spill-n-0.webp'
+import spillN1 from '../images/looks/spill-n-1.webp'
+import spillN2 from '../images/looks/spill-n-2.webp'
+import spillS0 from '../images/looks/spill-s-0.webp'
+import spillS1 from '../images/looks/spill-s-1.webp'
+import spillS2 from '../images/looks/spill-s-2.webp'
+import spillW0 from '../images/looks/spill-w-0.webp'
+import spillW1 from '../images/looks/spill-w-1.webp'
+import spillW2 from '../images/looks/spill-w-2.webp'
 import temple1 from '../images/looks/temple-1.webp'
 import temple1Flat from '../images/looks/temple-1-flat.webp'
 import temple2 from '../images/looks/temple-2.webp'
@@ -29,7 +40,6 @@ export const LOOK_URLS: Record<string, string> = {
     canal: canal,
     lake: lake,
     paving: paving,
-    pier: pier,
     pilli: pilli,
     'pilli-flat': pilliFlat,
     'pilli-shine': pilliShine,
@@ -43,6 +53,18 @@ export const LOOK_URLS: Record<string, string> = {
     'slope-n': slopeN,
     'slope-s': slopeS,
     'slope-w': slopeW,
+    'spill-e-0': spillE0,
+    'spill-e-1': spillE1,
+    'spill-e-2': spillE2,
+    'spill-n-0': spillN0,
+    'spill-n-1': spillN1,
+    'spill-n-2': spillN2,
+    'spill-s-0': spillS0,
+    'spill-s-1': spillS1,
+    'spill-s-2': spillS2,
+    'spill-w-0': spillW0,
+    'spill-w-1': spillW1,
+    'spill-w-2': spillW2,
     'temple-1': temple1,
     'temple-1-flat': temple1Flat,
     'temple-2': temple2,
