@@ -26,9 +26,9 @@ export function spillLook(
     out: SlopeSide,
     end: SlopeSide,
     kind: 'across' | 'along',
-    variant: number
+    depth: number
 ): string {
-    return `spill-${out}-${end}-${kind}-${variant}`
+    return `spill-${out}-${end}-${kind}-${depth}`
 }
 
 // How far an inside corner's cove rounds the bank's foot at the water: 0 leaves it square.

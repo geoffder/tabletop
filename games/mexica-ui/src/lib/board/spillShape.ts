@@ -1,67 +1,132 @@
 import type { Point } from '@tabletop/common'
+import { clamp, smoothstep } from './light.js'
 import { seededRandom } from './random.js'
 import { SLOPE_WIDTH, type SlopeSide } from './looks.js'
 import type { Box } from './view.js'
 
-// A pile of rocks where a stretch of the island's shore is cut short beside a canal's brick
-// bank, laid out round the corner of land where the shore ends: `out` from the land through the
-// shore, and `end` along the coast towards the brick.
+// A rock slide where a stretch of the island's shore is cut short beside a canal's brick bank,
+// laid out round the corner of land where the shore ends: `out` from the land through the shore,
+// and `end` along the coast towards the brick.
 //
 // The bank either runs across the shore's end, back along the land's side away from the lake
-// ('across'), or carries on along the coast past it ('along'). Either way the shore's rocks heap
-// up over the bank's end, as one pile sloping down from the corner into the water, its biggest
-// rocks highest and the smaller ones settling round its foot, never onto the paving.
+// ('across'), or carries on along the coast past it ('along'). Either way the shore's rocks have
+// slid off its end onto the bank: they cover the shore's cut end from the land out to its far
+// edge, and run on down the bank's slope beside it, thinning towards the water and tapering
+// along the wall. The whole slide is bedded in earth, so nothing it covers shows between its
+// rocks, and none of it lies on the paving.
 export type SpillKind = 'across' | 'along'
-// `height` is how high up the pile a rock lies, from its foot (0) to its top (1).
+// `height` is how high up the slide a rock lies, from its foot (0) to its top (1).
 export type SpillRock = { u: number; v: number; radius: number; tone: number; height: number }
+export type Slide = {
+    rocks: SpillRock[]
+    // How far a point lies within the slide's bed, from outside (0) to well in (1).
+    cover: (u: number, v: number) => number
+}
 
-export const SPILL_VARIANTS = 2
+// How far out the shore reaches from the grid, rounded up to one of these: each slide is drawn
+// for one, long enough to hide the end of a shore that deep.
+export const SPILL_DEPTHS = [8, 12, 16, 20] as const
+export type SpillDepth = (typeof SPILL_DEPTHS)[number]
+
+export function spillDepth(shoreDepth: number): SpillDepth {
+    return SPILL_DEPTHS.find((depth) => shoreDepth <= depth) ?? SPILL_DEPTHS.at(-1) ?? 20
+}
 
 const BANK = SLOPE_WIDTH
-const PILE = { reach: 10, largest: 4.2, smallest: 1.3, taper: 0.6, packing: 0.8 }
+const SLIDE = {
+    // Down the wall from the shore, and how far the slide laps back over the shore's end.
+    length: 20,
+    lap: 4,
+    largest: 4,
+    smallest: 1.2,
+    packing: 0.62,
+    edge: 1.2
+}
+
+const slides = new Map<string, Slide>()
 
 // In the corner's own frame: u along the coast towards the brick, v out from the land.
-export function spillRocks(kind: SpillKind, variant: number): SpillRock[] {
-    const next = seededRandom(variant * 613 + (kind === 'across' ? 7 : 19))
-    // The pile's top, over the end of the bank where it meets the shore.
-    const top = kind === 'across' ? { u: BANK * 0.25, v: 5 } : { u: 0.5, v: BANK * 0.6 }
-    const [phase, phase2] = [next() * 6.3, next() * 6.3]
-    const reach = (angle: number) =>
-        PILE.reach * (1 + 0.12 * Math.sin(3 * angle + phase) + 0.08 * Math.sin(5 * angle + phase2))
-    // Off the paving, and across a canal no further than its bank and a little beyond.
-    const allowed = (u: number, v: number) =>
-        kind === 'across' ? !(u < 0 && v < 0) && u <= BANK + 2.5 : v >= -0.5
-    const candidates = Array.from({ length: 900 }, () => ({
-        u: top.u + (next() * 2 - 1) * PILE.reach * 1.25,
-        v: top.v + (next() * 2 - 1) * PILE.reach * 1.25,
+export function spillSlide(kind: SpillKind, depth: SpillDepth): Slide {
+    const key = `${kind}-${depth}`
+    const known = slides.get(key)
+    if (known) return known
+    const next = seededRandom(depth * 613 + (kind === 'across' ? 7 : 19))
+    const phases = [next(), next(), next(), next()].map((value) => value * 6.3)
+    const wobble = (u: number, v: number) =>
+        0.7 * Math.sin(u * 0.55 + v * 0.3 + phases[0]) +
+        0.5 * Math.sin(v * 0.7 - u * 0.2 + phases[1]) +
+        0.3 * Math.sin((u + v) * 1.3 + phases[2])
+    // Along the wall from the shore (s) and across it from the kerb (t) to the water (BANK).
+    const wall = (u: number, v: number) => (kind === 'across' ? { s: -v, t: u } : { s: u, t: v })
+    const inside = (distance: number) => smoothstep(0, SLIDE.edge, distance)
+    // Over the shore's cut end: from the land out past the shore, lapping back over it.
+    const head = (u: number, v: number) =>
+        Math.min(u + SLIDE.lap, 2.5 - u, v + 1, depth + 0.5 - v - (u < 0 ? 0 : u * 0.5))
+    // Down the bank: from the kerb at the shore's end to the foot at the water further on.
+    const body = (u: number, v: number) => {
+        const { s, t } = wall(u, v)
+        const along = clamp(s / SLIDE.length)
+        const kerbSide = -0.3 + (BANK - 2.5) * along ** 0.9
+        const waterSide = BANK + 1.5 - along
+        return Math.min(
+            s + (kind === 'across' ? 3 : 1),
+            SLIDE.length - s,
+            t - kerbSide,
+            waterSide - t
+        )
+    }
+    // Never on the paving.
+    const land = (u: number, v: number) => (kind === 'across' ? Math.max(u, v) : v)
+    const cover = (u: number, v: number) =>
+        inside(Math.max(head(u, v), body(u, v)) + wobble(u, v) * 0.6) *
+        smoothstep(-0.6, 0, land(u, v))
+    // Highest where the shore ends, falling away down the wall and out into the lake.
+    const height = (u: number, v: number) => {
+        const top = 1 - clamp(Math.hypot((u + 0.5) / 6, (v - depth * 0.3) / (depth * 0.8 + 3)))
+        const { s, t } = wall(u, v)
+        const down = 0.8 * (1 - clamp(s / SLIDE.length)) ** 1.1 * (1 - 0.3 * clamp(t / BANK))
+        return Math.max(top, down)
+    }
+    const bounds = slideBounds(kind, depth)
+    const candidates = Array.from({ length: 5000 }, () => ({
+        u: bounds.u0 + next() * (bounds.u1 - bounds.u0),
+        v: bounds.v0 + next() * (bounds.v1 - bounds.v0),
         size: next(),
-        tone: next(),
-        keep: next()
+        tone: next()
     }))
-        .map((spot) => {
-            const du = spot.u - top.u
-            const dv = spot.v - top.v
-            return { ...spot, down: Math.hypot(du, dv) / reach(Math.atan2(dv, du)) }
-        })
-        .filter((spot) => spot.down <= 1 && allowed(spot.u, spot.v))
-        .toSorted((a, b) => a.down - b.down)
+        .filter((spot) => cover(spot.u, spot.v) > 0.5)
+        .map((spot) => ({ ...spot, height: height(spot.u, spot.v) }))
+        .toSorted((a, b) => b.height - a.height)
     const rocks: SpillRock[] = []
     for (const spot of candidates) {
-        // Smaller and fewer towards the foot, so the pile tapers into the water.
         const radius =
-            (PILE.largest - (PILE.largest - PILE.smallest) * spot.down ** PILE.taper) *
+            (SLIDE.smallest + (SLIDE.largest - SLIDE.smallest) * clamp(spot.height) ** 0.8) *
             (0.88 + spot.size * 0.24)
-        const clear =
-            spot.keep > spot.down ** 2 * 0.6 &&
-            rocks.every(
-                (rock) =>
-                    Math.hypot(rock.u - spot.u, rock.v - spot.v) >
-                    (rock.radius + radius) * PILE.packing
-            )
-        if (clear)
-            rocks.push({ u: spot.u, v: spot.v, radius, tone: spot.tone, height: 1 - spot.down })
+        const clear = rocks.every(
+            (rock) =>
+                Math.hypot(rock.u - spot.u, rock.v - spot.v) >
+                (rock.radius + radius) * SLIDE.packing
+        )
+        if (clear) {
+            rocks.push({
+                u: spot.u,
+                v: spot.v,
+                radius,
+                tone: spot.tone,
+                height: clamp(spot.height)
+            })
+        }
     }
-    return rocks
+    const slide = { rocks, cover }
+    slides.set(key, slide)
+    return slide
+}
+
+// The reach of a slide, in its frame, before its rocks' size.
+function slideBounds(kind: SpillKind, depth: SpillDepth) {
+    return kind === 'across'
+        ? { u0: -SLIDE.lap - 2, u1: BANK + 3, v0: -SLIDE.length - 2, v1: depth + 3 }
+        : { u0: -SLIDE.lap - 2, u1: SLIDE.length + 2, v0: -1, v1: Math.max(depth, BANK) + 3 }
 }
 
 const STEP: Record<SlopeSide, Point> = {
@@ -79,16 +144,15 @@ export function toPlan(frame: { out: Point; end: Point }, u: number, v: number):
     return { x: frame.end.x * u + frame.out.x * v, y: frame.end.y * u + frame.out.y * v }
 }
 
-// The box round the corner of land that a spill's image covers, in plan.
-export function spillBox(out: SlopeSide, end: SlopeSide, kind: SpillKind, variant: number): Box {
+// The box round the corner of land that a slide's image covers, in plan.
+export function spillBox(out: SlopeSide, end: SlopeSide, kind: SpillKind, depth: SpillDepth): Box {
     const frame = spillFrame(out, end)
-    const points = spillRocks(kind, variant).flatMap((rock) =>
-        [-1, 1].flatMap((du) =>
-            [-1, 1].map((dv) =>
-                toPlan(frame, rock.u + du * (rock.radius + 1.5), rock.v + dv * (rock.radius + 1.5))
-            )
-        )
-    )
+    const bounds = slideBounds(kind, depth)
+    const margin = SLIDE.largest * 1.12 + 1.5
+    const points = [
+        toPlan(frame, bounds.u0 - margin, bounds.v0 - margin),
+        toPlan(frame, bounds.u1 + margin, bounds.v1 + margin)
+    ]
     const x = Math.floor(Math.min(...points.map((p) => p.x)))
     const y = Math.floor(Math.min(...points.map((p) => p.y)))
     const right = Math.ceil(Math.max(...points.map((p) => p.x)))

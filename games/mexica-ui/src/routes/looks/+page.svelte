@@ -29,7 +29,7 @@
     } from '$lib/board/looks.js'
     import type { Bitmap } from '$lib/board/light.js'
     import { renderTemple } from '$lib/board/templeLight.js'
-    import { SPILL_VARIANTS, type SpillKind } from '$lib/board/spillShape.js'
+    import { SPILL_DEPTHS, type SpillKind } from '$lib/board/spillShape.js'
     import { DESIGN, type TempleDesign, templeBounds } from '$lib/board/templeShape.js'
     import { ownerMark } from '$lib/board/templeMarks.js'
     import { renderPilli } from '$lib/board/pilliLight.js'
@@ -107,9 +107,9 @@
                     continue
                 }
                 for (const kind of SPILL_KINDS) {
-                    for (let variant = 0; variant < SPILL_VARIANTS; variant++) {
-                        drawn[spillLook(out, end, kind, variant)] = toUrl(
-                            renderSpill(out, end, kind, variant),
+                    for (const depth of SPILL_DEPTHS) {
+                        drawn[spillLook(out, end, kind, depth)] = toUrl(
+                            renderSpill(out, end, kind, depth),
                             0.9
                         )
                     }
