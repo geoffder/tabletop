@@ -1,5 +1,6 @@
 <script lang="ts">
     import type { Attachment } from 'svelte/attachments'
+    import { devicePixelRatio } from 'svelte/reactivity/window'
     import {
         DefaultTableLayout,
         DefaultTabs,
@@ -17,6 +18,8 @@
     import ActionPanel from '$lib/components/ActionPanel.svelte'
     import GameEndPanel from '$lib/components/GameEndPanel.svelte'
     import SupplyTray from '$lib/components/SupplyTray.svelte'
+    import OverlayToggle from '$lib/components/OverlayToggle.svelte'
+    import { zoomLimits } from '$lib/board/zoom.js'
     import { MexicaGameSession } from '$lib/model/session.svelte.js'
     import { setGameSession } from '$lib/model/sessionContext.svelte.js'
 
@@ -24,6 +27,8 @@
         $props()
     assert(gameSession instanceof MexicaGameSession, 'Mexica needs its own game session')
     setGameSession(gameSession)
+
+    const zoom = $derived(zoomLimits(devicePixelRatio.current ?? 1))
 
     // The shared wrapper exposes full screen only as its dialog becoming modal.
     let expanded = $state(false)
@@ -104,12 +109,75 @@
                 <ScalingWrapper
                     justify="center"
                     controls="bottom-left"
-                    maxScale={4}
-                    maxFitScale={1.5}
+                    maxScale={zoom.maxScale}
+                    maxFitScale={zoom.maxFitScale}
                     renderAtViewScale
                     expandable
                 >
                     <Board />
+                    {#snippet overlay()}
+                        <div
+                            class="pointer-events-auto absolute right-3 bottom-2 z-10 flex items-center gap-1.5"
+                        >
+                            <OverlayToggle
+                                glyph="A1"
+                                label="Coordinates"
+                                hint={gameSession.showCoordinates
+                                    ? 'Hide the coordinates'
+                                    : 'Show the coordinates round the board'}
+                                pressed={gameSession.showCoordinates}
+                                onToggle={() => gameSession.toggleCoordinates()}
+                            />
+                            <OverlayToggle
+                                label="Flat board"
+                                hint={gameSession.flatBoard
+                                    ? 'See the board from the near side of the table'
+                                    : 'See the board from straight above'}
+                                pressed={gameSession.flatBoard}
+                                onToggle={() => gameSession.toggleFlatBoard()}
+                            >
+                                <svg
+                                    width="16"
+                                    height="16"
+                                    viewBox="-8 -8 16 16"
+                                    aria-hidden="true"
+                                >
+                                    <rect x="-6" y="-6" width="12" height="12" class="line"></rect>
+                                    <path d="M -6 0 H 6 M 0 -6 V 6" class="line"></path>
+                                </svg>
+                            </OverlayToggle>
+                            <OverlayToggle
+                                glyph="90°"
+                                label="Rotated board"
+                                hint={gameSession.rotatedBoard
+                                    ? 'Turn the board back a quarter turn'
+                                    : 'Turn the board a quarter turn'}
+                                pressed={gameSession.rotatedBoard}
+                                onToggle={() => gameSession.toggleRotatedBoard()}
+                            />
+                            <OverlayToggle
+                                label="Far side"
+                                hint={gameSession.farSide
+                                    ? 'See the board from your own side again'
+                                    : 'See the board from the far side, to see what temples hide'}
+                                pressed={gameSession.farSide}
+                                onToggle={() => gameSession.toggleFarSide()}
+                            >
+                                <svg
+                                    width="16"
+                                    height="16"
+                                    viewBox="-8 -8 16 16"
+                                    aria-hidden="true"
+                                >
+                                    <path d="M -5.5 -1 A 5.5 5.5 0 0 1 4.5 -3.2" class="line"
+                                    ></path>
+                                    <path d="M 2 -5 L 4.8 -3 L 2.2 -0.8" class="line"></path>
+                                    <path d="M 5.5 1 A 5.5 5.5 0 0 1 -4.5 3.2" class="line"></path>
+                                    <path d="M -2 5 L -4.8 3 L -2.2 0.8" class="line"></path>
+                                </svg>
+                            </OverlayToggle>
+                        </div>
+                    {/snippet}
                     {#snippet toolbar()}
                         <!-- Full screen is a modal dialog, so the turn controls must come inside it. -->
                         <div {@attach watchExpansion}>

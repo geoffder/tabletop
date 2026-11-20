@@ -1,6 +1,7 @@
 import { GameVisibility, type GameInfo } from '@tabletop/common'
 import { GAME_VERSION } from './version.js'
 import { MexicaConfigurator } from './config.js'
+import { MexicaPreferenceDefinition } from './preferences.js'
 
 export const MexicaInfo: GameInfo = {
     id: 'mexica',
@@ -18,5 +19,6 @@ export const MexicaInfo: GameInfo = {
         beta: true,
         visibility: GameVisibility.Alpha
     },
-    configurator: new MexicaConfigurator()
+    configurator: new MexicaConfigurator(),
+    preferences: MexicaPreferenceDefinition
 }
