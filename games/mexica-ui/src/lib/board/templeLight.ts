@@ -26,7 +26,7 @@ const SUPERSAMPLE = 3
 const HIT = 0.004
 const FAR = 160
 
-const BRICK = { length: 5.2, joint: 0.32, round: 0.55 }
+const BRICK = { length: 8.3, joint: 0.34, round: 0.6 }
 
 export type TempleStone = { light: string; dark: string; joint: string }
 
@@ -172,15 +172,15 @@ function shade(p: Vec, shapes: readonly Shape[], scene: Scene, stone: Stone): Rg
 function brickAt(p: Vec, normal: Vec, shape: Shape): { tip: Vec; joint: number; tone: number } {
     const onTop = normal[2] > 0.7
     const sideways = Math.abs(normal[0]) > 0.7
-    if (!onTop && !sideways && Math.abs(normal[1]) <= 0.7)
+    if (shape.tier < 0 || (!onTop && !sideways && Math.abs(normal[1]) <= 0.7))
         return { tip: [0, 0, 0], joint: 0, tone: 0.5 }
     const block = shape.block
-    const courseHeight = shape.tier < 0 ? block.z1 - block.z0 : (block.z1 - block.z0) / 2
+    const courseHeight = TEMPLE.tier / 2
     const uAxis: Vec = sideways ? [0, 1, 0] : [1, 0, 0]
     const vAxis: Vec = onTop ? [0, 1, 0] : [0, 0, 1]
     const u = dot(p, uAxis) + 100
     const v = onTop ? p[1] - block.y0 : p[2] - block.z0
-    const rowHeight = onTop ? BRICK.length / 2 : courseHeight
+    const rowHeight = courseHeight
     const row = Math.floor(v / rowHeight)
     const shifted = u + (row % 2 === 0 ? 0 : BRICK.length / 2)
     const column = Math.floor(shifted / BRICK.length)
