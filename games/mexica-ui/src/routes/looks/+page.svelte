@@ -15,12 +15,7 @@
     import { DESIGN, type TempleDesign, templeBounds } from '$lib/board/templeShape.js'
     import { ownerMark } from '$lib/board/templeMarks.js'
     import { renderPilli } from '$lib/board/pilliLight.js'
-    import {
-        PILLI_DESIGNS,
-        type PilliDesign,
-        pilliBounds,
-        pilliLook
-    } from '$lib/board/pilliShape.js'
+    import { PILLI_STYLE, type PilliStyle, pilliBounds, pilliLook } from '$lib/board/pilliShape.js'
     import type { Box } from '$lib/board/view.js'
     import TempleMarks from '$lib/components/TempleMarks.svelte'
     import { CELL, FLAT, TILT } from '$lib/board/view.js'
@@ -36,6 +31,20 @@
     let previews: Record<string, string> | undefined = $state()
     type Figure = { url: string; outline: string; box: Box }
     let figures: Record<string, Figure> | undefined = $state()
+    // Fans on the robe as it is, then robes under feathers and a headband.
+    const FEATHERED: PilliStyle = { ...PILLI_STYLE, fan: 'feathers', headband: true }
+    const FIGURE_ROWS: [string, PilliStyle][] = [
+        ['plain fan', PILLI_STYLE],
+        ['feathers', { ...PILLI_STYLE, fan: 'feathers' }],
+        ['+ headband', FEATHERED],
+        ['+ eyes', { ...FEATHERED, eyes: true }],
+        ['two rows', { ...FEATHERED, fan: 'tiered' }],
+        ['bell', FEATHERED],
+        ['pawn', { ...FEATHERED, robe: 'pawn' }],
+        ['bell, trim', { ...FEATHERED, trim: true }],
+        ['pawn, trim', { ...FEATHERED, robe: 'pawn', trim: true }],
+        ['pawn, trim, arms', { ...FEATHERED, robe: 'pawn', trim: true, arms: true }]
+    ]
     const FIGURE_COLORS: readonly Color[] = [
         Color.Green,
         Color.Red,
@@ -99,14 +108,12 @@
         millis = Math.round(performance.now() - start)
         setTimeout(() => {
             const drawnFigures: Record<string, Figure> = {}
-            for (const design of PILLI_DESIGNS) {
-                for (const tilt of [TILT, FLAT]) {
-                    const look = renderPilli(tilt, design)
-                    drawnFigures[pilliLook(tilt === FLAT, design)] = {
-                        url: toUrl(look.bitmap, 0.92),
-                        outline: look.outline,
-                        box: pilliBounds(tilt, design)
-                    }
+            for (const [name, style] of FIGURE_ROWS) {
+                const look = renderPilli(TILT, style)
+                drawnFigures[name] = {
+                    url: toUrl(look.bitmap, 0.92),
+                    outline: look.outline,
+                    box: pilliBounds(TILT)
                 }
             }
             figures = drawnFigures
@@ -141,11 +148,11 @@
     </g>
 {/snippet}
 
-{#snippet figureRow(design: PilliDesign, tilt: number)}
-    {@const figure = figures?.[pilliLook(tilt === FLAT, design)]}
+{#snippet figureRow(name: string, tilt: number)}
+    {@const figure = figures?.[name]}
     {#if figure}
         <tr>
-            <th>{design}{tilt === FLAT ? ', flat' : ''}</th>
+            <th>{name}</th>
             <td>
                 <svg viewBox="-20 -40 240 52" width="720" height="156">
                     <rect x="-20" y="-40" width="240" height="52" fill="#e6dcc4"></rect>
@@ -194,11 +201,8 @@
         <h2>Pilli Mexica</h2>
         <table class="designs">
             <tbody>
-                {#each PILLI_DESIGNS as design (design)}
-                    {@render figureRow(design, TILT)}
-                {/each}
-                {#each PILLI_DESIGNS as design (design)}
-                    {@render figureRow(design, FLAT)}
+                {#each FIGURE_ROWS as [name] (name)}
+                    {@render figureRow(name, TILT)}
                 {/each}
             </tbody>
         </table>
