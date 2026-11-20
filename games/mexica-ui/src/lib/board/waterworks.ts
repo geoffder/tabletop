@@ -17,7 +17,15 @@ import { spillLook } from './looks.js'
 export type Spot = { column: number; row: number }
 
 export type Bank = { key: string; slope: SlopeSide; points: string }
-export type Curve = { key: string; corner: SlopeCorner; x: number; y: number }
+// A bend of bank in a corner of a water square: round a corner of land jutting into the water
+// ('outside'), or a cove where two banks meet ('inside').
+export type Curve = {
+    key: string
+    corner: SlopeCorner
+    bend: 'outside' | 'inside'
+    x: number
+    y: number
+}
 export type Spill = { key: string; look: string; box: Box }
 export type Kerb = { key: string; stone: Box; edge: Box }
 export type Zone = { key: string; points: string }
@@ -164,21 +172,26 @@ function banksOf(island: Island, spot: Spot): Bank[] {
 }
 
 // A curve of bank in the corner of a water square wherever the water runs on past both sides
-// of that corner but the square across the corner is land, its corner jutting into the water.
+// of that corner but the square across the corner is land, its corner jutting into the water;
+// and a cove wherever the square meets land on both sides of a corner.
 function curvesOf(island: Island, spot: Spot): Curve[] {
-    return CORNERS.filter(([, up, beside]) => {
-        const across = plus(spot, plus(STEP[up], STEP[beside]))
-        return (
-            island.water(plus(spot, STEP[up])) &&
-            island.water(plus(spot, STEP[beside])) &&
-            island.ground(across)
-        )
-    }).map(([corner, up, beside]) => ({
+    const at = (corner: SlopeCorner, up: SlopeSide, beside: SlopeSide, bend: Curve['bend']) => ({
         key: `curve-${keyOf(spot)}-${corner}`,
         corner,
+        bend,
         x: spot.column * CELL + (beside === 'e' ? CELL - BANK_WIDTH : 0),
         y: spot.row * CELL + (up === 's' ? CELL - BANK_WIDTH : 0)
-    }))
+    })
+    return CORNERS.flatMap(([corner, up, beside]) => {
+        const across = plus(spot, plus(STEP[up], STEP[beside]))
+        const above = plus(spot, STEP[up])
+        const aside = plus(spot, STEP[beside])
+        if (island.ground(above) && island.ground(aside)) return [at(corner, up, beside, 'inside')]
+        if (island.water(above) && island.water(aside) && island.ground(across)) {
+            return [at(corner, up, beside, 'outside')]
+        }
+        return []
+    })
 }
 
 // Wherever a square's shore on the lake is cut short, by a canal or a canal's mouth beside it,

@@ -11,6 +11,10 @@ import slopeCornerNe from '../images/looks/slope-corner-ne.webp'
 import slopeCornerNw from '../images/looks/slope-corner-nw.webp'
 import slopeCornerSe from '../images/looks/slope-corner-se.webp'
 import slopeCornerSw from '../images/looks/slope-corner-sw.webp'
+import slopeCoveNe from '../images/looks/slope-cove-ne.webp'
+import slopeCoveNw from '../images/looks/slope-cove-nw.webp'
+import slopeCoveSe from '../images/looks/slope-cove-se.webp'
+import slopeCoveSw from '../images/looks/slope-cove-sw.webp'
 import slopeE from '../images/looks/slope-e.webp'
 import slopeN from '../images/looks/slope-n.webp'
 import slopeS from '../images/looks/slope-s.webp'
@@ -69,6 +73,10 @@ export const LOOK_URLS: Record<string, string> = {
     'slope-corner-nw': slopeCornerNw,
     'slope-corner-se': slopeCornerSe,
     'slope-corner-sw': slopeCornerSw,
+    'slope-cove-ne': slopeCoveNe,
+    'slope-cove-nw': slopeCoveNw,
+    'slope-cove-se': slopeCoveSe,
+    'slope-cove-sw': slopeCoveSw,
     'slope-e': slopeE,
     'slope-n': slopeN,
     'slope-s': slopeS,

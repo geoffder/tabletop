@@ -317,6 +317,37 @@ export function renderSlope(side: SlopeSide, pixels = SLOPE_PIXELS): Bitmap {
 
 // Where a canal turns round a corner of land, its bank curves round the corner: a quarter of a
 // ring of bricks round the corner, which lies at the tile's corner named.
+// Where two of a canal's banks meet in an inside corner, the bank bends round it as a cove: its
+// courses run in quarter circles round the corner's inner point, sloping down towards it, and the
+// bank's top fills the corner of land beyond them. The corner of land lies at the tile's corner
+// named.
+export function renderSlopeCove(corner: SlopeCorner, pixels = SLOPE_PIXELS): Bitmap {
+    const mottle = fractal(noise2(77), 3)
+    const top = linear('#a88676')
+    // The inner point, across the tile from the corner of land.
+    const cx = corner === 'ne' || corner === 'se' ? 0 : SLOPE_WIDTH
+    const cy = corner === 'se' || corner === 'sw' ? 0 : SLOPE_WIDTH
+    const step = 1 / pixels
+    return paint({ x: 0, y: 0, width: SLOPE_WIDTH, height: SLOPE_WIDTH }, pixels, (x, y) => {
+        const dx = x - cx
+        const dy = y - cy
+        const r = Math.hypot(dx, dy)
+        const across = SLOPE_WIDTH - r
+        const angle = Math.atan2(Math.abs(dy), Math.abs(dx))
+        const brick = brickAt(
+            angle * Math.max(r, 2),
+            Math.max(0, across),
+            (Math.PI / 2) * Math.max(r, 2),
+            9
+        )
+        // Down the slope is towards the inner point.
+        const facing = r > 0 ? (-dx / r) * LIGHT_2D.x + (-dy / r) * LIGHT_2D.y : 0
+        const slope = brickColor(brick, Math.max(0, across), facing, mottle(x * 0.4, y * 0.4))
+        const onTop = clamp(-across / step + 0.5)
+        return { color: mix(slope, top, onTop), alpha: 1 }
+    })
+}
+
 export function renderSlopeCorner(corner: SlopeCorner, pixels = SLOPE_PIXELS): Bitmap {
     const mottle = fractal(noise2(73), 3)
     const cx = corner === 'ne' || corner === 'se' ? SLOPE_WIDTH : 0

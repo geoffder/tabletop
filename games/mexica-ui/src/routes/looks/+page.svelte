@@ -10,6 +10,7 @@
         renderShore,
         renderSlope,
         renderSlopeCorner,
+        renderSlopeCove,
         STONES,
         TURQUOISE
     } from '$lib/board/surfaceTexture.js'
@@ -20,6 +21,7 @@
         SHORE_LOOK,
         type SlopeCorner,
         slopeCornerLook,
+        slopeCoveLook,
         slopeLook,
         type SlopeSide,
         spillLook,
@@ -116,6 +118,7 @@
         }
         for (const corner of SLOPE_CORNERS) {
             drawn[slopeCornerLook(corner)] = toUrl(renderSlopeCorner(corner), 0.9)
+            drawn[slopeCoveLook(corner)] = toUrl(renderSlopeCove(corner), 0.9)
         }
         for (const level of LEVELS) {
             for (const tilt of [TILT, FLAT]) {
