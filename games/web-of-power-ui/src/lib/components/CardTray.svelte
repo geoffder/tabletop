@@ -21,79 +21,91 @@
     )
 </script>
 
-<div class="tray">
-    {#if session.myPlayer}
-        <div class="hand" aria-label="Your hand">
-            {#each session.hand as card, index (index)}
-                <div
-                    class="fanned"
-                    class:raised={session.chosenIndices.includes(index)}
-                    style:rotate="{(index - (session.hand.length - 1) / 2) * FAN_STEP}deg"
-                >
-                    <Card
-                        {card}
-                        chosen={session.chosenIndices.includes(index)}
-                        onclick={session.canChooseCards
-                            ? () => session.chooseCard(index)
-                            : undefined}
-                    />
-                </div>
+<div class="fit">
+    <div class="tray">
+        {#if session.myPlayer}
+            <div class="hand" aria-label="Your hand">
+                {#each session.hand as card, index (index)}
+                    <div
+                        class="fanned"
+                        class:raised={session.chosenIndices.includes(index)}
+                        style:rotate="{(index - (session.hand.length - 1) / 2) * FAN_STEP}deg"
+                    >
+                        <Card
+                            {card}
+                            chosen={session.chosenIndices.includes(index)}
+                            onclick={session.canChooseCards
+                                ? () => session.chooseCard(index)
+                                : undefined}
+                        />
+                    </div>
+                {/each}
+            </div>
+            <span class="divider"></span>
+        {/if}
+        <div class="group" aria-label="Face-up cards">
+            {#each display as card, index (index)}
+                <Card
+                    {card}
+                    onclick={session.canDrawFaceUp ? () => session.drawFaceUp(card) : undefined}
+                    chosen={session.canDrawFaceUp}
+                />
             {/each}
         </div>
-        <span class="divider"></span>
-    {/if}
-    <div class="group" aria-label="Face-up cards">
-        {#each display as card, index (index)}
-            <Card
-                {card}
-                onclick={session.canDrawFaceUp ? () => session.drawFaceUp(card) : undefined}
-                chosen={session.canDrawFaceUp}
-            />
-        {/each}
-    </div>
-    <div class="piles">
-        <div class="stack" class:pile={deckCount > 1}>
-            <Card
-                label="Deck, {deckCount} cards"
-                dimmed={deckCount === 0}
-                onclick={session.canDrawFromDeck ? () => session.drawFromDeck() : undefined}
-                chosen={session.canDrawFromDeck}
-            />
-            <span class="count">{deckCount}</span>
-            <span class="caption" aria-hidden="true">Deck</span>
-        </div>
-        <div class="stack discard" class:pile={discard.length > 1}>
-            {#if discard.length > 0}
+        <div class="piles">
+            <div class="stack" class:pile={deckCount > 1}>
                 <Card
-                    card={discard.at(-1)}
-                    label="Discard pile, {discard.length} cards"
-                    pile={discard.length > 1}
-                    onclick={session.openDiscard ? () => (discardOpen = !discardOpen) : undefined}
+                    label="Deck, {deckCount} cards"
+                    dimmed={deckCount === 0}
+                    onclick={session.canDrawFromDeck ? () => session.drawFromDeck() : undefined}
+                    chosen={session.canDrawFromDeck}
                 />
-            {:else}
-                <div class="empty" aria-label="Discard pile, empty"></div>
-            {/if}
-            <span class="count">{discard.length}</span>
-            <span class="caption" aria-hidden="true">Discard</span>
-            {#if discardOpen && session.openDiscard}
-                <div class="popover" role="dialog" aria-label="Discard pile">
-                    <div class="popover-title">Discard pile · {discard.length}</div>
-                    {#each discardCounts as { card, count } (card)}
-                        <div class="popover-row">
-                            <span class="swatch" style:background="var(--wop-{card})"></span>
-                            <span>{cardColorName(card)}</span>
-                            <span class="ms-auto font-semibold">{count}</span>
-                        </div>
-                    {/each}
-                </div>
-            {/if}
+                <span class="count">{deckCount}</span>
+                <span class="caption" aria-hidden="true">Deck</span>
+            </div>
+            <div class="stack discard" class:pile={discard.length > 1}>
+                {#if discard.length > 0}
+                    <Card
+                        card={discard.at(-1)}
+                        label="Discard pile, {discard.length} cards"
+                        pile={discard.length > 1}
+                        onclick={session.openDiscard
+                            ? () => (discardOpen = !discardOpen)
+                            : undefined}
+                    />
+                {:else}
+                    <div class="empty" aria-label="Discard pile, empty"></div>
+                {/if}
+                <span class="count">{discard.length}</span>
+                <span class="caption" aria-hidden="true">Discard</span>
+                {#if discardOpen && session.openDiscard}
+                    <div class="popover" role="dialog" aria-label="Discard pile">
+                        <div class="popover-title">Discard pile · {discard.length}</div>
+                        {#each discardCounts as { card, count } (card)}
+                            <div class="popover-row">
+                                <span class="swatch" style:background="var(--wop-{card})"></span>
+                                <span>{cardColorName(card)}</span>
+                                <span class="ms-auto font-semibold">{count}</span>
+                            </div>
+                        {/each}
+                    </div>
+                {/if}
+            </div>
         </div>
     </div>
 </div>
 
 <style>
+    /* The game column narrows beside the side panel on tablets, so cards size to the tray's own
+       width, not the screen's. */
+    .fit {
+        container-type: inline-size;
+    }
+
     .tray {
-        --wop-card-width: 54px;
+        /* seven cards' width (the fanned hand takes 2.5), shrinking below 54px where the column
+           is narrow to keep the tray clear of its edges */
+        --wop-card-width: min(54px, calc((100cqi - 86px) / 6.5));
         display: flex;
         align-items: flex-end;
         justify-content: center;
@@ -261,11 +273,18 @@
         box-shadow: inset 0 0 0 1px rgb(40 30 20 / 0.35);
     }
 
+    /* Below 54px cards the piles stand too close for the wide captions. */
+    @container (width < 440px) {
+        .caption {
+            top: calc(100% + 11px);
+            font-size: 9px;
+            letter-spacing: 0.04em;
+        }
+    }
+
     @media (max-width: 639px) {
         .tray {
-            /* seven cards to a row (the fanned hand takes the width of 2.5), shrinking below 46px
-               on narrow phones to keep clear of the edges */
-            --wop-card-width: min(46px, calc((100vw - 80px) / 6.5));
+            --wop-card-width: min(46px, calc((100cqi - 36px) / 6.5));
             gap: 6px;
             padding: 6px 4px 22px;
         }
