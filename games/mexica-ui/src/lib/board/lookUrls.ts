@@ -4,6 +4,8 @@ import lake from '../images/looks/lake.webp'
 import paving from '../images/looks/paving.webp'
 import pilli from '../images/looks/pilli.webp'
 import pilliFlat from '../images/looks/pilli-flat.webp'
+import pilliShine from '../images/looks/pilli-shine.webp'
+import pilliShineFlat from '../images/looks/pilli-shine-flat.webp'
 import temple1 from '../images/looks/temple-1.webp'
 import temple1Flat from '../images/looks/temple-1-flat.webp'
 import temple2 from '../images/looks/temple-2.webp'
@@ -19,6 +21,8 @@ export const LOOK_URLS: Record<string, string> = {
     paving: paving,
     pilli: pilli,
     'pilli-flat': pilliFlat,
+    'pilli-shine': pilliShine,
+    'pilli-shine-flat': pilliShineFlat,
     'temple-1': temple1,
     'temple-1-flat': temple1Flat,
     'temple-2': temple2,

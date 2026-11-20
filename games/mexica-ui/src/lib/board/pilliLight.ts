@@ -41,7 +41,8 @@ type Finish = { kind: 'paint' | 'wood' | 'gold'; tone: number }
 type Part = { distance: (p: Vec) => number; finish: (p: Vec) => Finish }
 type Figure = { scene: Scene; finish: (p: Vec) => Finish }
 
-export type PilliLook = { bitmap: Bitmap; outline: string }
+// The figure's light over its paint, a second layer of light for dark paint, and its outline.
+export type PilliLook = { bitmap: Bitmap; shine: Bitmap; outline: string }
 
 export function renderPilli(
     tilt: number,
@@ -55,7 +56,7 @@ export function renderPilli(
         finish: (p) => full.finish(scale(p, 1 / PILLI_SIZE))
     }
     const toward: Vec = [0, Math.sqrt(1 - tilt * tilt), tilt]
-    const { bitmap, hits } = castRays(
+    const { bitmaps, hits } = castRays(
         box,
         tilt,
         pixels,
@@ -63,16 +64,29 @@ export function renderPilli(
         (p) => shade(p, figure, toward),
         (channel) => clamp(channel)
     )
-    return { bitmap, outline: outlineOf(hits, box, pixels) }
+    return { bitmap: bitmaps[0], shine: bitmaps[1], outline: outlineOf(hits, box, pixels) }
 }
 
-const opaque = (color: Rgb): Sample => ({
-    color: [srgb(color[0]), srgb(color[1]), srgb(color[2])],
-    alpha: 1
-})
+const opaque = (color: Rgb): Sample[] => [
+    { color: [srgb(color[0]), srgb(color[1]), srgb(color[2])], alpha: 1 },
+    NO_SHINE
+]
+
+const NO_SHINE: Sample = { color: [1, 1, 1], alpha: 0 }
+
+// Dark paint hides the figure's shape and the details painted on it, so a second layer lights
+// it: along the edges turned from the viewer, broadly where the sun falls, more on lighter
+// details and less on darker ones. The board lays it over dark paint only.
+const SHINE = { rim: 0.6, rimPower: 2.5, sun: 0.32, lighter: 0.3, darker: 0.25 }
+
+function shineOf(normal: Vec, toward: Vec, sun: number, tone: number): Sample {
+    const rim = SHINE.rim * (1 - clamp(dot(normal, toward))) ** SHINE.rimPower
+    const detail = tone > 1.05 ? SHINE.lighter : tone < 0.95 ? -SHINE.darker : 0
+    return { color: [1, 1, 1], alpha: clamp(rim + SHINE.sun * sun ** 1.5 + detail) }
+}
 
 // In sRGB, as the page lays it over the paint.
-function shade(p: Vec, figure: Figure, toward: Vec): Sample {
+function shade(p: Vec, figure: Figure, toward: Vec): Sample[] {
     const normal = normalAt(p, figure.scene)
     const sun = clamp(dot(normal, LIGHT)) * (0.3 + 0.7 * softShadow(p, normal, figure.scene))
     const sky = 0.14 * Math.max(0, normal[1]) + 0.12 * Math.max(0, normal[2])
@@ -95,9 +109,10 @@ function shade(p: Vec, figure: Figure, toward: Vec): Sample {
     const white = clamp(gloss + Math.max(0, factor - 1) * 0.6)
     const keep = Math.min(factor, 1) * (1 - white)
     const alpha = 1 - keep
-    if (alpha <= 0) return { color: [0, 0, 0], alpha: 0 }
+    const shine = shineOf(normal, toward, sun, finish.tone)
+    if (alpha <= 0) return [{ color: [0, 0, 0], alpha: 0 }, shine]
     const grey = white / alpha
-    return { color: [grey, grey, grey], alpha }
+    return [{ color: [grey, grey, grey], alpha }, shine]
 }
 
 type Flat = [number, number]

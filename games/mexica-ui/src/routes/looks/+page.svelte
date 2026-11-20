@@ -15,7 +15,14 @@
     import { DESIGN, type TempleDesign, templeBounds } from '$lib/board/templeShape.js'
     import { ownerMark } from '$lib/board/templeMarks.js'
     import { renderPilli } from '$lib/board/pilliLight.js'
-    import { PILLI_STYLE, type PilliStyle, pilliBounds, pilliLook } from '$lib/board/pilliShape.js'
+    import {
+        PILLI_STYLE,
+        type PilliStyle,
+        pilliBounds,
+        pilliLook,
+        pilliShineLook,
+        shineOver
+    } from '$lib/board/pilliShape.js'
     import type { Box } from '$lib/board/view.js'
     import TempleMarks from '$lib/components/TempleMarks.svelte'
     import { CELL, FLAT, TILT } from '$lib/board/view.js'
@@ -29,22 +36,15 @@
     let millis = $state(0)
     // Designs to compare, drawn after the saved looks so the render script need not wait.
     let previews: Record<string, string> | undefined = $state()
-    type Figure = { url: string; outline: string; box: Box }
+    type Figure = { url: string; shine: string; outline: string; box: Box }
     let figures: Record<string, Figure> | undefined = $state()
-    // Fans on the robe as it is, then robes under feathers and a headband.
-    const FEATHERED: PilliStyle = { ...PILLI_STYLE, fan: 'feathers', headband: true }
-    const FIGURE_ROWS: [string, PilliStyle][] = [
-        ['plain fan', PILLI_STYLE],
-        ['feathers', { ...PILLI_STYLE, fan: 'feathers' }],
-        ['+ headband', FEATHERED],
-        ['+ eyes', { ...FEATHERED, eyes: true }],
-        ['two rows', { ...FEATHERED, fan: 'tiered' }],
-        ['bell', FEATHERED],
-        ['pawn', { ...FEATHERED, robe: 'pawn' }],
-        ['bell, trim', { ...FEATHERED, trim: true }],
-        ['pawn, trim', { ...FEATHERED, robe: 'pawn', trim: true }],
-        ['pawn, trim, arms', { ...FEATHERED, robe: 'pawn', trim: true, arms: true }]
+    // With and without arms, under a range of shine on the darker paints.
+    const FIGURE_STYLES: [string, PilliStyle][] = [
+        ['no arms', PILLI_STYLE],
+        ['arms', { ...PILLI_STYLE, arms: true }]
     ]
+    const SHINES = [0, 0.35, 0.7, 1]
+    const FIGURE_ROWS = FIGURE_STYLES.flatMap(([name]) => SHINES.map((shine) => ({ name, shine })))
     const FIGURE_COLORS: readonly Color[] = [
         Color.Green,
         Color.Red,
@@ -101,6 +101,7 @@
             const name = pilliLook(tilt === FLAT)
             const look = renderPilli(tilt)
             drawn[name] = toUrl(look.bitmap, 0.92)
+            drawn[pilliShineLook(tilt === FLAT)] = toUrl(look.shine, 0.92)
             traced[name] = look.outline
         }
         urls = drawn
@@ -108,10 +109,11 @@
         millis = Math.round(performance.now() - start)
         setTimeout(() => {
             const drawnFigures: Record<string, Figure> = {}
-            for (const [name, style] of FIGURE_ROWS) {
+            for (const [name, style] of FIGURE_STYLES) {
                 const look = renderPilli(TILT, style)
                 drawnFigures[name] = {
                     url: toUrl(look.bitmap, 0.92),
+                    shine: toUrl(look.shine, 0.92),
                     outline: look.outline,
                     box: pilliBounds(TILT)
                 }
@@ -139,25 +141,31 @@
     </g>
 {/snippet}
 
-{#snippet pilli(figure: Figure, tilt: number, x: number, color: Color)}
+{#snippet pilli(figure: Figure, tilt: number, x: number, color: Color, shine: number)}
     <g transform="translate({x} 0)">
         <ellipse cx="1" cy="1" rx={CELL * 0.26} ry={CELL * 0.26 * tilt} fill="url(#temple-shadow)"
         ></ellipse>
         <path d={figure.outline} fill={PIGMENTS[color].fill} fill-rule="evenodd"></path>
         <image href={figure.url} {...figure.box} preserveAspectRatio="none"></image>
+        <image
+            href={figure.shine}
+            {...figure.box}
+            preserveAspectRatio="none"
+            opacity={shineOver(PIGMENTS[color].fill, shine)}
+        ></image>
     </g>
 {/snippet}
 
-{#snippet figureRow(name: string, tilt: number)}
+{#snippet figureRow(name: string, tilt: number, shine: number)}
     {@const figure = figures?.[name]}
     {#if figure}
         <tr>
-            <th>{name}</th>
+            <th>{name}, shine {shine}</th>
             <td>
                 <svg viewBox="-20 -40 240 52" width="720" height="156">
                     <rect x="-20" y="-40" width="240" height="52" fill="#e6dcc4"></rect>
                     {#each FIGURE_COLORS as color, index (color)}
-                        {@render pilli(figure, tilt, index * 40, color)}
+                        {@render pilli(figure, tilt, index * 40, color, shine)}
                     {/each}
                 </svg>
             </td>
@@ -175,7 +183,7 @@
                         ></image>
                     {/if}
                     {#each FIGURE_COLORS as color, index (color)}
-                        {@render pilli(figure, tilt, index * 40, color)}
+                        {@render pilli(figure, tilt, index * 40, color, shine)}
                     {/each}
                 </svg>
             </td>
@@ -201,8 +209,8 @@
         <h2>Pilli Mexica</h2>
         <table class="designs">
             <tbody>
-                {#each FIGURE_ROWS as [name] (name)}
-                    {@render figureRow(name, TILT)}
+                {#each FIGURE_ROWS as { name, shine } (`${name}-${shine}`)}
+                    {@render figureRow(name, TILT, shine)}
                 {/each}
             </tbody>
         </table>
