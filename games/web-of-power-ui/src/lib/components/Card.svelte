@@ -1,5 +1,6 @@
 <script lang="ts">
     import { CARD_COUNTRIES, COUNTRY_NAMES, type CardColor } from '@tabletop/web-of-power'
+    import { EMBLEMS, JOKER_EMBLEM } from '$lib/board/armsData.js'
 
     let {
         card,
@@ -16,20 +17,37 @@
         onclick?: () => void
     } = $props()
 
-    const names = $derived(
-        card ? CARD_COUNTRIES[card].map((country) => COUNTRY_NAMES[country]) : []
+    const countries = $derived(card ? CARD_COUNTRIES[card] : [])
+    const names = $derived(countries.map((country) => COUNTRY_NAMES[country]))
+
+    // Each seal's centre and radius on a 60 × 90 card: two stacked, or one in the middle, as the
+    // printed cards have them. The names are left off; the arms say which countries it serves.
+    const seals = $derived(
+        countries.length === 1
+            ? [{ country: countries[0], y: 45, r: 22 }]
+            : countries.map((country, index) => ({ country, y: index === 0 ? 25 : 65, r: 18.5 }))
     )
 </script>
 
+{#snippet seal(emblem: string, y: number, r: number)}
+    <circle cx="30" cy={y} {r} class="ring"></circle>
+    <circle cx="30" cy={y} r={r * 0.74} class="ring inner"></circle>
+    <path d={emblem} transform="translate(30 {y}) scale({(r * 0.7) / 50})" class="emblem"></path>
+{/snippet}
+
 {#snippet face()}
-    {#if card}
-        {#each names as name, index (name)}
-            {#if index > 0}<span class="rule"></span>{/if}
-            <span class="name">{name}</span>
-        {/each}
-    {:else}
-        <span class="back-mark">K&amp;K</span>
-    {/if}
+    <svg viewBox="0 0 60 90" class="art" aria-hidden="true">
+        {#if card}
+            {#each seals as at (at.country)}
+                {@render seal(EMBLEMS[at.country], at.y, at.r)}
+            {/each}
+        {:else}
+            <circle cx="30" cy="45" r="23" class="back-ring"></circle>
+            <circle cx="30" cy="45" r="17" class="back-ring inner"></circle>
+            <path d={JOKER_EMBLEM} transform="translate(30 45) scale({15 / 50})" class="back-emblem"
+            ></path>
+        {/if}
+    </svg>
 {/snippet}
 
 {#if onclick}
@@ -60,28 +78,35 @@
 <style>
     .card {
         position: relative;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        gap: 2px;
-        width: 46px;
-        height: 64px;
+        display: block;
+        width: 54px;
+        height: 81px;
         flex-shrink: 0;
+        padding: 0;
         border-radius: 6px;
         box-shadow:
             inset 0 0 0 1px rgb(40 30 20 / 0.4),
             0 1px 3px rgb(40 30 20 / 0.3);
-        color: #1d1711;
-        font-family: Georgia, 'Times New Roman', serif;
         transition:
             transform 0.15s,
             opacity 0.15s;
     }
 
+    @media (max-width: 639px) {
+        .card {
+            width: 46px;
+            height: 69px;
+        }
+    }
+
+    .art {
+        display: block;
+        width: 100%;
+        height: 100%;
+    }
+
     .card.back {
-        background: #2e5ea8;
-        color: #f3ead2;
+        background: #2e6fb0;
     }
 
     .card.dimmed {
@@ -100,24 +125,32 @@
             0 3px 6px rgb(40 30 20 / 0.35);
     }
 
-    .name {
-        font-size: 9.5px;
-        line-height: 1.05;
-        letter-spacing: 0.01em;
-        max-width: 42px;
-        overflow: hidden;
-        text-overflow: ellipsis;
+    .ring {
+        fill: rgb(255 250 236 / 0.18);
+        stroke: var(--wop-card-ink);
+        stroke-width: 1.1;
     }
 
-    .rule {
-        width: 24px;
-        height: 1px;
-        background: rgb(40 30 20 / 0.45);
+    .ring.inner {
+        fill: none;
+        stroke-width: 0.8;
     }
 
-    .back-mark {
-        font-size: 12px;
-        font-weight: 600;
-        letter-spacing: 0.04em;
+    .emblem {
+        fill: var(--wop-card-ink);
+    }
+
+    .back-ring {
+        fill: none;
+        stroke: #f6f1e4;
+        stroke-width: 3.2;
+    }
+
+    .back-ring.inner {
+        stroke-width: 1.6;
+    }
+
+    .back-emblem {
+        fill: #f6f1e4;
     }
 </style>

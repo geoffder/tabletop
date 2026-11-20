@@ -57,17 +57,20 @@
     --wop-target: #e08a00;
     /* Choice marks: cyan over a dark band, so they read on every country. */
     --wop-mark: #5ef0ff;
-    /* The map, in the printed board's colours. */
-    --wop-sea: #86b4c6;
+    /* The map, in the printed board's colours washed a quarter toward parchment, so the
+       pieces stand out on countries of their own colour. */
+    --wop-sea: #a1c2c9;
     --wop-sea-ink: #2c5466;
-    --wop-land: #d9c99f;
+    --wop-land: #e0d1ac;
     --wop-border: #4a3a2a;
     --wop-road: #3b2a1d;
     --wop-label: #2b2016;
+    /* The seals printed on the cards. */
+    --wop-card-ink: #3a2216;
     /* The card colours, which the paired countries share. */
-    --wop-franken-aragon: #d65c63;
-    --wop-bayern-burgund: #7cb66b;
-    --wop-lothringen-italien: #eee2a2;
-    --wop-england-schwaben: #e6a25c;
-    --wop-frankreich: #a77cba;
+    --wop-franken-aragon: #d06771;
+    --wop-bayern-burgund: #84b277;
+    --wop-lothringen-italien: #ddd6aa;
+    --wop-england-schwaben: #d4a678;
+    --wop-frankreich: #be97b4;
 }

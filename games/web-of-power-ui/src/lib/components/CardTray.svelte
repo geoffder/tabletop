@@ -117,8 +117,8 @@
     }
 
     .empty {
-        width: 46px;
-        height: 64px;
+        width: 54px;
+        height: 81px;
         border-radius: 6px;
         border: 1.5px dashed var(--wop-panel-rule);
     }
@@ -169,6 +169,11 @@
 
         .group {
             gap: 4px;
+        }
+
+        .empty {
+            width: 46px;
+            height: 69px;
         }
     }
 </style>

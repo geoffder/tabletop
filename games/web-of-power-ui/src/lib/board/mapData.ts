@@ -30,15 +30,15 @@ export const COUNTRY_PATHS: Record<Country, string> = {
 }
 
 export const ARMS: Record<Country, { x: number; y: number }> = {
-    [Country.England]: { x: 465, y: 130 },
-    [Country.Lothringen]: { x: 795, y: 425 },
-    [Country.Franken]: { x: 1145, y: 355 },
-    [Country.Bayern]: { x: 1385, y: 620 },
-    [Country.Schwaben]: { x: 965, y: 580 },
-    [Country.Burgund]: { x: 770, y: 860 },
-    [Country.Frankreich]: { x: 465, y: 700 },
-    [Country.Aragon]: { x: 195, y: 980 },
-    [Country.Italien]: { x: 1185, y: 850 }
+    [Country.England]: { x: 490, y: 131 },
+    [Country.Lothringen]: { x: 817, y: 405 },
+    [Country.Franken]: { x: 1146, y: 356 },
+    [Country.Bayern]: { x: 1386, y: 621 },
+    [Country.Schwaben]: { x: 957, y: 566 },
+    [Country.Burgund]: { x: 765, y: 861 },
+    [Country.Frankreich]: { x: 466, y: 701 },
+    [Country.Aragon]: { x: 196, y: 981 },
+    [Country.Italien]: { x: 1219, y: 845 }
 }
 
 export const SPACE_POINTS: Record<Abbey, { x: number; y: number }> = {
@@ -214,13 +214,13 @@ export const ALLIANCE_BOXES: Record<number, { x: number; y: number }> = {
     4: { x: 355, y: 1010 },
     5: { x: 675, y: 1088 },
     6: { x: 760, y: 1060 },
-    7: { x: 683, y: 878 },
-    8: { x: 690, y: 490 },
+    7: { x: 668, y: 868 },
+    8: { x: 700, y: 478 },
     9: { x: 915, y: 327 },
-    10: { x: 940, y: 470 },
+    10: { x: 903, y: 459 },
     11: { x: 1365, y: 385 },
-    12: { x: 1090, y: 680 },
-    13: { x: 885, y: 680 },
+    12: { x: 1118, y: 662 },
+    13: { x: 852, y: 668 },
     14: { x: 838, y: 855 },
     15: { x: 1420, y: 983 }
 }

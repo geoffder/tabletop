@@ -20,13 +20,16 @@
         SEA_ROUTES,
         SPACE_POINTS
     } from '$lib/board/mapData.js'
-    import {
-        ADVISOR_PATH,
-        ADVISOR_TOP,
-        HOUSE_PATH,
-        HOUSE_ROOF,
-        advisorSpots
-    } from '$lib/board/pieces.js'
+    import { advisorRing, cloisterSketch, houseShape, pegShape } from '$lib/board/pieces.js'
+    import { MAP_LABELS, MOUNTAINS } from '$lib/board/mapDetails.js'
+    import coast from '$lib/images/coast.webp'
+    import { EMBLEMS } from '$lib/board/armsData.js'
+
+    // A house's gable end is 34 wide, as large as the closest spaces (Poblet and Veruela) allow
+    // with room between them; an empty space's sketch is the same width.
+    const house = houseShape(34)
+    const peg = pegShape(16)
+    const sketch = cloisterSketch(34)
 
     const session = getGameSession()
 
@@ -74,9 +77,33 @@
         session.letGo()
     }
 
-    // Names sit above their coats of arms, but England's beside it, as on the board.
+    // Each coat of arms' radius: as large as the houses round the seals allow (Schwaben's rim
+    // runs under its neighbours' houses, its middle clear for the advisors). The seals were
+    // moved to fit by /workspace/tmp/web-of-power/map/arms_fit.py.
+    const ARMS_R = 52
+
+    // Names sit above their coats of arms, England's to the right of it as on the board.
     const LABELS: Partial<Record<Country, { x: number; y: number; anchor: string }>> = {
-        [Country.England]: { x: 52, y: 10, anchor: 'start' }
+        [Country.England]: { x: ARMS_R + 10, y: 10, anchor: 'start' }
+    }
+
+    // Nearer spaces are drawn last, so a house stands in front of the one behind it.
+    const spacesFromBack = [...SPACES].sort(
+        (a, b) => SPACE_POINTS[a.abbey].y - SPACE_POINTS[b.abbey].y
+    )
+
+    // The northern tip of Corsica, at the board's lower edge.
+    const CORSICA =
+        'M1006 1080C1011 1079 1014 1085 1012 1091C1016 1097 1018 1104 1019 1112L975 1112C981 1104 992 1103 1000 1099C1004 1094 1002 1085 1006 1080Z'
+    // A mountain, as the board draws them: two peaks sketched in ink.
+    const MOUNTAIN = 'M-11 1 L-6 -6 L-2 -1 L3 -8 L10 1'
+
+    // Each advisor's spot on its seal, drawn from the back so nearer pegs stand in front.
+    function standing<T>(country: Country, advisors: readonly T[]) {
+        const spots = advisorRing(advisors.length, 7919 * (countries.indexOf(country) + 1))
+        return advisors
+            .map((advisor, index) => ({ advisor, index, spot: spots[index] }))
+            .sort((a, b) => a.spot.y - b.spot.y)
     }
 
     const pieceColor = (playerId: string) => session.colors.getPlayerBgColorValue(playerId)
@@ -102,13 +129,41 @@
             <path d={route} class="sea-route"></path>
         {/each}
         <path d={LAND_PATH} class="land"></path>
+        <path d={CORSICA} class="land island"></path>
+        <ellipse cx="1049" cy="1088" rx="3.2" ry="5.5" class="land island"></ellipse>
         {#each countries as country (country)}
             <path
+                id="wop-country-{country}"
                 d={COUNTRY_PATHS[country]}
                 class="country"
-                class:chosen={session.chosenCountries.includes(country)}
                 style:fill="var(--wop-{cardColorOf(country)})"
             ></path>
+        {/each}
+        <!-- The pale rim along each coast and the glow in the water off it, pre-rendered. -->
+        <image
+            href={coast}
+            x={MAP_VIEW.x}
+            y={MAP_VIEW.y}
+            width={MAP_VIEW.width}
+            height={MAP_VIEW.height}
+            class="coast"
+        ></image>
+        {#each countries as country (country)}
+            <use href="#wop-country-{country}" class="border"></use>
+        {/each}
+
+        <g class="mountains">
+            {#each MOUNTAINS as at, index (index)}
+                <path d={MOUNTAIN} transform="translate({at.x} {at.y})" class="mountain"></path>
+            {/each}
+        </g>
+        {#each MAP_LABELS as label (label.text)}
+            <text
+                transform="translate({label.x} {label.y}) rotate({label.angle})"
+                y="7"
+                class="map-label"
+                class:sea-label={label.sea}>{label.text}</text
+            >
         {/each}
 
         {#each ROADS as [a, b] (`${a}|${b}`)}
@@ -128,24 +183,39 @@
         {#each countries as country (country)}
             {@const at = ARMS[country]}
             {@const advisors = advisorsIn.get(country) ?? []}
-            {@const label = LABELS[country] ?? { x: 0, y: -50, anchor: 'middle' }}
+            {@const label = LABELS[country] ?? { x: 0, y: -ARMS_R - 10, anchor: 'middle' }}
             <g transform="translate({at.x} {at.y})">
-                <circle r="40" class="arms"></circle>
+                <circle r={ARMS_R} class="arms"></circle>
+                <!-- The country's emblem, as on its cards, filling the seal behind the advisors. -->
+                <path
+                    d={EMBLEMS[country]}
+                    transform="scale({(ARMS_R * 0.9) / 50})"
+                    class="arms-emblem"
+                ></path>
                 <text x={label.x} y={label.y} text-anchor={label.anchor} class="country-name"
                     >{COUNTRY_NAMES[country]}</text
                 >
-                {#each advisorSpots(advisors.length) as spot, index (index)}
-                    {@const advisor = advisors[index]}
-                    <g transform="translate({spot.x} {spot.y})" class="advisor">
-                        <path d={ADVISOR_PATH} style:fill={pieceColor(advisor.playerId)}></path>
-                        <path d={ADVISOR_TOP} class="advisor-top"></path>
+                {#each standing(country, advisors) as { advisor, index, spot } (index)}
+                    <g transform="translate({spot.x} {spot.y})" class="piece">
+                        <ellipse
+                            cx={peg.shadow.cx}
+                            cy={peg.shadow.cy}
+                            rx={peg.shadow.rx}
+                            ry={peg.shadow.ry}
+                            class="shadow"
+                        ></ellipse>
+                        <path d={peg.body} style:fill={pieceColor(advisor.playerId)}></path>
+                        <path d={peg.shade} class="shade"></path>
+                        <path d={peg.top} class="lit"></path>
+                        <path d={peg.body} class="edge"></path>
+                        <path d={peg.top} class="edge inner"></path>
                     </g>
                 {/each}
                 {#if session.advisorTargets.has(country)}
-                    <circle r="46" class="target-band"></circle>
-                    <circle r="46" class="target-mark"></circle>
+                    <circle r={ARMS_R + 6} class="target-band"></circle>
+                    <circle r={ARMS_R + 6} class="target-mark"></circle>
                     <circle
-                        r="46"
+                        r={ARMS_R + 6}
                         class="hit"
                         role="button"
                         tabindex="0"
@@ -157,25 +227,47 @@
             </g>
         {/each}
 
+        <!-- Shadows first, so no house's shadow falls across the house behind it. -->
         {#each SPACES as space (space.abbey)}
             {@const at = SPACE_POINTS[space.abbey]}
+            {#if cloisterAt.has(space.abbey)}
+                <ellipse
+                    cx={at.x + house.shadow.cx}
+                    cy={at.y + house.shadow.cy}
+                    rx={house.shadow.rx}
+                    ry={house.shadow.ry}
+                    class="shadow"
+                ></ellipse>
+            {/if}
+        {/each}
+        {#each spacesFromBack as space (space.abbey)}
+            {@const at = SPACE_POINTS[space.abbey]}
             {@const owner = cloisterAt.get(space.abbey)}
-            {@const open = session.cloisterTargets.has(space.abbey)}
             <g transform="translate({at.x} {at.y})">
                 {#if owner}
-                    <g class="house">
-                        <path d={HOUSE_PATH} style:fill={pieceColor(owner)}></path>
-                        <path d={HOUSE_ROOF} class="house-roof"></path>
+                    <g class="piece">
+                        <path d={house.outline} style:fill={pieceColor(owner)}></path>
+                        <path d={house.side} class="shade"></path>
+                        <path d={house.roof} class="lit"></path>
+                        <path d={house.outline} class="edge"></path>
+                        <path d={house.front} class="edge inner"></path>
                     </g>
                 {:else}
-                    <path d={HOUSE_PATH} class="space"></path>
+                    <path d={sketch.fill} class="sketch-fill"></path>
+                    <path d={sketch.lines} class="sketch-lines"></path>
                 {/if}
-                {#if open}
-                    <circle r="25" cy="-6" class="target-band"></circle>
-                    <circle r="25" cy="-6" class="target-mark"></circle>
+            </g>
+        {/each}
+
+        <!-- Choice rings above every piece, so a nearer house never covers one. -->
+        {#each SPACES as space (space.abbey)}
+            {#if session.cloisterTargets.has(space.abbey)}
+                {@const at = SPACE_POINTS[space.abbey]}
+                <g transform="translate({at.x + house.centre.x} {at.y + house.centre.y})">
+                    <circle r={house.reach} class="target-band"></circle>
+                    <circle r={house.reach} class="target-mark"></circle>
                     <circle
-                        r="25"
-                        cy="-6"
+                        r={house.reach}
                         class="hit"
                         role="button"
                         tabindex="0"
@@ -184,8 +276,8 @@
                         onkeydown={(event) =>
                             onKey(event, () => placeCloister(space.abbey, space.country))}
                     ></circle>
-                {/if}
-            </g>
+                </g>
+            {/if}
         {/each}
     </svg>
 </div>
@@ -208,11 +300,46 @@
         fill: var(--wop-land);
     }
 
-    .country {
+    .border {
+        fill: none;
         stroke: var(--wop-border);
         stroke-width: 2;
         stroke-linejoin: round;
-        transition: filter 0.2s;
+    }
+
+    .coast {
+        pointer-events: none;
+    }
+
+    .island {
+        stroke: var(--wop-border);
+        stroke-width: 1.6;
+    }
+
+    .mountains {
+        opacity: 0.5;
+    }
+
+    .mountain {
+        fill: none;
+        stroke: var(--wop-road);
+        stroke-width: 2;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+    }
+
+    .map-label {
+        font-family: Georgia, 'Times New Roman', serif;
+        font-size: 22px;
+        font-style: italic;
+        letter-spacing: 1px;
+        text-anchor: middle;
+        fill: color-mix(in srgb, var(--wop-label), transparent 30%);
+        pointer-events: none;
+    }
+
+    .sea-label {
+        fill: color-mix(in srgb, var(--wop-sea-ink), transparent 15%);
     }
 
     .sea-route {
@@ -250,6 +377,12 @@
         stroke-width: 2.5;
     }
 
+    .arms-emblem {
+        fill: var(--wop-card-ink);
+        fill-opacity: 0.5;
+        pointer-events: none;
+    }
+
     .country-name {
         font-family: Georgia, 'Times New Roman', serif;
         font-size: 30px;
@@ -259,23 +392,43 @@
         pointer-events: none;
     }
 
-    .space {
-        fill: rgb(255 252 242 / 0.7);
-        stroke: var(--wop-border);
-        stroke-width: 1.6;
-        stroke-linejoin: round;
+    .shadow {
+        fill: rgb(30 20 10 / 0.3);
     }
 
-    .house path,
-    .advisor path {
+    .piece .edge {
+        fill: none;
         stroke: #1b1510;
-        stroke-width: 1.8;
+        stroke-width: 1.5;
         stroke-linejoin: round;
     }
 
-    .house-roof,
-    .advisor-top {
-        fill: rgb(255 255 255 / 0.28);
+    .piece .edge.inner {
+        stroke-width: 1;
+    }
+
+    .piece path:not(.edge) {
+        stroke: none;
+    }
+
+    .shade {
+        fill: rgb(20 10 0 / 0.3);
+    }
+
+    .lit {
+        fill: rgb(255 255 255 / 0.3);
+    }
+
+    .sketch-fill {
+        fill: rgb(255 250 236 / 0.45);
+    }
+
+    .sketch-lines {
+        fill: none;
+        stroke: var(--wop-road);
+        stroke-width: 1.4;
+        stroke-linecap: round;
+        stroke-linejoin: round;
     }
 
     .target-band {

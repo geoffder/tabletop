@@ -1,7 +1,7 @@
 <script lang="ts">
     import type { HydratedWebOfPowerPlayerState } from '@tabletop/web-of-power'
     import { getGameSession } from '$lib/model/sessionContext.svelte.js'
-    import { ADVISOR_PATH, ADVISOR_TOP, HOUSE_PATH, HOUSE_ROOF } from '$lib/board/pieces.js'
+    import { houseShape, pegShape } from '$lib/board/pieces.js'
 
     let { playerState }: { playerState: HydratedWebOfPowerPlayerState } = $props()
 
@@ -16,6 +16,10 @@
     const isStarter = $derived(session.gameState.turnManager.turnOrder[0] === playerId)
     const fill = $derived(session.colors.getPlayerBgColorValue(playerId))
     const ink = $derived(session.colors.getPlayerTextColorValue(playerId))
+
+    // The pieces as the board draws them.
+    const house = houseShape(34)
+    const peg = pegShape(16)
 </script>
 
 <div class="card" class:active={isActive}>
@@ -33,16 +37,22 @@
     <div class="body">
         <span class="score"><b>{playerState.score}</b> points</span>
         <span class="tally" title="Cloisters left">
-            <svg viewBox="-19 -28 38 37" width="18" height="17" aria-hidden="true">
-                <path d={HOUSE_PATH} style:fill class="piece"></path>
-                <path d={HOUSE_ROOF} class="lit"></path>
+            <svg viewBox="-19 -47 47 49" width="19" height="20" aria-hidden="true">
+                <path d={house.outline} style:fill></path>
+                <path d={house.side} class="shade"></path>
+                <path d={house.roof} class="lit"></path>
+                <path d={house.outline} class="edge"></path>
+                <path d={house.front} class="edge inner"></path>
             </svg>
             <b>{session.gameState.cloistersLeft(playerId)}</b>
         </span>
         <span class="tally" title="Advisors left">
-            <svg viewBox="-10 -19 20 30" width="12" height="17" aria-hidden="true">
-                <path d={ADVISOR_PATH} style:fill class="piece"></path>
-                <path d={ADVISOR_TOP} class="lit"></path>
+            <svg viewBox="-10 -27 20 32" width="12" height="19" aria-hidden="true">
+                <path d={peg.body} style:fill></path>
+                <path d={peg.shade} class="shade"></path>
+                <path d={peg.top} class="lit"></path>
+                <path d={peg.body} class="edge"></path>
+                <path d={peg.top} class="edge inner"></path>
             </svg>
             <b>{session.gameState.advisorsLeft(playerId)}</b>
         </span>
@@ -101,14 +111,23 @@
         gap: 4px;
     }
 
-    .piece {
+    .edge {
+        fill: none;
         stroke: #1b1510;
-        stroke-width: 1.8;
+        stroke-width: 2.2;
         stroke-linejoin: round;
     }
 
+    .edge.inner {
+        stroke-width: 1.4;
+    }
+
+    .shade {
+        fill: rgb(20 10 0 / 0.3);
+    }
+
     .lit {
-        fill: rgb(255 255 255 / 0.28);
+        fill: rgb(255 255 255 / 0.3);
     }
 
     .mini-card {
