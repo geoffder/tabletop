@@ -1,0 +1,78 @@
+@import 'tailwindcss';
+@plugin 'flowbite/plugin';
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme {
+    --color-primary-50: #fff5f2;
+    --color-primary-100: #fff1ee;
+    --color-primary-200: #ffe4de;
+    --color-primary-300: #ffd5cc;
+    --color-primary-400: #ffbcad;
+    --color-primary-500: #fe795d;
+    --color-primary-600: #ef562f;
+    --color-primary-700: #eb4f27;
+    --color-primary-800: #cc4522;
+    --color-primary-900: #a5371b;
+
+    --color-secondary-50: #f0f9ff;
+    --color-secondary-100: #e0f2fe;
+    --color-secondary-200: #bae6fd;
+    --color-secondary-300: #7dd3fc;
+    --color-secondary-400: #38bdf8;
+    --color-secondary-500: #0ea5e9;
+    --color-secondary-600: #0284c7;
+    --color-secondary-700: #0369a1;
+    --color-secondary-800: #075985;
+    --color-secondary-900: #0c4a6e;
+}
+
+@source "../node_modules/flowbite-svelte/dist";
+@source "../node_modules/flowbite-svelte-icons/dist";
+@source "../../../libs/frontend-components/src/**/*.{html,js,svelte,ts}";
+@source "./**/*.{html,js,svelte,ts}";
+
+@layer base {
+    /* disable chrome cancel button */
+    input[type='search']::-webkit-search-cancel-button {
+        display: none;
+    }
+}
+
+:root {
+    /* A pale sand table under the island's lake. */
+    --mx-table: #e9e1cc;
+    --mx-table-deep: #d9ceb3;
+    --mx-panel: #fffbf2;
+    --mx-panel-edge: rgb(48 36 22 / 0.16);
+    --mx-panel-shadow: 0 2px 8px rgb(48 36 22 / 0.18);
+    --mx-panel-hover: color-mix(in srgb, var(--mx-panel), #2a2418 7%);
+    --mx-panel-inset: color-mix(in srgb, var(--mx-panel), #ffffff 50%);
+    --mx-panel-rule: color-mix(in srgb, var(--mx-panel), #2a2418 20%);
+    --mx-toggle-on: #0a8fb0;
+    --mx-ink: #1f1a14;
+    --mx-ink-quiet: #6a6156;
+    --mx-control-off: #b5ad9f;
+    --mx-table-ink: #2a2319;
+    --mx-target: #e08a00;
+    /* Choice marks: cyan over a dark band. */
+    --mx-mark: #5ef0ff;
+    /* The board, between Super Meeple's and Play For Keeps' printings. */
+    --mx-lake: #3f9bb5;
+    --mx-land: #f1cf74;
+    --mx-grid: rgb(120 84 20 / 0.35);
+    --mx-palace: #b7b2a6;
+    --mx-palace-start: #cfcabd;
+    --mx-palace-ink: #6f6a5f;
+    --mx-canal: #1f86a8;
+    --mx-canal-ink: #0f5168;
+    --mx-bridge: #b0623e;
+    --mx-bridge-top: #cf8456;
+    --mx-bridge-ink: #5a2c18;
+    --mx-token: #d9a94a;
+    --mx-token-side: #8f6522;
+    --mx-token-ink: #3b2708;
+    --mx-plume: #3fae8a;
+    --mx-neutral: #f2efe6;
+    --mx-ap: #d64532;
+}
