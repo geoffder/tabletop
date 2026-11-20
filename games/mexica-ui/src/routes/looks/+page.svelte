@@ -39,8 +39,12 @@
     type Figure = { url: string; shine: string; outline: string; box: Box }
     let figures: Record<string, Figure> | undefined = $state()
     // Dry-brushed over the darker paints in a range of strengths.
-    const FIGURE_STYLES: [string, PilliStyle][] = [['no arms', PILLI_STYLE]]
-    const SHINES = [0, 0.1, 0.2, 0.3, 0.4, 0.5]
+    const FIGURE_STYLES: [string, PilliStyle][] = [
+        ['no knot', { ...PILLI_STYLE, knot: 'none' }],
+        ['shoulder knot', { ...PILLI_STYLE, knot: 'shoulder' }],
+        ['chest knot', { ...PILLI_STYLE, knot: 'chest' }]
+    ]
+    const SHINES = [0, 0.3]
     const FIGURE_ROWS = FIGURE_STYLES.flatMap(([name]) => SHINES.map((shine) => ({ name, shine })))
     const FIGURE_COLORS: readonly Color[] = [
         Color.Green,
