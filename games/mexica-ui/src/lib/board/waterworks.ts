@@ -305,11 +305,13 @@ function joinsOf(island: Island, spot: Spot): KerbJoin[] {
     })
 }
 
-// A square of land as drawn, and beyond it, unless it is a canal, its shore on each side it
-// meets the lake: up to the diagonal where the coast turns an inside corner and another
-// square's shore takes over, and round its corners where it meets the lake on both sides. No
-// shore lies in a mouth.
+// A square of land as drawn, and beyond it its shore on each side it meets the lake: up to the
+// diagonal where the coast turns an inside corner and another square's shore takes over, and
+// round its corners where it meets the lake on both sides. No shore lies in a mouth.
 function zonesOf(island: Island, spot: Spot): Zone[] {
+    // A canal's water covers its square; paving lapping out of it past the water's own edge
+    // would show at the lake as a hairline.
+    if (island.canal(spot)) return []
     const edges = edgesOf(spot)
     const [nw, ne] = edges.n
     const [se, sw] = edges.s
@@ -323,7 +325,6 @@ function zonesOf(island: Island, spot: Spot): Zone[] {
         key: `zone-${keyOf(spot)}`,
         points: shape([lap(nw, -1, -1), lap(ne, 1, -1), lap(se, 1, 1), lap(sw, -1, 1)])
     }
-    if (!island.ground(spot)) return [square]
     const reach = SHORE_ZONE
     const pieces = SIDES.filter((side) => {
         const host = plus(spot, STEP[side])

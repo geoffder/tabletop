@@ -3,14 +3,7 @@
 import { cellAt, columnOf, isLand, isPalace, isStart, PALACE_CENTRE, rowOf } from '@tabletop/mexica'
 import { CELL } from './view.js'
 import { COVE_TOE, SLOPE_WIDTH, type SlopeCorner, type SlopeSide } from './looks.js'
-import {
-    SPILL_HEAP,
-    spillBox,
-    spillFrame,
-    type SpillKind,
-    spillRocks,
-    toPlan
-} from './spillShape.js'
+import { spillBox, spillFrame, type SpillKind, spillRocks, toPlan } from './spillShape.js'
 import { PLAN } from './plan.js'
 import {
     type Bitmap,
@@ -559,9 +552,11 @@ export function renderShore(pixels = SHORE_PIXELS): Bitmap {
     })
 }
 
-// A spill of rocks where a stretch of shore is cut short beside a canal's bank, round the
-// corner of land where the shore ends (board/spillShape.ts lays it out), lit as the shore's rocks
-// are: the heap bedded in earth on the shore, the rocks spilt down the bank lying on its bricks.
+// A pile of rocks where a stretch of shore is cut short beside a canal's bank, round the corner
+// of land where the shore ends (board/spillShape.ts lays it out), lit as the shore's rocks are:
+// higher rocks lie over lower ones, bedded in earth, darker and wetter towards the pile's foot.
+const PILE_HEIGHT = 6
+
 export function renderSpill(
     out: SlopeSide,
     end: SlopeSide,
@@ -570,29 +565,42 @@ export function renderSpill(
     pixels = SHORE_PIXELS * 2
 ): Bitmap {
     const [light, dark, earth] = [ROCK.light, ROCK.dark, ROCK.earth].map(linear)
+    const wetTint = linear(TURQUOISE.deep)
     const grit = noise2(97 + variant)
     const lumps = fractal(noise2(101 + variant), 2)
     const frame = spillFrame(out, end)
-    const rocks = spillRocks(kind, variant).map((rock, index) => ({
+    const rocks = spillRocks(kind, variant).map((rock) => ({
         ...toPlan(frame, rock.u, rock.v),
         radius: rock.radius,
         tone: rock.tone,
-        heap: index < SPILL_HEAP
+        height: rock.height
     }))
     return paint(spillBox(out, end, kind, variant), pixels, (x, y) => {
         const lump = (lumps(x * 0.45, y * 0.45) - 0.5) * 0.45
-        let top: { height: number; nx: number; ny: number; rim: number; tone: number } | undefined
+        let top:
+            | { height: number; nx: number; ny: number; rim: number; tone: number; up: number }
+            | undefined
         let bedded = 0
         for (const rock of rocks) {
             const radius = rock.radius * (1 + lump)
             const dx = (x - rock.x) / radius
             const dy = (y - rock.y) / radius
             const r2 = dx * dx + dy * dy
-            if (rock.heap) bedded = Math.max(bedded, 1 - smoothstep(1, 1.5, Math.sqrt(r2)))
+            bedded = Math.max(
+                bedded,
+                (1 - smoothstep(0.9, 1.5, Math.sqrt(r2))) * smoothstep(0.05, 0.4, rock.height)
+            )
             if (r2 >= 1) continue
-            const height = (1 - r2) ** 0.6 * radius
+            const height = rock.height * PILE_HEIGHT + (1 - r2) ** 0.6 * radius
             if (top === undefined || height > top.height) {
-                top = { height, nx: dx, ny: dy, rim: Math.sqrt(r2), tone: rock.tone }
+                top = {
+                    height,
+                    nx: dx,
+                    ny: dy,
+                    rim: Math.sqrt(r2),
+                    tone: rock.tone,
+                    up: rock.height
+                }
             }
         }
         if (top !== undefined) {
@@ -605,6 +613,9 @@ export function renderSpill(
             let color = mix(dark, light, clamp(lit * (0.7 + top.tone * 0.45)))
             color = mix(color, earth, (grit(x * 1.3, y * 1.3) - 0.5) * 0.25 + 0.05)
             color = mix(color, [0, 0, 0], smoothstep(0.7, 1, top.rim) * 0.35)
+            const wet = 1 - smoothstep(0.1, 0.45, top.up)
+            color = mix(color, mix(color, wetTint, 0.35), wet)
+            color = mix(color, [0, 0, 0], wet * 0.2 + (1 - top.up) * 0.12)
             // Each rock sits a little on its own shadow.
             return { color, alpha: clamp((1 - top.rim) * 12) }
         }

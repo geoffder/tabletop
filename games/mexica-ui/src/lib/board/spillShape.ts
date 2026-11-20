@@ -3,57 +3,65 @@ import { seededRandom } from './random.js'
 import { SLOPE_WIDTH, type SlopeSide } from './looks.js'
 import type { Box } from './view.js'
 
-// A spill of rocks where a stretch of the island's shore is cut short beside a canal's brick
+// A pile of rocks where a stretch of the island's shore is cut short beside a canal's brick
 // bank, laid out round the corner of land where the shore ends: `out` from the land through the
 // shore, and `end` along the coast towards the brick.
 //
 // The bank either runs across the shore's end, back along the land's side away from the lake
-// ('across'), or carries on along the coast past it ('along'). Either way the rocks heap at the
-// end of the shore and spill down the bank's slope on a slant, settling on its lower half and
-// into the water, never up onto its kerb.
+// ('across'), or carries on along the coast past it ('along'). Either way the shore's rocks heap
+// up over the bank's end, as one pile sloping down from the corner into the water, its biggest
+// rocks highest and the smaller ones settling round its foot, never onto the paving.
 export type SpillKind = 'across' | 'along'
-// The first few rocks are the heap on the shore, bedded in its earth.
-export type SpillRock = { u: number; v: number; radius: number; tone: number }
-export const SPILL_HEAP = 4
+// `height` is how high up the pile a rock lies, from its foot (0) to its top (1).
+export type SpillRock = { u: number; v: number; radius: number; tone: number; height: number }
 
 export const SPILL_VARIANTS = 2
 
 const BANK = SLOPE_WIDTH
+const PILE = { reach: 10, largest: 4.2, smallest: 1.3, taper: 0.6, packing: 0.8 }
 
 // In the corner's own frame: u along the coast towards the brick, v out from the land.
 export function spillRocks(kind: SpillKind, variant: number): SpillRock[] {
     const next = seededRandom(variant * 613 + (kind === 'across' ? 7 : 19))
-    const jitter = (by: number) => (next() - 0.5) * by
-    // The heap at the end of the shore.
-    const heap = [
-        { u: -2.2, v: 3.5, radius: 3.1 },
-        { u: -0.6, v: 7.5, radius: 3.3 },
-        { u: -3.4, v: 10.5, radius: 2.6 },
-        kind === 'across' ? { u: 0.6, v: 2.6, radius: 2.4 } : { u: -1.4, v: 12.8, radius: 2.2 }
-    ]
-    // Down the slope on a slant, smaller as they go.
-    const trail =
-        kind === 'across'
-            ? [
-                  { u: BANK * 0.35, v: 0.2, radius: 2.5 },
-                  { u: BANK * 0.6, v: -2.6, radius: 2.2 },
-                  { u: BANK * 0.82, v: -5.4, radius: 1.9 },
-                  { u: BANK * 1.08, v: -7.6, radius: 1.5 },
-                  { u: BANK * 0.95, v: 4.2, radius: 1.8 }
-              ]
-            : [
-                  { u: 2.6, v: BANK * 0.6, radius: 2.4 },
-                  { u: 5.2, v: BANK * 0.8, radius: 2.1 },
-                  { u: 7.8, v: BANK * 1.02, radius: 1.8 },
-                  { u: 10.2, v: BANK * 1.22, radius: 1.4 },
-                  { u: 3.4, v: BANK * 1.35, radius: 1.6 }
-              ]
-    return [...heap, ...trail].map((rock) => ({
-        u: rock.u + jitter(1.2),
-        v: rock.v + jitter(1.2),
-        radius: rock.radius * (0.88 + next() * 0.24),
-        tone: next()
+    // The pile's top, over the end of the bank where it meets the shore.
+    const top = kind === 'across' ? { u: BANK * 0.25, v: 5 } : { u: 0.5, v: BANK * 0.6 }
+    const [phase, phase2] = [next() * 6.3, next() * 6.3]
+    const reach = (angle: number) =>
+        PILE.reach * (1 + 0.12 * Math.sin(3 * angle + phase) + 0.08 * Math.sin(5 * angle + phase2))
+    // Off the paving, and across a canal no further than its bank and a little beyond.
+    const allowed = (u: number, v: number) =>
+        kind === 'across' ? !(u < 0 && v < 0) && u <= BANK + 2.5 : v >= -0.5
+    const candidates = Array.from({ length: 900 }, () => ({
+        u: top.u + (next() * 2 - 1) * PILE.reach * 1.25,
+        v: top.v + (next() * 2 - 1) * PILE.reach * 1.25,
+        size: next(),
+        tone: next(),
+        keep: next()
     }))
+        .map((spot) => {
+            const du = spot.u - top.u
+            const dv = spot.v - top.v
+            return { ...spot, down: Math.hypot(du, dv) / reach(Math.atan2(dv, du)) }
+        })
+        .filter((spot) => spot.down <= 1 && allowed(spot.u, spot.v))
+        .toSorted((a, b) => a.down - b.down)
+    const rocks: SpillRock[] = []
+    for (const spot of candidates) {
+        // Smaller and fewer towards the foot, so the pile tapers into the water.
+        const radius =
+            (PILE.largest - (PILE.largest - PILE.smallest) * spot.down ** PILE.taper) *
+            (0.88 + spot.size * 0.24)
+        const clear =
+            spot.keep > spot.down ** 2 * 0.6 &&
+            rocks.every(
+                (rock) =>
+                    Math.hypot(rock.u - spot.u, rock.v - spot.v) >
+                    (rock.radius + radius) * PILE.packing
+            )
+        if (clear)
+            rocks.push({ u: spot.u, v: spot.v, radius, tone: spot.tone, height: 1 - spot.down })
+    }
+    return rocks
 }
 
 const STEP: Record<SlopeSide, Point> = {
