@@ -20,15 +20,16 @@
         SEA_ROUTES,
         SPACE_POINTS
     } from '$lib/board/mapData.js'
-    import { advisorRing, cloisterSketch, houseShape, pegShape } from '$lib/board/pieces.js'
+    import { advisorRing, cloisterSketch } from '$lib/board/pieces.js'
     import { MAP_LABELS, MOUNTAINS } from '$lib/board/mapDetails.js'
-    import coast from '$lib/images/coast.webp'
+    import { HOUSE_SPRITE } from '$lib/board/pieceSprites.js'
     import { EMBLEMS } from '$lib/board/armsData.js'
+    import { ARMS_FEATURES } from '$lib/board/armsFeatures.js'
+    import coast from '$lib/images/coast.webp'
+    import Piece from './Piece.svelte'
 
-    // A house's gable end is 34 wide, as large as the closest spaces (Poblet and Veruela) allow
-    // with room between them; an empty space's sketch is the same width.
-    const house = houseShape(34)
-    const peg = pegShape(16)
+    // An empty space's sketch is as wide as a house's gable end, 34: as large as the closest
+    // spaces (Poblet and Veruela) allow with room between them.
     const sketch = cloisterSketch(34)
 
     const session = getGameSession()
@@ -98,11 +99,38 @@
     // A mountain, as the board draws them: two peaks sketched in ink.
     const MOUNTAIN = 'M-11 1 L-6 -6 L-2 -1 L3 -8 L10 1'
 
-    // Each advisor's spot on its seal, drawn from the back so nearer pegs stand in front.
+    // Each emblem's key features in the seal's units (the emblem is drawn at 0.9 of its radius).
+    const FEATURES = new Map(
+        countries.map((country) => {
+            const scale = (ARMS_R * 0.9) / 50
+            const features = ARMS_FEATURES[country].map(({ x, y, r, weight }) => ({
+                x: x * scale,
+                y: y * scale,
+                r: r * scale,
+                weight
+            }))
+            return [country, features]
+        })
+    )
+
+    // Each advisor's spot on its seal, worked out once for each country and count; drawn from the
+    // back so nearer pegs stand in front.
+    const RINGS = new Map<string, { x: number; y: number }[]>()
     function standing<T>(country: Country, advisors: readonly T[]) {
-        const spots = advisorRing(advisors.length, 7919 * (countries.indexOf(country) + 1))
+        const key = `${country}:${advisors.length}`
+        let spots = RINGS.get(key)
+        if (!spots) {
+            spots = advisorRing(
+                advisors.length,
+                7919 * (countries.indexOf(country) + 1),
+                FEATURES.get(country),
+                ARMS_R
+            )
+            RINGS.set(key, spots)
+        }
+        const ring = spots
         return advisors
-            .map((advisor, index) => ({ advisor, index, spot: spots[index] }))
+            .map((advisor, index) => ({ advisor, index, spot: ring[index] }))
             .sort((a, b) => a.spot.y - b.spot.y)
     }
 
@@ -196,19 +224,8 @@
                     >{COUNTRY_NAMES[country]}</text
                 >
                 {#each standing(country, advisors) as { advisor, index, spot } (index)}
-                    <g transform="translate({spot.x} {spot.y})" class="piece">
-                        <ellipse
-                            cx={peg.shadow.cx}
-                            cy={peg.shadow.cy}
-                            rx={peg.shadow.rx}
-                            ry={peg.shadow.ry}
-                            class="shadow"
-                        ></ellipse>
-                        <path d={peg.body} style:fill={pieceColor(advisor.playerId)}></path>
-                        <path d={peg.shade} class="shade"></path>
-                        <path d={peg.top} class="lit"></path>
-                        <path d={peg.body} class="edge"></path>
-                        <path d={peg.top} class="edge inner"></path>
+                    <g transform="translate({spot.x} {spot.y})">
+                        <Piece kind="peg" fill={pieceColor(advisor.playerId)} />
                     </g>
                 {/each}
                 {#if session.advisorTargets.has(country)}
@@ -227,31 +244,12 @@
             </g>
         {/each}
 
-        <!-- Shadows first, so no house's shadow falls across the house behind it. -->
-        {#each SPACES as space (space.abbey)}
-            {@const at = SPACE_POINTS[space.abbey]}
-            {#if cloisterAt.has(space.abbey)}
-                <ellipse
-                    cx={at.x + house.shadow.cx}
-                    cy={at.y + house.shadow.cy}
-                    rx={house.shadow.rx}
-                    ry={house.shadow.ry}
-                    class="shadow"
-                ></ellipse>
-            {/if}
-        {/each}
         {#each spacesFromBack as space (space.abbey)}
             {@const at = SPACE_POINTS[space.abbey]}
             {@const owner = cloisterAt.get(space.abbey)}
             <g transform="translate({at.x} {at.y})">
                 {#if owner}
-                    <g class="piece">
-                        <path d={house.outline} style:fill={pieceColor(owner)}></path>
-                        <path d={house.side} class="shade"></path>
-                        <path d={house.roof} class="lit"></path>
-                        <path d={house.outline} class="edge"></path>
-                        <path d={house.front} class="edge inner"></path>
-                    </g>
+                    <Piece kind="house" fill={pieceColor(owner)} />
                 {:else}
                     <path d={sketch.fill} class="sketch-fill"></path>
                     <path d={sketch.lines} class="sketch-lines"></path>
@@ -263,11 +261,12 @@
         {#each SPACES as space (space.abbey)}
             {#if session.cloisterTargets.has(space.abbey)}
                 {@const at = SPACE_POINTS[space.abbey]}
-                <g transform="translate({at.x + house.centre.x} {at.y + house.centre.y})">
-                    <circle r={house.reach} class="target-band"></circle>
-                    <circle r={house.reach} class="target-mark"></circle>
+                {@const ring = HOUSE_SPRITE.ring}
+                <g transform="translate({at.x + ring.x} {at.y + ring.y})">
+                    <circle r={ring.r} class="target-band"></circle>
+                    <circle r={ring.r} class="target-mark"></circle>
                     <circle
-                        r={house.reach}
+                        r={ring.r}
                         class="hit"
                         role="button"
                         tabindex="0"
@@ -390,33 +389,6 @@
         letter-spacing: 0.6px;
         fill: var(--wop-label);
         pointer-events: none;
-    }
-
-    .shadow {
-        fill: rgb(30 20 10 / 0.3);
-    }
-
-    .piece .edge {
-        fill: none;
-        stroke: #1b1510;
-        stroke-width: 1.5;
-        stroke-linejoin: round;
-    }
-
-    .piece .edge.inner {
-        stroke-width: 1;
-    }
-
-    .piece path:not(.edge) {
-        stroke: none;
-    }
-
-    .shade {
-        fill: rgb(20 10 0 / 0.3);
-    }
-
-    .lit {
-        fill: rgb(255 255 255 / 0.3);
     }
 
     .sketch-fill {

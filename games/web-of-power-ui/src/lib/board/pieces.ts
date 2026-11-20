@@ -1,65 +1,8 @@
-// The two pieces, drawn standing on the map and seen from the near side, the light from the upper
-// left: a cloister is a small wooden house showing its gable end and right side, an advisor a
-// wooden peg. Each foot stands on its point.
-
-export type HouseShape = {
-    front: string
-    side: string
-    roof: string
-    outline: string
-    shadow: { cx: number; cy: number; rx: number; ry: number }
-    // The centre of the house's outline, for the choice ring round it.
-    centre: { x: number; y: number }
-    reach: number
-}
+// What the board draws round the pieces (the pieces themselves are pre-rendered by
+// scripts/render-pieces.mjs into pieceSprites.ts): an empty space's sketch, and where advisors
+// stand on a coat of arms.
 
 const point = (x: number, y: number) => `${x.toFixed(2)} ${y.toFixed(2)}`
-
-// A house whose gable end is `size` wide.
-export function houseShape(size: number): HouseShape {
-    const a = size / 2
-    const wall = size * 0.62
-    const ridge = size * 0.5
-    const dx = size * 0.26
-    const dy = -size * 0.2
-    const peak = -wall - ridge
-    const front = `M${point(-a, 0)} L${point(a, 0)} L${point(a, -wall)} L${point(0, peak)} L${point(-a, -wall)} Z`
-    const side = `M${point(a, 0)} L${point(a + dx, dy)} L${point(a + dx, -wall + dy)} L${point(a, -wall)} Z`
-    const roof = `M${point(0, peak)} L${point(dx, peak + dy)} L${point(a + dx, -wall + dy)} L${point(a, -wall)} Z`
-    const outline = `M${point(-a, 0)} L${point(a, 0)} L${point(a + dx, dy)} L${point(a + dx, -wall + dy)} L${point(dx, peak + dy)} L${point(0, peak)} L${point(-a, -wall)} Z`
-    return {
-        front,
-        side,
-        roof,
-        outline,
-        shadow: {
-            cx: dx * 0.5 + size * 0.1,
-            cy: dy * 0.5 + size * 0.06,
-            rx: a + dx * 0.5 + size * 0.12,
-            ry: size * 0.28
-        },
-        centre: { x: dx / 2, y: (peak + dy) / 2 },
-        reach: Math.hypot(a + dx / 2, (peak + dy) / 2) + size * 0.08
-    }
-}
-
-export type PegShape = {
-    body: string
-    shade: string
-    top: string
-    shadow: { cx: number; cy: number; rx: number; ry: number }
-}
-
-// A peg `size` across.
-export function pegShape(size: number): PegShape {
-    const r = size / 2
-    const e = r * 0.42
-    const h = size * 1.35
-    const body = `M${point(-r, 0)} L${point(-r, -h)} A${r} ${e} 0 0 1 ${point(r, -h)} L${point(r, 0)} A${r} ${e} 0 0 1 ${point(-r, 0)} Z`
-    const shade = `M${point(r * 0.35, e * 0.94)} L${point(r * 0.35, -h + e * 0.94)} A${r} ${e} 0 0 0 ${point(r, -h)} L${point(r, 0)} A${r} ${e} 0 0 1 ${point(r * 0.35, e * 0.94)} Z`
-    const top = `M${point(-r, -h)} A${r} ${e} 0 0 1 ${point(r, -h)} A${r} ${e} 0 0 1 ${point(-r, -h)} Z`
-    return { body, shade, top, shadow: { cx: r * 0.35, cy: e * 0.4, rx: r * 1.35, ry: e * 1.5 } }
-}
 
 // An empty space, as the board prints it: a small cloister sketched in ink, a tower with its spire
 // beside the church. `size` is its width.
@@ -83,24 +26,119 @@ export function cloisterSketch(size: number): { fill: string; lines: string } {
     return { fill, lines }
 }
 
-// Where a country's advisors stand on its coat of arms, round the emblem's middle so it stays
-// in view, as Indonesia sets its cubes round a square's number: one off the middle, two facing
-// across it, more evenly round it, each seal's ring turned its own way and every peg a little
-// off true, as if set down by hand. A peg's foot is its spot; it stands about 24 tall, so the
-// ring's centre sits below the seal's to centre the pegs on the emblem.
-export function advisorRing(count: number, seed: number): { x: number; y: number }[] {
-    const random = mulberry32(seed + count * 977)
-    const radius = 29
-    const turn = random() * Math.PI * 2
-    const spots: { x: number; y: number }[] = []
-    for (let index = 0; index < count; index++) {
-        const angle = turn + (index * Math.PI * 2) / Math.max(count, 2)
-        spots.push({
-            x: Math.cos(angle) * radius + (random() * 2 - 1) * 2.5,
-            y: Math.sin(angle) * radius * 0.92 + 10 + (random() * 2 - 1) * 2.5
+// Where a country's advisors stand on its coat of arms, round the emblem's middle as Indonesia
+// sets its cubes round a square's number: one off the middle, two facing across it, more evenly
+// round it. The ring is turned, and made wider or narrower, to hide as little of the emblem's key
+// features (`avoid`, in the seal's units) as it can; then each advisor may slide a little along it,
+// or in or out, to step off what it still covers, keeping clear of its neighbours. An advisor stands
+// on a face or a head only when the seal is crowded. Every peg is then set a little off true, as if
+// put down by hand; `seed` makes that the same on every screen. A peg's foot is its spot; it stands
+// about 25 tall and 16 wide, so the ring's centre sits below the seal's to centre the pegs on it.
+export function advisorRing(
+    count: number,
+    seed: number,
+    avoid: readonly { x: number; y: number; r: number; weight: number }[] = [],
+    sealRadius = 52
+): { x: number; y: number }[] {
+    if (count === 0) return []
+    // Each feature as points spread over it, sharing its weight, so a peg hiding half of a
+    // feature costs half of it.
+    const samples = avoid.flatMap(({ x, y, r, weight }) => {
+        const points = [[x, y]]
+        for (const [share, many] of [
+            [0.5, 6],
+            [0.9, 10]
+        ]) {
+            for (let k = 0; k < many; k++) {
+                const angle = (k * Math.PI * 2) / many
+                points.push([x + Math.cos(angle) * r * share, y + Math.sin(angle) * r * share])
+            }
+        }
+        return points.map(([px, py]) => ({ x: px, y: py, weight: weight / points.length }))
+    })
+    const covering = (x: number, y: number) =>
+        samples.reduce(
+            (sum, sample) =>
+                sample.x > x - 9 && sample.x < x + 9 && sample.y > y - 26 && sample.y < y + 4
+                    ? sum + sample.weight
+                    : sum,
+            0
+        )
+    const onSeal = (x: number, y: number) =>
+        [
+            [x - 8, y - 25],
+            [x + 8, y - 25],
+            [x - 8, y + 3],
+            [x + 8, y + 3]
+        ].every(([cx, cy]) => Math.hypot(cx, cy) < sealRadius - 3)
+    // Two pegs clear each other side by side, or with one far enough behind the other to show.
+    const apart = (a: { x: number; y: number }, b: { x: number; y: number }) =>
+        Math.hypot((a.x - b.x) / 18, (a.y - b.y) / 15) >= 1
+    const at = (radius: number, angle: number) => ({
+        x: Math.cos(angle) * radius,
+        y: Math.sin(angle) * radius * 0.92 + 10
+    })
+
+    // The ring: the turn and width hiding least, the usual width preferred when it makes no odds.
+    let ring: { radius: number; angle: number }[] = []
+    let ringCost = Infinity
+    for (const radius of [29, 25, 33]) {
+        if (count > 1 && 2 * radius * Math.sin(Math.PI / count) < 17) continue
+        for (let degrees = 0; degrees < 360; degrees += 5) {
+            const pegs = Array.from({ length: count }, (_, index) => ({
+                radius,
+                angle: ((degrees + (index * 360) / Math.max(count, 2)) * Math.PI) / 180
+            }))
+            const spots = pegs.map((peg) => at(peg.radius, peg.angle))
+            if (!spots.every(({ x, y }) => onSeal(x, y))) continue
+            const cost =
+                spots.reduce((sum, { x, y }) => sum + covering(x, y), 0) +
+                Math.abs(radius - 29) * 0.004
+            if (cost < ringCost - 1e-9) {
+                ring = pegs
+                ringCost = cost
+            }
+        }
+    }
+    // More advisors than any ring holds apart (beyond the rules' reach): the usual ring, crowded.
+    if (ring.length === 0) {
+        ring = Array.from({ length: count }, (_, index) => ({
+            radius: 29,
+            angle: (index * Math.PI * 2) / count
+        }))
+    }
+
+    // Each advisor steps off what it still covers, if a small move along or across the ring does.
+    const spots = ring.map((peg) => at(peg.radius, peg.angle))
+    for (let pass = 0; pass < 3; pass++) {
+        ring.forEach((peg, index) => {
+            const others = spots.filter((_, other) => other !== index)
+            let best = spots[index]
+            let bestCost = covering(best.x, best.y)
+            for (let turn = -40; turn <= 40; turn += 5) {
+                for (let reach = -12; reach <= 10; reach += 2) {
+                    const spot = at(peg.radius + reach, peg.angle + (turn * Math.PI) / 180)
+                    if (!onSeal(spot.x, spot.y) || !others.every((other) => apart(other, spot))) {
+                        continue
+                    }
+                    // a small move only for a real gain
+                    const cost =
+                        covering(spot.x, spot.y) + (Math.abs(turn) + Math.abs(reach) * 2) * 0.0015
+                    if (cost < bestCost - 1e-9) {
+                        best = spot
+                        bestCost = cost
+                    }
+                }
+            }
+            spots[index] = best
         })
     }
-    return spots
+
+    const random = mulberry32(seed + count * 977)
+    return spots.map(({ x, y }) => ({
+        x: x + (random() * 2 - 1) * 2.5,
+        y: y + (random() * 2 - 1) * 2.5
+    }))
 }
 
 function mulberry32(seed: number): () => number {
