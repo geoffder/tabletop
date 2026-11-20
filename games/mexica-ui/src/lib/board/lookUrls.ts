@@ -2,6 +2,7 @@
 import canal from '../images/looks/canal.webp'
 import lake from '../images/looks/lake.webp'
 import paving from '../images/looks/paving.webp'
+import pier from '../images/looks/pier.webp'
 import pilli from '../images/looks/pilli.webp'
 import pilliFlat from '../images/looks/pilli-flat.webp'
 import pilliShine from '../images/looks/pilli-shine.webp'
@@ -28,6 +29,7 @@ export const LOOK_URLS: Record<string, string> = {
     canal: canal,
     lake: lake,
     paving: paving,
+    pier: pier,
     pilli: pilli,
     'pilli-flat': pilliFlat,
     'pilli-shine': pilliShine,

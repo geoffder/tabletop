@@ -327,6 +327,34 @@ export function renderSlopeCorner(corner: SlopeCorner, pixels = SLOPE_PIXELS): B
     })
 }
 
+// A pier head at the end of a jetty, seen from above: a round of tezontle brick capped with a
+// slab of the paving's limestone, lit from the upper left.
+export function renderPier(radius: number, pixels = SLOPE_PIXELS): Bitmap {
+    const mottle = fractal(noise2(79), 3)
+    const cap = linear(STONES.limestone.light)
+    const capDark = linear(STONES.limestone.dark)
+    const step = 1 / pixels
+    return paint({ x: 0, y: 0, width: radius * 2, height: radius * 2 }, pixels, (x, y) => {
+        const dx = x - radius
+        const dy = y - radius
+        const r = Math.hypot(dx, dy)
+        const alpha = clamp((radius - r) / step + 0.5)
+        if (alpha <= 0) return { color: [0, 0, 0], alpha: 0 }
+        const facing = r > 0 ? (dx / r) * LIGHT_2D.x + (dy / r) * LIGHT_2D.y : 0
+        const top = radius * 0.62
+        if (r < top) {
+            // The cap's edge rounds over, lit on the side towards the light.
+            const round = smoothstep(top - 1.4, top, r)
+            let color = mix(cap, capDark, 0.25 + (mottle(x * 0.5, y * 0.5) - 0.5) * 0.4)
+            color = mix(color, facing > 0 ? [1, 1, 1] : [0, 0, 0], Math.abs(facing) * round * 0.35)
+            return { color, alpha }
+        }
+        const angle = Math.atan2(dy, dx)
+        const brick = brickAt((angle + Math.PI) * r, r - top, 2 * Math.PI * r, 5)
+        return { color: brickColor(brick, r - top, facing, mottle(x * 0.4, y * 0.4)), alpha }
+    })
+}
+
 export const SHORE_PIXELS = 2
 
 // The island's natural shore, in plan: a bank of rough rocks of uneven width standing out from
