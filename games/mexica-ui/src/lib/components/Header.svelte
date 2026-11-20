@@ -28,8 +28,8 @@
                 {#if currentTurnPlayerId}
                     <span
                         class="rounded px-2 font-medium tracking-widest uppercase"
-                        style:background={session.colors.getPlayerBgColorValue(currentTurnPlayerId)}
-                        style:color={session.colors.getPlayerTextColorValue(currentTurnPlayerId)}
+                        style:background={session.playerFill(currentTurnPlayerId)}
+                        style:color={session.playerInk(currentTurnPlayerId)}
                         >{session.getPlayerName(currentTurnPlayerId)}'s</span
                     >
                 {/if}

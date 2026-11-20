@@ -34,6 +34,7 @@ import {
     type Tool
 } from './stagedSelection.js'
 import { boardView, type BoardView, quarterTurnsOf } from '$lib/board/view.js'
+import { PIGMENTS } from './palette.js'
 
 type SessionOptions = ConstructorParameters<
     typeof GameSession<MexicaGameState, HydratedMexicaGameState>
@@ -75,6 +76,17 @@ export class MexicaGameSession extends GameSession<MexicaGameState, HydratedMexi
     view: BoardView = $derived(
         boardView(this.flatBoard, quarterTurnsOf(this.rotatedBoard, this.farSide))
     )
+
+    // A player asking for the colourblind palette keeps the site's colours for it.
+    playerFill(playerId?: string): string {
+        if (this.colors.colorBlind) return this.colors.getPlayerBgColorValue(playerId)
+        return PIGMENTS[this.colors.getPlayerColor(playerId)].fill
+    }
+
+    playerInk(playerId?: string): string {
+        if (this.colors.colorBlind) return this.colors.getPlayerTextColorValue(playerId)
+        return PIGMENTS[this.colors.getPlayerColor(playerId)].ink
+    }
 
     toggleCoordinates() {
         this.preferences.set({ showCoordinates: !this.showCoordinates })

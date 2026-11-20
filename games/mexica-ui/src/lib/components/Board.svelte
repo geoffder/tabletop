@@ -110,9 +110,7 @@
     })
 
     const playerFill = (playerId?: string) =>
-        playerId === undefined
-            ? 'var(--mx-neutral)'
-            : session.colors.getPlayerBgColorValue(playerId)
+        playerId === undefined ? 'var(--mx-neutral)' : session.playerFill(playerId)
 
     // What a tap on each cell would do now.
     const choosable: ReadonlySet<Cell> = $derived.by(() => {

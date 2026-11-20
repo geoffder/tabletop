@@ -14,8 +14,8 @@
             session.gameState.winningPlayerIds.includes(playerId)
     )
     const isStarter = $derived(session.gameState.turnManager.turnOrder[0] === playerId)
-    const fill = $derived(session.colors.getPlayerBgColorValue(playerId))
-    const ink = $derived(session.colors.getPlayerTextColorValue(playerId))
+    const fill = $derived(session.playerFill(playerId))
+    const ink = $derived(session.playerInk(playerId))
 </script>
 
 <div class="card" class:active={isActive}>
