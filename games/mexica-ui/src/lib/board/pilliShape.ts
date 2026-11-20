@@ -13,6 +13,8 @@ import { type Box, PILLI_SIZE } from './view.js'
 //     fastened a cloak.
 //   arms: forearms meeting in front, wooden hands clasped.
 //   fan: a smooth fan, separate feathers, or a second, shorter row of feathers in front.
+//   head: bare wood, or black hair with a fringe; with a nose and painted eyes (face); or with
+//     a band of black paint across the eyes as well (painted).
 //   headband: a gold band round the head with a jewel at the front; a thinner circlet higher
 //     on the brow with a medallion; the xiuhuitzolli, the pointed turquoise diadem of the
 //     Mexica rulers; or the band with ear spools.
@@ -24,6 +26,7 @@ export type PilliStyle = {
     knot: 'none' | 'shoulder' | 'chest'
     arms: boolean
     fan: 'plain' | 'feathers' | 'tiered'
+    head: 'plain' | 'hair' | 'face' | 'painted'
     headband: 'none' | 'band' | 'circlet' | 'diadem' | 'spools'
     eyes: boolean
 }
@@ -35,6 +38,7 @@ export const PILLI_STYLE: PilliStyle = {
     knot: 'none',
     arms: false,
     fan: 'tiered',
+    head: 'plain',
     headband: 'band',
     eyes: false
 }
