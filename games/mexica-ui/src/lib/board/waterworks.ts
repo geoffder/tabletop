@@ -1,9 +1,9 @@
 import type { Point } from '@tabletop/common'
 import { type Cell, cellAt, columnOf, isLand, rowOf } from '@tabletop/mexica'
 import { SLOPE_WIDTH, type SlopeCorner, type SlopeSide } from './looks.js'
-import { SHORE_ZONE } from './surfaceTexture.js'
+import { SHORE_ZONE, shoreDepth } from './surfaceTexture.js'
 import { type Box, CELL } from './view.js'
-import { SPILL_VARIANTS, spillBox, type SpillKind } from './spillShape.js'
+import { spillBox, spillDepth, type SpillKind } from './spillShape.js'
 import { COVE_TOE, spillLook } from './looks.js'
 
 // The island's built edges, in plan, for a set of canals.
@@ -211,8 +211,8 @@ function curvesOf(island: Island, spot: Spot): Curve[] {
 }
 
 // Wherever a square's shore on the lake is cut short, by a canal or a canal's mouth beside it,
-// rocks spill over the cut and onto the end of the brick there, so the stone runs into the
-// brick rather than stopping at it.
+// its rocks slide over the cut and down the brick there, so the stone runs into the brick
+// rather than stopping at it.
 function spillsOf(island: Island, grounds: readonly Spot[]): Spill[] {
     const spills: Spill[] = []
     for (const spot of grounds) {
@@ -234,12 +234,27 @@ function spillsOf(island: Island, grounds: readonly Spot[]): Spill[] {
                 // along the coast past it otherwise.
                 const kind: SpillKind =
                     island.canal(beside) || island.mouth(beside) ? 'across' : 'along'
-                const variant =
-                    Math.abs(spot.column * 7 + spot.row * 13 + SIDES.indexOf(end)) % SPILL_VARIANTS
-                const box = spillBox(side, end, kind, variant)
+                // Long enough to hide the shore's end, out to where it stops along the cut.
+                const back = toward(end)
+                const out = toward(side)
+                const reach = (behind: number) => {
+                    let by = 0
+                    while (
+                        by < SHORE_ZONE &&
+                        by <
+                            shoreDepth(
+                                corner.x - back.x * behind + out.x * by,
+                                corner.y - back.y * behind + out.y * by
+                            )
+                    )
+                        by += 0.5
+                    return by
+                }
+                const depth = spillDepth(Math.max(...[0.5, 2, 4].map(reach)))
+                const box = spillBox(side, end, kind, depth)
                 spills.push({
                     key: `spill-${keyOf(spot)}-${side}-${end}`,
-                    look: spillLook(side, end, kind, variant),
+                    look: spillLook(side, end, kind, depth),
                     box: { ...box, x: box.x + corner.x, y: box.y + corner.y }
                 })
             }

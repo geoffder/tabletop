@@ -3,7 +3,14 @@
 import { cellAt, columnOf, isLand, isPalace, isStart, PALACE_CENTRE, rowOf } from '@tabletop/mexica'
 import { CELL } from './view.js'
 import { COVE_TOE, SLOPE_WIDTH, type SlopeCorner, type SlopeSide } from './looks.js'
-import { spillBox, spillFrame, type SpillKind, spillRocks, toPlan } from './spillShape.js'
+import {
+    spillBox,
+    type SpillDepth,
+    spillFrame,
+    type SpillKind,
+    spillSlide,
+    toPlan
+} from './spillShape.js'
 import { PLAN } from './plan.js'
 import {
     type Bitmap,
@@ -552,46 +559,47 @@ export function renderShore(pixels = SHORE_PIXELS): Bitmap {
     })
 }
 
-// A pile of rocks where a stretch of shore is cut short beside a canal's bank, round the corner
-// of land where the shore ends (board/spillShape.ts lays it out), lit as the shore's rocks are:
-// higher rocks lie over lower ones, bedded in earth, darker and wetter towards the pile's foot.
-const PILE_HEIGHT = 6
+// A rock slide where a stretch of shore is cut short beside a canal's bank, round the corner of
+// land where the shore ends (board/spillShape.ts lays it out), lit as the shore's rocks are:
+// higher rocks lie over lower ones, all bedded in earth, darker and wetter towards its foot.
+const SLIDE_HEIGHT = 6
 
 export function renderSpill(
     out: SlopeSide,
     end: SlopeSide,
     kind: SpillKind,
-    variant: number,
+    depth: SpillDepth,
     pixels = SHORE_PIXELS * 2
 ): Bitmap {
     const [light, dark, earth] = [ROCK.light, ROCK.dark, ROCK.earth].map(linear)
     const wetTint = linear(TURQUOISE.deep)
-    const grit = noise2(97 + variant)
-    const lumps = fractal(noise2(101 + variant), 2)
+    const grit = noise2(97 + depth)
+    const lumps = fractal(noise2(101 + depth), 2)
     const frame = spillFrame(out, end)
-    const rocks = spillRocks(kind, variant).map((rock) => ({
+    const slide = spillSlide(kind, depth)
+    const rocks = slide.rocks.map((rock) => ({
         ...toPlan(frame, rock.u, rock.v),
         radius: rock.radius,
         tone: rock.tone,
         height: rock.height
     }))
-    return paint(spillBox(out, end, kind, variant), pixels, (x, y) => {
+    // Back from plan into the slide's frame: the frame's axes are a quarter turn apart.
+    const inFrame = (x: number, y: number) => ({
+        u: x * frame.end.x + y * frame.end.y,
+        v: x * frame.out.x + y * frame.out.y
+    })
+    return paint(spillBox(out, end, kind, depth), pixels, (x, y) => {
         const lump = (lumps(x * 0.45, y * 0.45) - 0.5) * 0.45
         let top:
             | { height: number; nx: number; ny: number; rim: number; tone: number; up: number }
             | undefined
-        let bedded = 0
         for (const rock of rocks) {
             const radius = rock.radius * (1 + lump)
             const dx = (x - rock.x) / radius
             const dy = (y - rock.y) / radius
             const r2 = dx * dx + dy * dy
-            bedded = Math.max(
-                bedded,
-                (1 - smoothstep(0.9, 1.5, Math.sqrt(r2))) * smoothstep(0.05, 0.4, rock.height)
-            )
             if (r2 >= 1) continue
-            const height = rock.height * PILE_HEIGHT + (1 - r2) ** 0.6 * radius
+            const height = rock.height * SLIDE_HEIGHT + (1 - r2) ** 0.6 * radius
             if (top === undefined || height > top.height) {
                 top = {
                     height,
@@ -603,24 +611,26 @@ export function renderSpill(
                 }
             }
         }
-        if (top !== undefined) {
-            const steep = (1.7 * top.rim) / Math.sqrt(1 - top.rim * top.rim + 0.08)
-            const nx = top.nx * steep
-            const ny = top.ny * steep
-            const length = Math.hypot(nx, ny, 1)
-            const facing = (-nx * LIGHT_2D.x - ny * LIGHT_2D.y) / length
-            const lit = clamp(0.42 + facing * 0.55 + (1 / length) * 0.15)
-            let color = mix(dark, light, clamp(lit * (0.7 + top.tone * 0.45)))
-            color = mix(color, earth, (grit(x * 1.3, y * 1.3) - 0.5) * 0.25 + 0.05)
-            color = mix(color, [0, 0, 0], smoothstep(0.7, 1, top.rim) * 0.35)
-            const wet = 1 - smoothstep(0.1, 0.45, top.up)
-            color = mix(color, mix(color, wetTint, 0.35), wet)
-            color = mix(color, [0, 0, 0], wet * 0.2 + (1 - top.up) * 0.12)
-            // Each rock sits a little on its own shadow.
-            return { color, alpha: clamp((1 - top.rim) * 12) }
-        }
-        const color = mix(earth, [0, 0, 0], (grit(x * 0.9, y * 0.9) - 0.5) * 0.25 + 0.15)
-        return { color, alpha: bedded * 0.85 }
+        const { u, v } = inFrame(x, y)
+        const bed = slide.cover(u, v)
+        let ground = mix(mix(earth, dark, 0.5), [0, 0, 0], (grit(x * 0.9, y * 0.9) - 0.5) * 0.25)
+        if (top === undefined) return { color: ground, alpha: bed }
+        const steep = (1.7 * top.rim) / Math.sqrt(1 - top.rim * top.rim + 0.08)
+        const nx = top.nx * steep
+        const ny = top.ny * steep
+        const length = Math.hypot(nx, ny, 1)
+        const facing = (-nx * LIGHT_2D.x - ny * LIGHT_2D.y) / length
+        const lit = clamp(0.42 + facing * 0.55 + (1 / length) * 0.15)
+        let color = mix(dark, light, clamp(lit * (0.7 + top.tone * 0.45)))
+        color = mix(color, earth, (grit(x * 1.3, y * 1.3) - 0.5) * 0.25 + 0.05)
+        color = mix(color, [0, 0, 0], smoothstep(0.7, 1, top.rim) * 0.35)
+        const wet = 1 - smoothstep(0.1, 0.45, top.up)
+        color = mix(color, mix(color, wetTint, 0.35), wet)
+        color = mix(color, [0, 0, 0], wet * 0.2 + (1 - top.up) * 0.12)
+        // Each rock's edge settles into the bed beneath it, or the water beyond.
+        const solid = clamp((1 - top.rim) * 12)
+        ground = mix(ground, color, solid)
+        return { color: ground, alpha: Math.max(bed, solid) }
     })
 }
 
