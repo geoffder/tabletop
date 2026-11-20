@@ -12,13 +12,9 @@
     import { CANAL_LOOK, LAKE_LOOK, PAVING_LOOK, templeLook } from '$lib/board/looks.js'
     import type { Bitmap } from '$lib/board/light.js'
     import { renderTemple } from '$lib/board/templeLight.js'
-    import {
-        DESIGNS,
-        pipEllipses,
-        type TempleDesign,
-        templeBounds
-    } from '$lib/board/templeShape.js'
-    import { ownerMark, TEMPLE_TINT } from '$lib/board/templeMarks.js'
+    import { DESIGNS, type TempleDesign, templeBounds } from '$lib/board/templeShape.js'
+    import { ownerMark } from '$lib/board/templeMarks.js'
+    import TempleMarks from '$lib/components/TempleMarks.svelte'
     import { CELL, FLAT, TILT } from '$lib/board/view.js'
     import { PIGMENTS } from '$lib/model/palette.js'
     import '../../app.css'
@@ -30,8 +26,12 @@
     let previews: Record<string, string> | undefined = $state()
 
     const LEVELS: readonly Level[] = [1, 2, 3, 4]
-    const STRIP: readonly Level[] = [1, 2, 1, 2]
-    const TINT = PIGMENTS[Color.Green].fill
+    const STRIP: readonly [Level, Color][] = [
+        [1, Color.Green],
+        [2, Color.Red],
+        [3, Color.Yellow],
+        [2, Color.Blue]
+    ]
     const DESIGN_ROWS: [string, TempleDesign][] = Object.entries(DESIGNS)
 
     function toUrl(bitmap: Bitmap, quality: number): string {
@@ -68,23 +68,13 @@
     })
 </script>
 
-{#snippet temple(design: TempleDesign, url: string, level: Level, x: number)}
+{#snippet temple(design: TempleDesign, url: string, level: Level, x: number, color: Color)}
     {@const mark = ownerMark(level, TILT, design)}
     <g transform="translate({x} 0)">
         <ellipse cx="2" cy="2" rx={CELL * 0.5} ry={CELL * 0.5 * TILT} fill="url(#temple-shadow)"
         ></ellipse>
         <image href={url} {...templeBounds(level, TILT, design)} preserveAspectRatio="none"></image>
-        <path d={mark.path} fill={TINT} opacity={TEMPLE_TINT}></path>
-        {#each pipEllipses(level, TILT, design) as pip, index (index)}
-            <ellipse
-                cx={pip.x + pip.width / 2}
-                cy={pip.y + pip.height / 2}
-                rx={pip.width / 2}
-                ry={pip.height / 2}
-                fill="#1c1712"
-                opacity="0.38"
-            ></ellipse>
-        {/each}
+        <TempleMarks {mark} stair={design.stair} fill={PIGMENTS[color].fill} />
     </g>
 {/snippet}
 
@@ -105,7 +95,7 @@
     {#if previews && urls}
         {@const drawn = previews}
         {@const paving = urls[PAVING_LOOK]}
-        <h2>Temple levels</h2>
+        <h2>Stairs</h2>
         <table class="designs">
             <tbody>
                 {#each DESIGN_ROWS as [name, design] (name)}
@@ -119,7 +109,8 @@
                                         design,
                                         drawn[`${name}-${level}`],
                                         level,
-                                        index * 48
+                                        index * 48,
+                                        Color.Green
                                     )}
                                 {/each}
                             </svg>
@@ -135,12 +126,13 @@
                                     height="420"
                                     preserveAspectRatio="none"
                                 ></image>
-                                {#each STRIP as level, index (index)}
+                                {#each STRIP as [level, color], index (index)}
                                     {@render temple(
                                         design,
                                         drawn[`${name}-${level}`],
                                         level,
-                                        index * 40
+                                        index * 40,
+                                        color
                                     )}
                                 {/each}
                             </svg>

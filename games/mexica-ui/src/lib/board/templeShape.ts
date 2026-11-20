@@ -14,6 +14,11 @@ export const TEMPLE = {
     stairReach: 3,
     stepsPerTier: 2,
     wall: { width: 1.4, above: 1.2 },
+    balustrade: {
+        width: 2.2,
+        above: 2.4,
+        head: { width: 3, depth: 1.6, reach: 1.2, height: 3.6 }
+    },
     round: 1.4,
     stairRound: 0.3,
     pip: { radius: 2.2, depth: 1.4, spacing: 4.6, margin: 1.2 }
@@ -23,21 +28,36 @@ export const TEMPLE = {
 // the others, pips cut into the top, and a building on the top that changes with the level.
 export type PipLayout = 'dice' | 'row' | 'cluster' | 'front'
 
+// How the stair stands out from the tiers under the owner's tint: as it is, with its risers
+// shadowed and its treads' edges picked out, washed a shade darker, traced round, or between
+// heavy balustrades ending in blocks at the foot.
+export type StairStyle = 'plain' | 'treads' | 'darker' | 'outlined' | 'balustrade' | 'combined'
+
 export type TempleDesign = {
     base: number
     pips: 'none' | 'carved' | 'painted'
     layout: PipLayout
     shrines: boolean
+    stair: StairStyle
 }
 
+const CLUSTER = {
+    base: 1,
+    pips: 'carved',
+    layout: 'cluster',
+    shrines: false
+} satisfies Omit<TempleDesign, 'stair'>
+
 export const DESIGNS = {
-    dice: { base: 1, pips: 'carved', layout: 'dice', shrines: false },
-    row: { base: 1, pips: 'carved', layout: 'row', shrines: false },
-    cluster: { base: 1, pips: 'carved', layout: 'cluster', shrines: false },
-    front: { base: 1, pips: 'carved', layout: 'front', shrines: false }
+    plain: { ...CLUSTER, stair: 'plain' },
+    treads: { ...CLUSTER, stair: 'treads' },
+    darker: { ...CLUSTER, stair: 'darker' },
+    outlined: { ...CLUSTER, stair: 'outlined' },
+    balustrade: { ...CLUSTER, stair: 'balustrade' },
+    combined: { ...CLUSTER, stair: 'combined' }
 } satisfies Record<string, TempleDesign>
 
-export const DESIGN: TempleDesign = DESIGNS.cluster
+export const DESIGN: TempleDesign = DESIGNS.plain
 
 export function riseOf(tilt: number): number {
     return Math.sqrt(1 - tilt * tilt)
@@ -71,28 +91,59 @@ export function peakOf(level: Level, design = DESIGN): number {
     return tierTop(level - 1, design)
 }
 
+export type StairParts = { steps: Block[]; walls: Block[] }
+
 // The stair up the front, from just before the base to the top tier's front edge, between
-// low walls a little higher than its steps.
-export function stairBlocks(level: Level, design = DESIGN): Block[] {
+// low walls a little higher than its steps. Balustrades are heavier and end at the foot in a
+// block each side.
+export function stairParts(level: Level, design = DESIGN): StairParts {
     const front = TEMPLE.half + TEMPLE.stairReach
-    const top = TEMPLE.half - TEMPLE.inset * (level - 1)
+    const top = topHalf(level)
     const peak = peakOf(level, design)
-    const steps = TEMPLE.stepsPerTier * level
-    const run = (front - top) / steps
-    const rise = peak / steps
+    const count = TEMPLE.stepsPerTier * level
+    const run = (front - top) / count
+    const rise = peak / count
     const half = TEMPLE.stairHalf
-    const wall = TEMPLE.wall
-    return Array.from({ length: steps }, (_, step) => {
-        const y0 = top - TEMPLE.inset
-        const y1 = front - run * step
-        const z1 = rise * (step + 1)
-        const wallTop = Math.min(z1 + wall.above, peak)
+    const wall = design.stair === 'balustrade' ? TEMPLE.balustrade : TEMPLE.wall
+    const y0 = top - TEMPLE.inset
+    const steps = Array.from({ length: count }, (_, step) => ({
+        x0: -half,
+        x1: half,
+        y0,
+        y1: front - run * step,
+        z0: 0,
+        z1: rise * (step + 1)
+    }))
+    const walls = steps.flatMap((step) => {
+        const z1 = Math.min(step.z1 + wall.above, peak)
         return [
-            { x0: -half, x1: half, y0, y1, z0: 0, z1 },
-            { x0: -half - wall.width, x1: -half, y0, y1, z0: 0, z1: wallTop },
-            { x0: half, x1: half + wall.width, y0, y1, z0: 0, z1: wallTop }
+            { ...step, x0: -half - wall.width, x1: -half, z1 },
+            { ...step, x0: half, x1: half + wall.width, z1 }
         ]
-    }).flat()
+    })
+    if (design.stair !== 'balustrade') return { steps, walls }
+    const head = TEMPLE.balustrade.head
+    const heads = [-1, 1].map((side) => {
+        const middle = side * (half + wall.width / 2)
+        return {
+            x0: middle - head.width / 2,
+            x1: middle + head.width / 2,
+            y0: front - head.depth,
+            y1: front + head.reach,
+            z0: 0,
+            z1: head.height
+        }
+    })
+    return { steps, walls: [...walls, ...heads] }
+}
+
+export function stairBlocks(level: Level, design = DESIGN): Block[] {
+    const { steps, walls } = stairParts(level, design)
+    return [...steps, ...walls]
+}
+
+export function topHalf(level: Level): number {
+    return TEMPLE.half - TEMPLE.inset * (level - 1)
 }
 
 // On the top: an altar at level 1, a shrine at 2, a shrine with a roof comb at 3, two shrines
