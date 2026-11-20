@@ -2,29 +2,42 @@ import { riseOf } from './templeShape.js'
 import { type Box, PILLI_SIZE } from './view.js'
 
 // A Pilli Mexica as a painted wooden figure, feet at the origin: x to the right, y towards the
-// viewer, z up, in board units.
-//   fan: a cloaked noble with a bare wooden face and a fan of feathers behind the head.
-//   crown: the same noble in a ring of feathers.
-//   cutout: a flat figure with rounded edges, a plume on its head.
-export type PilliDesign = 'fan' | 'crown' | 'cutout'
+// viewer, z up, in board units at full size. A cloaked noble with a bare wooden face and a fan
+// of feathers behind the head.
+//   robe: a bell, or a pawn's concave flare on a ring at the foot.
+//   trim: a stepped fret round the hem, the cloak's opening down the front and a knot on the
+//     shoulder.
+//   arms: forearms meeting in front, wooden hands clasped.
+//   fan: a smooth fan, separate feathers, or a second, shorter row of feathers in front.
+//   headband: a gold band round the head with a jewel at the front.
+//   eyes: the fan painted in bands, a spot near each feather's tip.
+export type PilliStyle = {
+    robe: 'bell' | 'pawn'
+    trim: boolean
+    arms: boolean
+    fan: 'plain' | 'feathers' | 'tiered'
+    headband: boolean
+    eyes: boolean
+}
 
-export const PILLI_DESIGNS: readonly PilliDesign[] = ['fan', 'crown', 'cutout']
-
-export const PILLI_DESIGN: PilliDesign = 'fan'
+export const PILLI_STYLE: PilliStyle = {
+    robe: 'bell',
+    trim: false,
+    arms: false,
+    fan: 'plain',
+    headband: false,
+    eyes: false
+}
 
 export const PILLI_PIXELS = 3
 
-// What each design takes up at full size: half its width and depth, and its height.
-const EXTENT: Record<PilliDesign, { half: number; depth: number; height: number }> = {
-    fan: { half: 9.5, depth: 9.5, height: 31.5 },
-    crown: { half: 9.5, depth: 9.5, height: 30 },
-    cutout: { half: 13.5, depth: 4.5, height: 31.5 }
-}
+// What the figure takes up at full size: half its width and depth, and its height.
+const EXTENT = { half: 9.6, depth: 9.5, height: 31.5 }
 
-export function pilliBounds(tilt: number, design: PilliDesign = PILLI_DESIGN): Box {
-    const half = EXTENT[design].half * PILLI_SIZE
-    const depth = EXTENT[design].depth * PILLI_SIZE
-    const height = EXTENT[design].height * PILLI_SIZE
+export function pilliBounds(tilt: number): Box {
+    const half = EXTENT.half * PILLI_SIZE
+    const depth = EXTENT.depth * PILLI_SIZE
+    const height = EXTENT.height * PILLI_SIZE
     const margin = 1
     const top = -depth * tilt - height * riseOf(tilt)
     return {
@@ -35,6 +48,6 @@ export function pilliBounds(tilt: number, design: PilliDesign = PILLI_DESIGN): B
     }
 }
 
-export function pilliLook(flat: boolean, design: PilliDesign = PILLI_DESIGN): string {
-    return `pilli-${design}${flat ? '-flat' : ''}`
+export function pilliLook(flat: boolean): string {
+    return `pilli${flat ? '-flat' : ''}`
 }
