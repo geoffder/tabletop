@@ -331,8 +331,7 @@ export const SHORE_PIXELS = 2
 
 // The island's natural shore, in plan: a bank of rough rocks of uneven width standing out from
 // the island's edge into the lake, packed in earth, in the shade of the paving above them, wet
-// and dark further out, a pale line of wash where the bank meets the water, and the odd clump of
-// reeds in the shallows.
+// and dark further out, and the odd clump of reeds in the shallows.
 const SHORE = { spacing: 4.4, narrowest: 4, widest: 12, reeds: 0.3 }
 const ROCK = {
     light: '#c2b6a0',
@@ -345,6 +344,14 @@ const ROCK = {
 type Rock = { x: number; y: number; radius: number; tone: number }
 
 const shoreReach = fractal(noise2(83), 3)
+
+// How far out from the grid's edge the island's stones and the rocks beyond them reach.
+export function shoreDepth(x: number, y: number): number {
+    return coastReach(x, y) + shoreWidth(x, y)
+}
+
+// No further than this.
+export const SHORE_ZONE = COAST.most + SHORE.widest * 1.5 + 1
 
 function shoreWidth(x: number, y: number): number {
     return SHORE.narrowest + (SHORE.widest - SHORE.narrowest) * shoreReach(x * 0.035, y * 0.035)
@@ -363,7 +370,6 @@ export function renderShore(pixels = SHORE_PIXELS): Bitmap {
         ROCK.reed,
         ROCK.reedDark
     ].map(linear)
-    const wash = linear('#dbe8df')
     const wetTint = linear(TURQUOISE.deep)
     const grit = noise2(89)
     const lumps = fractal(noise2(91), 2)
@@ -459,22 +465,18 @@ export function renderShore(pixels = SHORE_PIXELS): Bitmap {
             return { color, alpha: 1 }
         }
         const ground = 1 - smoothstep(band * 0.6, band * 1.0, off)
-        const foam =
-            smoothstep(band * 0.75, band * 0.95, off) *
-            (1 - smoothstep(band * 0.95, band * 1.15, off))
-        let color = mix(
+        const color = mix(
             earth,
             [0, 0, 0],
             (grit(x * 0.9, y * 0.9) - 0.5) * 0.25 + 0.1 + (1 - shaded)
         )
-        color = mix(color, wash, foam * 0.6)
         if (sedge.amount > 0) {
             return {
                 color: mix(reedDark, reed, sedge.tone),
                 alpha: Math.max(ground, clamp(sedge.amount))
             }
         }
-        return { color, alpha: Math.max(ground, foam * 0.45) }
+        return { color, alpha: ground }
     })
 }
 
