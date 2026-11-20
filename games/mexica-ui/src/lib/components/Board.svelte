@@ -122,6 +122,9 @@
     // side where it meets land; where two banks meet in a corner they are mitred, and where a
     // canal turns round a corner of land its bank curves round it.
     const TALUD = SLOPE_WIDTH
+    // How far a canal's mouth runs out through the shore into the lake, and its banks with it.
+    const MOUTH = 11
+    const BANK_REACH = 5
     const SIDE_OF: Record<SlopeSide, PlanStep> = {
         n: { column: 0, row: -1 },
         e: { column: 1, row: 0 },
@@ -172,32 +175,47 @@
                 const [before, after] = ENDS[side]
                 const pullA = banked(before) ? TALUD : 0
                 const pullB = banked(after) ? TALUD : 0
+                // Where the canal opens into the lake past an end and the land beside it meets
+                // the lake there too, the bank runs on as far as the island's edge reaches.
+                const opensTo = (end: SlopeSide) => {
+                    const past = SIDE_OF[end]
+                    const beyond = { column: past.column + step.column, row: past.row + step.row }
+                    return isLakeAt(cell, past) && isLakeAt(cell, beyond) ? BANK_REACH : 0
+                }
+                const outA = opensTo(before)
+                const outB = opensTo(after)
+                const startA = { x: a.x - along.x * outA, y: a.y - along.y * outA }
+                const endB = { x: b.x + along.x * outB, y: b.y + along.y * outB }
                 const innerA = {
-                    x: a.x + inward.x * TALUD + along.x * pullA,
-                    y: a.y + inward.y * TALUD + along.y * pullA
+                    x: startA.x + inward.x * TALUD + along.x * pullA,
+                    y: startA.y + inward.y * TALUD + along.y * pullA
                 }
                 const innerB = {
-                    x: b.x + inward.x * TALUD - along.x * pullB,
-                    y: b.y + inward.y * TALUD - along.y * pullB
+                    x: endB.x + inward.x * TALUD - along.x * pullB,
+                    y: endB.y + inward.y * TALUD - along.y * pullB
                 }
                 return {
                     key: `${cell}-${side}`,
                     side,
-                    points: [a, b, innerB, innerA].map((p) => `${p.x},${p.y}`).join(' ')
+                    points: [startA, endB, innerB, innerA].map((p) => `${p.x},${p.y}`).join(' ')
                 }
             })
         })
     )
 
-    // A curve of bank in the corner of a canal's cell wherever the canal runs on past both sides
-    // of that corner but the cell across the corner is land, its corner jutting into the canal.
+    // A curve of bank in the corner of a canal's cell wherever the water runs on past both sides
+    // of that corner, in the canal on at least one, but the cell across the corner is land, its
+    // corner jutting into the water.
     const curves = $derived.by(() =>
         [...layout.canals].flatMap((cell) =>
             SLOPE_CORNERS.filter(([, up, beside]) => {
                 const across = { column: SIDE_OF[beside].column, row: SIDE_OF[up].row }
+                const open = (side: SlopeSide) =>
+                    isCanalAt(cell, SIDE_OF[side]) || isLakeAt(cell, SIDE_OF[side])
                 return (
-                    isCanalAt(cell, SIDE_OF[up]) &&
-                    isCanalAt(cell, SIDE_OF[beside]) &&
+                    open(up) &&
+                    open(beside) &&
+                    (isCanalAt(cell, SIDE_OF[up]) || isCanalAt(cell, SIDE_OF[beside])) &&
                     isBankAt(cell, across)
                 )
             }).map(([corner, up, beside]) => {
@@ -218,7 +236,6 @@
     )
 
     // Where a canal opens into the lake, the lake runs in through the rocks of the shore to meet it.
-    const MOUTH = 11
     const mouths = $derived(
         [...layout.canals].flatMap((cell) =>
             PLAN_SIDES.filter((step) => isLakeAt(cell, step)).map((step) => {

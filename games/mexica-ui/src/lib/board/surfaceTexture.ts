@@ -250,7 +250,9 @@ export const SLOPE_PIXELS = 4
 // The tezontle bricks facing a canal's sloping banks, in plan, quietened so they sit below the
 // paving rather than stand out from it.
 const BRICK = { light: '#a27866', dark: '#7a5545', mortar: '#5b473c', wet: '#3c3d36' }
-const BRICK_COURSES = 2
+// Wider, gentler banks take more courses of brick and less of the light's slant.
+const BRICK_COURSES = Math.max(2, Math.round(SLOPE_WIDTH / 4))
+const STEEPNESS = Math.min(1.6, Math.max(0.6, 8 / SLOPE_WIDTH))
 
 type Brick = { joint: number; tone: number }
 
@@ -282,7 +284,7 @@ function brickColor(brick: Brick, across: number, facing: number, mottle: number
     )
     let color = mix(light, dark, clamp(0.2 + brick.tone * 0.55 + (mottle - 0.5) * 0.3))
     color = mix(color, mortar, brick.joint * 0.75)
-    color = mix(color, facing > 0 ? [1, 1, 1] : [0, 0, 0], Math.abs(facing) * 0.14)
+    color = mix(color, facing > 0 ? [1, 1, 1] : [0, 0, 0], Math.abs(facing) * 0.14 * STEEPNESS)
     color = mix(color, [1, 1, 1], (1 - smoothstep(0, 1.5, across)) * 0.12)
     return mix(color, wet, smoothstep(0.6, 1, across / SLOPE_WIDTH) * 0.5)
 }
