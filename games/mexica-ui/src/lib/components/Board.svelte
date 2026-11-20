@@ -13,18 +13,10 @@
         placePoints
     } from '@tabletop/mexica'
     import { getGameSession } from '$lib/model/sessionContext.svelte.js'
-    import { BANK_DEPTH, BRIDGE_RISE, CELL, type PlanStep, SHORE_HEIGHT } from '$lib/board/view.js'
+    import { BRIDGE_RISE, CELL, type PlanStep } from '$lib/board/view.js'
+    import type { Point } from '@tabletop/common'
     import { LOOK_URLS } from '$lib/board/lookUrls.js'
-    import {
-        CANAL_LOOK,
-        LAKE_LOOK,
-        PAVING_LOOK,
-        rubbleLook,
-        SHORE_LOOK,
-        templeLook,
-        WALL_VARIANTS,
-        wallLook
-    } from '$lib/board/looks.js'
+    import { CANAL_LOOK, LAKE_LOOK, PAVING_LOOK, SHORE_LOOK, templeLook } from '$lib/board/looks.js'
     import { DESIGN, templeBounds } from '$lib/board/templeShape.js'
     import { templeMark } from '$lib/board/templeMarks.js'
     import TempleMarks from './TempleMarks.svelte'
@@ -75,7 +67,6 @@
 
     // Neighbouring canal cells overlap a little, or their clipped edges leave a seam.
     const CLIP_OVERLAP = 0.5
-    const WALL_SHADOW = 7
 
     const isCanalAt = (cell: Cell, step: PlanStep) => {
         const next = cellAt(columnOf(cell) + step.column, rowOf(cell) + step.row)
@@ -86,60 +77,6 @@
         const next = cellAt(columnOf(cell) + step.column, rowOf(cell) + step.row)
         return next === undefined || !isLand(next)
     }
-
-    // A wall drops from each stretch of land to a canal just in front of it on screen, and the
-    // land shades the canal beside it from the light at the upper left. The lake's shore is a
-    // bank of rocks drawn with the surface.
-    const shore = $derived.by(() => {
-        const height = view.lift(BANK_DEPTH)
-        const ground = LAND_CELLS.filter((cell) => !layout.canals.has(cell))
-        const walls = ground
-            .filter((cell) => isCanalAt(cell, view.nearer))
-            .map((cell) => {
-                const box = view.cellBox(cell)
-                const bottom = box.y + box.height
-                return {
-                    cell,
-                    face: { x: box.x - 0.3, y: bottom, width: box.width + 0.6, height },
-                    shadow: {
-                        x: box.x - 0.3,
-                        y: bottom + height,
-                        width: box.width + 0.6,
-                        height: WALL_SHADOW * view.tilt
-                    }
-                }
-            })
-        const sides = ground
-            .filter((cell) => isCanalAt(cell, view.rightward))
-            .map((cell) => {
-                const box = view.cellBox(cell)
-                return {
-                    cell,
-                    shadow: {
-                        x: box.x + box.width,
-                        y: box.y,
-                        width: WALL_SHADOW,
-                        height: box.height + height
-                    }
-                }
-            })
-        const rise = view.lift(SHORE_HEIGHT)
-        const coast = ground
-            .filter((cell) => isLakeAt(cell, view.nearer))
-            .map((cell) => {
-                const box = view.cellBox(cell)
-                return {
-                    cell,
-                    face: {
-                        x: box.x - 0.3,
-                        y: box.y + box.height,
-                        width: box.width + 0.6,
-                        height: rise
-                    }
-                }
-            })
-        return { walls, sides, coast }
-    })
 
     // A kerb of tezontle along every edge where the paving meets a canal, in plan.
     const KERB = { width: 2.6, line: 0.7 }
@@ -170,7 +107,90 @@
         )
     )
 
-    // Where a canal opens into the lake its water runs on out through the rocks of the shore.
+    // A canal's banks slope down from the kerb to the water, faced with tezontle, on every side
+    // where it meets land; where two banks meet in a corner they are mitred. Each side's slope
+    // is lit by the way it faces in plan, as the paving is.
+    const TALUD = 7.5
+    type Side = 'n' | 'e' | 's' | 'w'
+    const SIDE_OF: Record<Side, PlanStep> = {
+        n: { column: 0, row: -1 },
+        e: { column: 1, row: 0 },
+        s: { column: 0, row: 1 },
+        w: { column: -1, row: 0 }
+    }
+    // Each side's ends, clockwise, and the sides it meets at them.
+    const ENDS: Record<Side, [Side, Side]> = {
+        n: ['w', 'e'],
+        e: ['n', 's'],
+        s: ['e', 'w'],
+        w: ['s', 'n']
+    }
+    // Down each slope, from the kerb to the water: lit facing up and to the left in plan.
+    const TALUD_GRADIENTS: {
+        side: Side
+        direction: { x1: number; y1: number; x2: number; y2: number }
+        top: string
+        face: string
+    }[] = [
+        { side: 'n', direction: { x1: 0, y1: 0, x2: 0, y2: 1 }, top: '#8e5442', face: '#5e3428' },
+        { side: 'e', direction: { x1: 1, y1: 0, x2: 0, y2: 0 }, top: '#c98a6e', face: '#a8644c' },
+        { side: 's', direction: { x1: 0, y1: 1, x2: 0, y2: 0 }, top: '#d29478', face: '#b26c52' },
+        { side: 'w', direction: { x1: 0, y1: 0, x2: 1, y2: 0 }, top: '#94594a', face: '#69392c' }
+    ]
+    const isBankAt = (cell: Cell, step: PlanStep) => {
+        const next = cellAt(columnOf(cell) + step.column, rowOf(cell) + step.row)
+        return next !== undefined && isLand(next) && !layout.canals.has(next)
+    }
+    const taluds = $derived.by(() =>
+        [...layout.canals].flatMap((cell) => {
+            const x0 = columnOf(cell) * CELL
+            const y0 = rowOf(cell) * CELL
+            const corners = {
+                nw: { x: x0, y: y0 },
+                ne: { x: x0 + CELL, y: y0 },
+                se: { x: x0 + CELL, y: y0 + CELL },
+                sw: { x: x0, y: y0 + CELL }
+            }
+            const edges: Record<Side, [Point, Point]> = {
+                n: [corners.nw, corners.ne],
+                e: [corners.ne, corners.se],
+                s: [corners.se, corners.sw],
+                w: [corners.sw, corners.nw]
+            }
+            const banked = (side: Side) => isBankAt(cell, SIDE_OF[side])
+            const sides: Side[] = ['n', 'e', 's', 'w']
+            return sides.filter(banked).map((side) => {
+                const [a, b] = edges[side]
+                const step = SIDE_OF[side]
+                const inward = { x: -step.column, y: -step.row }
+                const along = { x: (b.x - a.x) / CELL, y: (b.y - a.y) / CELL }
+                const [before, after] = ENDS[side]
+                const pullA = banked(before) ? TALUD : 0
+                const pullB = banked(after) ? TALUD : 0
+                const innerA = {
+                    x: a.x + inward.x * TALUD + along.x * pullA,
+                    y: a.y + inward.y * TALUD + along.y * pullA
+                }
+                const innerB = {
+                    x: b.x + inward.x * TALUD - along.x * pullB,
+                    y: b.y + inward.y * TALUD - along.y * pullB
+                }
+                const at = (from: Point, to: Point, share: number) =>
+                    `${from.x + (to.x - from.x) * share} ${from.y + (to.y - from.y) * share}`
+                const courses = [1 / 3, 2 / 3]
+                    .map((share) => `M${at(a, innerA, share)}L${at(b, innerB, share)}`)
+                    .join('')
+                return {
+                    key: `${cell}-${side}`,
+                    side,
+                    points: [a, b, innerB, innerA].map((p) => `${p.x},${p.y}`).join(' '),
+                    courses
+                }
+            })
+        })
+    )
+
+    // Where a canal opens into the lake, the lake runs in through the rocks of the shore to meet it.
     const MOUTH = 11
     const mouths = $derived(
         [...layout.canals].flatMap((cell) =>
@@ -266,6 +286,8 @@
                         height={CELL + CLIP_OVERLAP * 2}
                     ></rect>
                 {/each}
+            </clipPath>
+            <clipPath id="mx-mouth-clip">
                 {#each mouths as mouth (mouth.key)}
                     <rect {...mouth.box}></rect>
                 {/each}
@@ -274,14 +296,13 @@
                 <stop offset="0.55" stop-color="#2a1a08" stop-opacity="0.32"></stop>
                 <stop offset="1" stop-color="#2a1a08" stop-opacity="0"></stop>
             </radialGradient>
-            <linearGradient id="mx-side-shadow" x1="0" y1="0" x2="1" y2="0">
-                <stop offset="0" stop-color="#062c3a" stop-opacity="0.3"></stop>
-                <stop offset="1" stop-color="#062c3a" stop-opacity="0"></stop>
-            </linearGradient>
-            <linearGradient id="mx-wall-shadow" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0" stop-color="#062c3a" stop-opacity="0.38"></stop>
-                <stop offset="1" stop-color="#062c3a" stop-opacity="0"></stop>
-            </linearGradient>
+            {#each TALUD_GRADIENTS as gradient (gradient.side)}
+                <linearGradient id="mx-talud-{gradient.side}" {...gradient.direction}>
+                    <stop offset="0" stop-color={gradient.top}></stop>
+                    <stop offset="0.7" stop-color={gradient.face}></stop>
+                    <stop offset="1" stop-color="#2f3530"></stop>
+                </linearGradient>
+            {/each}
         </defs>
 
         <g transform={view.planTransform}>
@@ -296,38 +317,29 @@
                 class="surface"
             ></image>
             <image
+                href={LOOK_URLS[LAKE_LOOK]}
+                {...PLAN}
+                preserveAspectRatio="none"
+                clip-path="url(#mx-mouth-clip)"
+                class="surface"
+            ></image>
+            <image
                 href={LOOK_URLS[CANAL_LOOK]}
                 {...PLAN}
                 preserveAspectRatio="none"
                 clip-path="url(#mx-canal-clip)"
                 class="surface"
             ></image>
+            {#each taluds as talud (talud.key)}
+                <polygon points={talud.points} fill="url(#mx-talud-{talud.side})" class="surface"
+                ></polygon>
+                <path d={talud.courses} class="surface talud-course"></path>
+            {/each}
             {#each kerbs as kerb (kerb.key)}
                 <rect {...kerb.stone} class="surface kerb"></rect>
                 <rect {...kerb.edge} class="surface kerb-edge"></rect>
             {/each}
         </g>
-        {#each shore.sides as side (side.cell)}
-            <rect {...side.shadow} fill="url(#mx-side-shadow)" class="surface"></rect>
-        {/each}
-        {#each shore.coast as edge (edge.cell)}
-            <image
-                href={LOOK_URLS[rubbleLook(edge.cell % WALL_VARIANTS)]}
-                {...edge.face}
-                preserveAspectRatio="none"
-                class="surface"
-            ></image>
-        {/each}
-        {#each shore.walls as wall (wall.cell)}
-            <rect {...wall.shadow} fill="url(#mx-wall-shadow)" class="surface"></rect>
-            <image
-                href={LOOK_URLS[wallLook(wall.cell % WALL_VARIANTS)]}
-                {...wall.face}
-                preserveAspectRatio="none"
-                class="surface"
-            ></image>
-        {/each}
-
         {#if session.showCoordinates}
             {#each view.labels as label (label.key)}
                 <text class="label" x={label.at.x} y={label.at.y} dy="4.2" text-anchor="middle"
@@ -542,6 +554,13 @@
 
     .kerb {
         fill: #a5644f;
+    }
+
+    .talud-course {
+        fill: none;
+        stroke: #3a2119;
+        stroke-opacity: 0.45;
+        stroke-width: 0.35;
     }
 
     .kerb-edge {

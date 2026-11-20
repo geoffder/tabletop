@@ -30,15 +30,6 @@ export const STONES = {
     sandstone: { light: '#ead2a4', dark: '#cfae78', mortar: '#9c8059', palace: '#b4a58c' }
 } satisfies Record<string, StoneStyle>
 
-// Tezontle, the porous red volcanic stone the Mexica built with: the canals' walls and kerbs,
-// so they read as works of their own rather than the island's shore.
-export const TEZONTLE: StoneStyle = {
-    light: '#b0705a',
-    dark: '#7e4636',
-    mortar: '#5a3b2f',
-    palace: '#7e4636'
-}
-
 export type WaterStyle = { deep: string; open: string; shallow: string }
 
 export const TURQUOISE: WaterStyle = { deep: '#1b7391', open: '#2a92ab', shallow: '#5cc0c2' }
@@ -72,13 +63,15 @@ export function renderPaving(style: StoneStyle, pixels = PAVING_PIXELS): Bitmap 
         return values
     }
     return paint(PLAN, pixels, (x, y) => {
-        const cell = landAt(x, y)
+        const cell = landAt(x, y) ?? nearestLand(x, y, coastReach(x, y))
         if (cell === undefined) return { color: [0, 0, 0], alpha: 0 }
         const [tone, slopeX, slopeY, inset] = draws(cell)
-        const edge = stoneEdge(
+        const edge = coastStoneEdge(
+            cell,
             x - columnOf(cell) * CELL - CELL / 2,
             y - rowOf(cell) * CELL - CELL / 2,
-            JOINT + inset * 0.6
+            JOINT + inset * 0.6,
+            coastReach(x, y)
         )
         const inside = edge.inside + (wobble(x * 0.22, y * 0.22) - 0.5) * 1.6
         const base: Rgb = isPalace(cell)
@@ -115,24 +108,93 @@ export function renderPaving(style: StoneStyle, pixels = PAVING_PIXELS): Bitmap 
     })
 }
 
-// How far inside a stone with rounded corners a point lies, and which way its nearest edge faces.
+// The island's outer stones run past the grid to an edge that wanders along the coast, so the
+// island is not all right angles.
+const COAST = { least: 1.5, most: 7.5, corner: 7 }
+const coastNoise = fractal(noise2(97), 3)
+
+function coastReach(x: number, y: number): number {
+    return COAST.least + (COAST.most - COAST.least) * coastNoise(x * 0.04, y * 0.04)
+}
+
+function lakeBeside(cell: number, column: number, row: number): boolean {
+    const next = cellAt(columnOf(cell) + column, rowOf(cell) + row)
+    return next === undefined || !isLand(next)
+}
+
+// How far inside its stone a point lies, round the middle of the stone's cell, and which way its
+// nearest edge faces: sides on the lake reach out by `reach`, rounder at the corners.
+function coastStoneEdge(
+    cell: number,
+    px: number,
+    py: number,
+    joint: number,
+    reach: number
+): { inside: number; normal: { x: number; y: number } } {
+    const open = {
+        left: lakeBeside(cell, -1, 0),
+        right: lakeBeside(cell, 1, 0),
+        up: lakeBeside(cell, 0, -1),
+        down: lakeBeside(cell, 0, 1)
+    }
+    const side = (lake: boolean) => (lake ? CELL / 2 + reach : CELL / 2 - joint)
+    const [left, right, up, down] = [open.left, open.right, open.up, open.down].map(side)
+    const corner =
+        (px < 0 ? open.left : open.right) && (py < 0 ? open.up : open.down) ? COAST.corner : CORNER
+    return stoneEdge(
+        px - (right - left) / 2,
+        py - (down - up) / 2,
+        (left + right) / 2,
+        (up + down) / 2,
+        corner
+    )
+}
+
+// How far inside a box with rounded corners, half `halfX` by `halfY`, a point lies, and which way
+// its nearest edge faces.
 function stoneEdge(
     px: number,
     py: number,
-    joint: number
+    halfX: number,
+    halfY: number,
+    corner: number
 ): { inside: number; normal: { x: number; y: number } } {
-    const half = CELL / 2 - joint - CORNER
-    const qx = Math.abs(px) - half
-    const qy = Math.abs(py) - half
+    const qx = Math.abs(px) - (halfX - corner)
+    const qy = Math.abs(py) - (halfY - corner)
     if (qx > 0 && qy > 0) {
         const length = Math.hypot(qx, qy)
         return {
-            inside: CORNER - length,
+            inside: corner - length,
             normal: { x: (Math.sign(px) * qx) / length, y: (Math.sign(py) * qy) / length }
         }
     }
-    if (qx > qy) return { inside: CORNER - qx, normal: { x: Math.sign(px), y: 0 } }
-    return { inside: CORNER - qy, normal: { x: 0, y: Math.sign(py) } }
+    if (qx > qy) return { inside: corner - qx, normal: { x: Math.sign(px), y: 0 } }
+    return { inside: corner - qy, normal: { x: 0, y: Math.sign(py) } }
+}
+
+// The land cell nearest a point outside the grid's land, if one lies within `within`.
+function nearestLand(x: number, y: number, within: number): number | undefined {
+    const column = Math.floor(x / CELL)
+    const row = Math.floor(y / CELL)
+    let best: number | undefined
+    let nearest = within
+    for (let dr = -1; dr <= 1; dr++) {
+        for (let dc = -1; dc <= 1; dc++) {
+            const cell = cellAt(column + dc, row + dr)
+            if (cell === undefined || !isLand(cell)) continue
+            const left = (column + dc) * CELL
+            const top = (row + dr) * CELL
+            const d = Math.hypot(
+                Math.max(left - x, 0, x - (left + CELL)),
+                Math.max(top - y, 0, y - (top + CELL))
+            )
+            if (d <= nearest) {
+                nearest = d
+                best = cell
+            }
+        }
+    }
+    return best
 }
 
 // A sun disc cut into the palace's middle stone: a ring, a disc and short rays between them.
@@ -162,122 +224,67 @@ function water(style: WaterStyle): (x: number, y: number, shallows: number) => R
 export function renderLake(style: WaterStyle, pixels = LAKE_PIXELS): Bitmap {
     const at = water(style)
     return paint(PLAN, pixels, (x, y) => ({
-        color: at(x, y, SHORE_SHALLOWS * Math.exp(-distanceToLand(x, y) / 24)),
+        color: at(
+            x,
+            y,
+            SHORE_SHALLOWS * Math.exp(-Math.max(0, offshore(x, y) - shoreWidth(x, y)) / 24)
+        ),
         alpha: 1
     }))
 }
 
 // The lake's water at the shore.
 const SHORE_SHALLOWS = 0.78
-// Canal water: deeper than the lake by the shore.
-const CANAL_SHALLOWS = 0.5
+// Canal water is the lake's by the shore, so a canal opens into the lake with no change of
+// colour; its sloping banks give it its depth.
+const CANAL_SHALLOWS = SHORE_SHALLOWS
 
 export function renderCanal(style: WaterStyle, pixels = LAKE_PIXELS): Bitmap {
     const at = water(style)
     return paint(PLAN, pixels, (x, y) => ({ color: at(x, y, CANAL_SHALLOWS), alpha: 1 }))
 }
 
-export const WALL_PIXELS = 3
-
-// A stretch of the stone wall below a canal's bank, one cell long and `height` tall on screen:
-// three courses of blocks of uneven length, pitted as tezontle is, the face in the shade of the light from beyond, a lit lip
-// along the top and a wet line where it meets the water.
-export function renderWall(
-    variant: number,
-    height: number,
-    style: StoneStyle,
-    pixels = WALL_PIXELS
-): Bitmap {
-    const [light, dark, mortar] = [style.light, style.dark, style.mortar].map(linear)
-    const wet = linear('#34423a')
-    const mottle = fractal(noise2(61 + variant), 3)
-    const courses = 3
-    const pores = noise2(67 + variant)
-    const starts = Array.from({ length: courses }, (_, course) => {
-        const next = seededRandom(variant * 97 + course * 13 + 5)
-        const edges = [-next() * 6]
-        while (edges[edges.length - 1] < CELL) edges.push(edges[edges.length - 1] + 7 + next() * 7)
-        return edges
-    })
-    const tones = (course: number, block: number) =>
-        seededRandom(variant * 389 + course * 31 + block * 7 + 1)()
-    return paint({ x: 0, y: 0, width: CELL, height }, pixels, (x, y) => {
-        const t = y / height
-        const course = Math.min(courses - 1, Math.floor(t * courses))
-        const edges = starts[course]
-        let block = 0
-        while (edges[block + 1] <= x) block++
-        const toEdge = Math.min(x - edges[block], edges[block + 1] - x)
-        const toCourse = Math.abs(t * courses - Math.round(t * courses)) * (height / courses)
-        const joint = clamp(1 - Math.min(toEdge, toCourse) / 0.35)
-        const tone = 0.25 + tones(course, block) * 0.5 + (mottle(x * 0.3, y * 0.3) - 0.5) * 0.3
-        const pitted = smoothstep(0.72, 0.85, pores(x * 1.6, y * 1.6)) * 0.35
-        let color = mix(mix(light, dark, clamp(tone + pitted)), mortar, joint * 0.8)
-        color = mix(color, [0, 0, 0], 0.5)
-        color = mix(color, light, (1 - smoothstep(0, 0.6, y)) * 0.7)
-        color = mix(color, wet, smoothstep(0.7, 1, t) * 0.75)
-        return { color, alpha: 1 }
-    })
-}
-
 export const SHORE_PIXELS = 2
 
-// The face of rough stones under the island's edge where it faces the viewer, one cell long and
-// `height` tall: rounded stones packed in earth, lit from above, darker towards the water.
-export function renderRubble(variant: number, height: number, pixels = WALL_PIXELS): Bitmap {
-    const [light, dark, earth] = [ROCK.light, ROCK.dark, ROCK.earth].map(linear)
-    const wet = linear('#34423a')
-    const size = 3.1
-    const stones = Array.from({ length: Math.ceil(CELL / size) + 2 }, (_, column) =>
-        Array.from({ length: Math.ceil(height / size) + 2 }, (_, row) => {
-            const next = seededRandom(variant * 7717 + column * 131 + row * 17 + 3)
-            return {
-                x: (column - 1 + 0.2 + next() * 0.6) * size,
-                y: (row - 1 + 0.2 + next() * 0.6) * size,
-                radius: size * (0.55 + next() * 0.3),
-                tone: next()
-            }
-        })
-    ).flat()
-    return paint({ x: 0, y: 0, width: CELL, height }, pixels, (x, y) => {
-        let best: { lift: number; nx: number; ny: number; tone: number } | undefined
-        for (const stone of stones) {
-            const dx = (x - stone.x) / stone.radius
-            const dy = (y - stone.y) / stone.radius
-            const r2 = dx * dx + dy * dy
-            if (r2 >= 1) continue
-            const lift = Math.sqrt(1 - r2) * stone.radius
-            if (best === undefined || lift > best.lift)
-                best = { lift, nx: dx, ny: dy, tone: stone.tone }
-        }
-        const t = y / height
-        let color: Rgb
-        if (best === undefined) {
-            color = mix(earth, [0, 0, 0], 0.35)
-        } else {
-            // A face turned to the viewer: lit on the stones' upper sides.
-            const lit = clamp(0.3 + -best.ny * 0.45 + -best.nx * LIGHT_2D.x * 0.3)
-            color = mix(dark, light, clamp(lit * (0.7 + best.tone * 0.45)))
-            color = mix(color, [0, 0, 0], 0.25)
-        }
-        color = mix(color, wet, smoothstep(0.65, 1, t) * 0.7)
-        return { color, alpha: 1 }
-    })
+// The island's natural shore, in plan: a bank of rough rocks of uneven width standing out from
+// the island's edge into the lake, packed in earth, in the shade of the paving above them, wet
+// and dark further out, a pale line of wash where the bank meets the water, and the odd clump of
+// reeds in the shallows.
+const SHORE = { spacing: 4.4, narrowest: 4, widest: 12, reeds: 0.3 }
+const ROCK = {
+    light: '#c2b6a0',
+    dark: '#5e574b',
+    earth: '#5a5040',
+    reed: '#7b8a45',
+    reedDark: '#4d5a2c'
 }
-
-// The island's natural shore, in plan: a bank of rounded rocks of uneven width with earth
-// between them, standing out into the lake, the odd clump of reeds in the shallows beyond.
-const SHORE = { spacing: 4.6, narrowest: 5, widest: 13, reeds: 0.35 }
-const ROCK = { light: '#c7bda9', dark: '#77705f', earth: '#5f5747', reed: '#7f8b48' }
 
 type Rock = { x: number; y: number; radius: number; tone: number }
 
+const shoreReach = fractal(noise2(83), 3)
+
+function shoreWidth(x: number, y: number): number {
+    return SHORE.narrowest + (SHORE.widest - SHORE.narrowest) * shoreReach(x * 0.035, y * 0.035)
+}
+
+// How far a point lies out from the island's wandering edge, not the grid's.
+function offshore(x: number, y: number): number {
+    return distanceToLand(x, y) - coastReach(x, y)
+}
+
 export function renderShore(pixels = SHORE_PIXELS): Bitmap {
-    const [light, dark, earth, reed] = [ROCK.light, ROCK.dark, ROCK.earth, ROCK.reed].map(linear)
-    const reach = fractal(noise2(83), 3)
+    const [light, dark, earth, reed, reedDark] = [
+        ROCK.light,
+        ROCK.dark,
+        ROCK.earth,
+        ROCK.reed,
+        ROCK.reedDark
+    ].map(linear)
+    const wash = linear('#dbe8df')
+    const wetTint = linear(TURQUOISE.deep)
     const grit = noise2(89)
-    const width = (x: number, y: number) =>
-        SHORE.narrowest + (SHORE.widest - SHORE.narrowest) * reach(x * 0.035, y * 0.035)
+    const lumps = fractal(noise2(91), 2)
+    const width = shoreWidth
     const rocks = new Map<string, Rock | undefined>()
     const rockIn = (column: number, row: number): Rock | undefined => {
         const key = `${column},${row}`
@@ -285,74 +292,106 @@ export function renderShore(pixels = SHORE_PIXELS): Bitmap {
         const next = seededRandom((column + 500) * 7919 + row * 104729)
         const x = (column + 0.15 + next() * 0.7) * SHORE.spacing
         const y = (row + 0.15 + next() * 0.7) * SHORE.spacing
-        const off = distanceToLand(x, y)
+        const off = offshore(x, y)
         const band = width(x, y)
         const rock =
-            off > 0 && off < band
+            off > -1.5 && off < band
                 ? {
                       x,
                       y,
-                      radius: SHORE.spacing * (0.5 + next() * 0.38) * (1.2 - (off / band) * 0.45),
+                      radius: SHORE.spacing * (0.55 + next() * 0.4) * (1.15 - (off / band) * 0.45),
                       tone: next()
                   }
                 : undefined
         rocks.set(key, rock)
         return rock
     }
-    const tuft = (x: number, y: number): number => {
-        const cell = 7
-        const column = Math.floor(x / cell)
-        const row = Math.floor(y / cell)
+    const clump = (x: number, y: number): { amount: number; tone: number } => {
+        const size = 12
+        const column = Math.floor(x / size)
+        const row = Math.floor(y / size)
         const next = seededRandom((column + 300) * 6151 + row * 31337)
-        if (next() > SHORE.reeds) return 0
-        const cx = (column + 0.5) * cell
-        const cy = (row + 0.5) * cell
-        const off = distanceToLand(cx, cy)
-        if (off < width(cx, cy) * 0.6 || off > width(cx, cy) * 1.5) return 0
+        if (next() > SHORE.reeds) return { amount: 0, tone: 0 }
+        const cx = (column + 0.25 + next() * 0.5) * size
+        const cy = (row + 0.25 + next() * 0.5) * size
+        const off = offshore(cx, cy)
+        const band = width(cx, cy)
+        if (off < band * 0.7 || off > band * 1.4) return { amount: 0, tone: 0 }
         const dx = x - cx
         const dy = y - cy
         const r = Math.hypot(dx, dy)
-        if (r > 2.8) return 0
-        const blades = Math.abs(Math.sin(Math.atan2(dy, dx) * 5 + next() * 6))
-        return smoothstep(0.75, 0.95, blades) * (1 - r / 2.8) + (r < 0.8 ? 0.6 : 0)
+        const radius = 3.6
+        if (r > radius) return { amount: 0, tone: 0 }
+        const angle = Math.atan2(dy, dx)
+        const blades =
+            Math.abs(Math.sin(angle * 6 + next() * 6)) * Math.abs(Math.sin(angle * 4.3 + 1))
+        return {
+            amount: smoothstep(0.35, 0.8, blades) * (1 - r / radius) ** 0.6 + (r < 1.1 ? 0.8 : 0),
+            tone: 0.5 + 0.5 * Math.sin(angle * 9)
+        }
     }
     return paint(PLAN, pixels, (x, y) => {
-        const off = distanceToLand(x, y)
-        if (off === 0 || off > SHORE.widest * 1.6) return { color: [0, 0, 0], alpha: 0 }
+        const off = offshore(x, y)
+        if (off < -1.5 || off > SHORE.widest * 1.5) return { color: [0, 0, 0], alpha: 0 }
         const band = width(x, y)
         const column = Math.floor(x / SHORE.spacing)
         const row = Math.floor(y / SHORE.spacing)
-        let top: { height: number; nx: number; ny: number; tone: number } | undefined
+        let top: { height: number; nx: number; ny: number; rim: number; tone: number } | undefined
+        const lump = (lumps(x * 0.45, y * 0.45) - 0.5) * 0.55
         for (let dr = -1; dr <= 1; dr++) {
             for (let dc = -1; dc <= 1; dc++) {
                 const rock = rockIn(column + dc, row + dr)
                 if (rock === undefined) continue
-                const dx = (x - rock.x) / rock.radius
-                const dy = (y - rock.y) / rock.radius
+                const radius = rock.radius * (1 + lump)
+                const dx = (x - rock.x) / radius
+                const dy = (y - rock.y) / radius
                 const r2 = dx * dx + dy * dy
                 if (r2 >= 1) continue
-                const height = Math.sqrt(1 - r2) * rock.radius
+                const height = (1 - r2) ** 0.6 * radius
                 if (top === undefined || height > top.height) {
-                    top = { height, nx: dx, ny: dy, tone: rock.tone }
+                    top = { height, nx: dx, ny: dy, rim: Math.sqrt(r2), tone: rock.tone }
                 }
             }
         }
-        const sedge = tuft(x, y)
+        // The paving stands above the bank and shades its inner edge.
+        const shaded = 1 - 0.45 * (1 - smoothstep(-1.5, 2.5, off))
+        const wet = smoothstep(0.45, 1, off / band)
+        const sedge = clump(x, y)
         if (top !== undefined) {
-            const nz = Math.sqrt(Math.max(0, 1 - top.nx * top.nx - top.ny * top.ny))
-            const lit = clamp(
-                0.35 + (-top.nx * LIGHT_2D.x - top.ny * LIGHT_2D.y) * 0.45 + nz * 0.35
-            )
-            let color = mix(dark, light, clamp(lit * (0.75 + top.tone * 0.4)))
-            color = mix(color, earth, (grit(x * 1.3, y * 1.3) - 0.5) * 0.3 + 0.05)
-            // Rocks out in the shallows are wet and dark.
-            color = mix(color, [0, 0, 0], smoothstep(0.5, 1, off / band) * 0.3)
-            return { color: mix(color, reed, sedge), alpha: 1 }
+            const steep = (1.7 * top.rim) / Math.sqrt(1 - top.rim * top.rim + 0.08)
+            const nx = top.nx * steep
+            const ny = top.ny * steep
+            const length = Math.hypot(nx, ny, 1)
+            const facing = (-nx * LIGHT_2D.x - ny * LIGHT_2D.y) / length
+            const lit = clamp(0.42 + facing * 0.55 + (1 / length) * 0.15)
+            let color = mix(dark, light, clamp(lit * (0.7 + top.tone * 0.45)))
+            color = mix(color, earth, (grit(x * 1.3, y * 1.3) - 0.5) * 0.25 + 0.05)
+            // Gaps between the rocks fall into shadow.
+            color = mix(color, [0, 0, 0], smoothstep(0.7, 1, top.rim) * 0.35)
+            color = mix(color, mix(color, wetTint, 0.35), wet)
+            color = mix(color, [0, 0, 0], wet * 0.2)
+            color = mix(color, [0, 0, 0], 1 - shaded)
+            if (sedge.amount > 0)
+                color = mix(color, mix(reedDark, reed, sedge.tone), clamp(sedge.amount))
+            return { color, alpha: 1 }
         }
-        const ground = 1 - smoothstep(band * 0.55, band * 1.05, off)
-        const color = mix(earth, [0, 0, 0], (grit(x * 0.9, y * 0.9) - 0.5) * 0.25 + 0.1)
-        if (sedge > 0) return { color: reed, alpha: Math.max(ground, clamp(sedge)) }
-        return { color, alpha: ground }
+        const ground = 1 - smoothstep(band * 0.6, band * 1.0, off)
+        const foam =
+            smoothstep(band * 0.75, band * 0.95, off) *
+            (1 - smoothstep(band * 0.95, band * 1.15, off))
+        let color = mix(
+            earth,
+            [0, 0, 0],
+            (grit(x * 0.9, y * 0.9) - 0.5) * 0.25 + 0.1 + (1 - shaded)
+        )
+        color = mix(color, wash, foam * 0.6)
+        if (sedge.amount > 0) {
+            return {
+                color: mix(reedDark, reed, sedge.tone),
+                alpha: Math.max(ground, clamp(sedge.amount))
+            }
+        }
+        return { color, alpha: Math.max(ground, foam * 0.45) }
     })
 }
 

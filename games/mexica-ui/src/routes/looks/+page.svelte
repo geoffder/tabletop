@@ -6,32 +6,20 @@
         renderCanal,
         renderLake,
         renderPaving,
-        renderRubble,
         renderShore,
-        renderWall,
         STONES,
-        TEZONTLE,
         TURQUOISE
     } from '$lib/board/surfaceTexture.js'
-    import {
-        CANAL_LOOK,
-        LAKE_LOOK,
-        PAVING_LOOK,
-        rubbleLook,
-        SHORE_LOOK,
-        templeLook,
-        WALL_VARIANTS,
-        wallLook
-    } from '$lib/board/looks.js'
+    import { CANAL_LOOK, LAKE_LOOK, PAVING_LOOK, SHORE_LOOK, templeLook } from '$lib/board/looks.js'
     import type { Bitmap } from '$lib/board/light.js'
     import { renderTemple } from '$lib/board/templeLight.js'
-    import { DESIGN, riseOf, type TempleDesign, templeBounds } from '$lib/board/templeShape.js'
+    import { DESIGN, type TempleDesign, templeBounds } from '$lib/board/templeShape.js'
     import { ownerMark } from '$lib/board/templeMarks.js'
     import { renderPilli } from '$lib/board/pilliLight.js'
     import { pilliBounds, pilliLook, pilliShineLook, shineOver } from '$lib/board/pilliShape.js'
     import type { Box } from '$lib/board/view.js'
     import TempleMarks from '$lib/components/TempleMarks.svelte'
-    import { BANK_DEPTH, CELL, FLAT, SHORE_HEIGHT, TILT } from '$lib/board/view.js'
+    import { CELL, FLAT, TILT } from '$lib/board/view.js'
     import { PIGMENTS } from '$lib/model/palette.js'
     import '../../app.css'
 
@@ -92,12 +80,6 @@
         drawn[LAKE_LOOK] = toUrl(renderLake(TURQUOISE), 0.86)
         drawn[CANAL_LOOK] = toUrl(renderCanal(TURQUOISE), 0.86)
         drawn[SHORE_LOOK] = toUrl(renderShore(), 0.86)
-        const bank = BANK_DEPTH * CELL * riseOf(TILT)
-        const shore = SHORE_HEIGHT * CELL * riseOf(TILT)
-        for (let variant = 0; variant < WALL_VARIANTS; variant++) {
-            drawn[wallLook(variant)] = toUrl(renderWall(variant, bank, TEZONTLE), 0.9)
-            drawn[rubbleLook(variant)] = toUrl(renderRubble(variant, shore), 0.9)
-        }
         for (const level of LEVELS) {
             for (const tilt of [TILT, FLAT]) {
                 drawn[templeLook(level, tilt === FLAT)] = toUrl(renderTemple(level, tilt), 0.9)
