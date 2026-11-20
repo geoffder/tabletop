@@ -1,0 +1,600 @@
+{
+ "game": {
+  "id": "scenario-late-game",
+  "isPublic": false,
+  "status": "started",
+  "typeId": "mexica",
+  "deleted": false,
+  "name": "Late game",
+  "ownerId": "owner",
+  "players": [
+   {
+    "id": "player-1",
+    "name": "Alice",
+    "isHuman": true,
+    "status": "joined"
+   },
+   {
+    "id": "player-2",
+    "name": "Bob",
+    "isHuman": true,
+    "status": "joined"
+   },
+   {
+    "id": "player-3",
+    "name": "Carol",
+    "isHuman": true,
+    "status": "joined"
+   }
+  ],
+  "config": {
+   "neutralTemples": true
+  },
+  "hotseat": false,
+  "winningPlayerIds": [],
+  "seed": 3367980177,
+  "activePlayerIds": [
+   "player-1"
+  ],
+  "createdAt": "2026-11-20T04:08:34.616Z",
+  "storage": "remote",
+  "category": "standard",
+  "startedAt": "2026-11-20T04:08:34.616Z",
+  "progress": {
+   "fraction": 0,
+   "label": "Period 1 · 8 districts to found"
+  }
+ },
+ "state": {
+  "systemVersion": 3,
+  "id": "iu3PnoBLnIOXlOlL1jw9h",
+  "gameId": "scenario-late-game",
+  "seed": 3367980177,
+  "prng": {
+   "seed": 3367980177,
+   "invocations": 159
+  },
+  "protectedPrng": {
+   "algorithm": "chacha20-v1",
+   "seed": "033aacbe6212a2c9bee0cb5c71682e564dd13d1188be676e6f5a533a83f821c3",
+   "invocations": 0
+  },
+  "masterSeed": "0123456789abcdef0123456789abcdef",
+  "activePlayerIds": [
+   "player-1"
+  ],
+  "winningPlayerIds": [],
+  "actionCount": 0,
+  "actionChecksum": 0,
+  "players": [
+   {
+    "playerId": "player-1",
+    "color": "blue",
+    "score": 22,
+    "actionTokens": 0,
+    "pilli": 137
+   },
+   {
+    "playerId": "player-2",
+    "color": "red",
+    "score": 22,
+    "actionTokens": 0,
+    "pilli": 87
+   },
+   {
+    "playerId": "player-3",
+    "color": "yellow",
+    "score": 4,
+    "actionTokens": 0,
+    "pilli": 42
+   }
+  ],
+  "machineState": "Acting",
+  "turnManager": {
+   "series": [
+    {
+     "type": "turn",
+     "playerId": "player-1",
+     "start": 0
+    }
+   ],
+   "turnOrder": [
+    "player-1",
+    "player-2",
+    "player-3"
+   ],
+   "turnCounts": {
+    "player-1": 11,
+    "player-2": 11,
+    "player-3": 11
+   },
+   "seriesKeeps": "latest"
+  },
+  "canals": [
+   {
+    "cells": [
+     119,
+     140
+    ]
+   },
+   {
+    "cells": [
+     161,
+     182
+    ]
+   },
+   {
+    "cells": [
+     24,
+     23
+    ]
+   },
+   {
+    "cells": [
+     203,
+     204
+    ]
+   },
+   {
+    "cells": [
+     281
+    ]
+   },
+   {
+    "cells": [
+     186,
+     165
+    ]
+   },
+   {
+    "cells": [
+     278,
+     257
+    ]
+   },
+   {
+    "cells": [
+     1
+    ]
+   },
+   {
+    "cells": [
+     164,
+     143
+    ]
+   },
+   {
+    "cells": [
+     258,
+     237
+    ]
+   },
+   {
+    "cells": [
+     242
+    ]
+   },
+   {
+    "cells": [
+     221,
+     200
+    ]
+   },
+   {
+    "cells": [
+     238,
+     259
+    ]
+   },
+   {
+    "cells": [
+     220,
+     199
+    ]
+   },
+   {
+    "cells": [
+     256,
+     255
+    ]
+   },
+   {
+    "cells": [
+     223,
+     202
+    ]
+   },
+   {
+    "cells": [
+     106,
+     127
+    ]
+   },
+   {
+    "cells": [
+     45,
+     44
+    ]
+   },
+   {
+    "cells": [
+     277
+    ]
+   },
+   {
+    "cells": [
+     121,
+     120
+    ]
+   },
+   {
+    "cells": [
+     282
+    ]
+   },
+   {
+    "cells": [
+     260
+    ]
+   },
+   {
+    "cells": [
+     236,
+     215
+    ]
+   },
+   {
+    "cells": [
+     25,
+     26
+    ]
+   },
+   {
+    "cells": [
+     178,
+     157
+    ]
+   },
+   {
+    "cells": [
+     198,
+     177
+    ]
+   },
+   {
+    "cells": [
+     254,
+     233
+    ]
+   },
+   {
+    "cells": [
+     107,
+     108
+    ]
+   },
+   {
+    "cells": [
+     179,
+     158
+    ]
+   },
+   {
+    "cells": [
+     212,
+     211
+    ]
+   },
+   {
+    "cells": [
+     109,
+     110
+    ]
+   },
+   {
+    "cells": [
+     136,
+     115
+    ]
+   },
+   {
+    "cells": [
+     201,
+     180
+    ]
+   },
+   {
+    "cells": [
+     217,
+     218
+    ]
+   },
+   {
+    "cells": [
+     75,
+     74
+    ]
+   },
+   {
+    "cells": [
+     63,
+     64
+    ]
+   },
+   {
+    "cells": [
+     95,
+     94
+    ]
+   },
+   {
+    "cells": [
+     214,
+     193
+    ]
+   },
+   {
+    "cells": [
+     159,
+     138
+    ]
+   },
+   {
+    "cells": [
+     96,
+     97
+    ]
+   },
+   {
+    "cells": [
+     88,
+     67
+    ]
+   },
+   {
+    "cells": [
+     53,
+     32
+    ]
+   },
+   {
+    "cells": [
+     197,
+     176
+    ]
+   }
+  ],
+  "bridges": [
+   {
+    "cell": 161,
+    "axis": "ew"
+   },
+   {
+    "cell": 242,
+    "axis": "ew"
+   },
+   {
+    "cell": 182,
+    "axis": "ew"
+   },
+   {
+    "cell": 255,
+    "axis": "ns"
+   },
+   {
+    "cell": 143,
+    "axis": "ew"
+   },
+   {
+    "cell": 223,
+    "axis": "ew"
+   },
+   {
+    "cell": 108,
+    "axis": "ns"
+   },
+   {
+    "cell": 107,
+    "axis": "ns"
+   },
+   {
+    "cell": 26,
+    "axis": "ns"
+   },
+   {
+    "cell": 120,
+    "axis": "ns"
+   },
+   {
+    "cell": 110,
+    "axis": "ns"
+   }
+  ],
+  "temples": [
+   {
+    "cell": 239,
+    "level": 3,
+    "playerId": "player-1"
+   },
+   {
+    "cell": 125,
+    "level": 1,
+    "playerId": "player-1"
+   },
+   {
+    "cell": 275,
+    "level": 4,
+    "playerId": "player-2"
+   },
+   {
+    "cell": 129,
+    "level": 4,
+    "playerId": "player-3"
+   },
+   {
+    "cell": 240,
+    "level": 2,
+    "playerId": "player-2"
+   },
+   {
+    "cell": 144,
+    "level": 2,
+    "playerId": "player-1"
+   },
+   {
+    "cell": 6,
+    "level": 3,
+    "playerId": "player-2"
+   },
+   {
+    "cell": 116,
+    "level": 3,
+    "playerId": "player-2"
+   },
+   {
+    "cell": 131,
+    "level": 2,
+    "playerId": "player-3"
+   },
+   {
+    "cell": 167,
+    "level": 2,
+    "playerId": "player-1"
+   },
+   {
+    "cell": 187,
+    "level": 3,
+    "playerId": "player-1"
+   },
+   {
+    "cell": 261,
+    "level": 1,
+    "playerId": "player-2"
+   },
+   {
+    "cell": 190,
+    "level": 2,
+    "playerId": "player-2"
+   },
+   {
+    "cell": 142,
+    "level": 1,
+    "playerId": "player-2"
+   },
+   {
+    "cell": 118,
+    "level": 1,
+    "playerId": "player-2"
+   },
+   {
+    "cell": 148,
+    "level": 1,
+    "playerId": "player-3"
+   },
+   {
+    "cell": 235,
+    "level": 1,
+    "playerId": "player-3"
+   },
+   {
+    "cell": 124,
+    "level": 1,
+    "playerId": "player-1"
+   },
+   {
+    "cell": 86,
+    "level": 2,
+    "playerId": "player-2"
+   },
+   {
+    "cell": 222,
+    "level": 3,
+    "playerId": "player-3"
+   },
+   {
+    "cell": 114,
+    "level": 1,
+    "playerId": "player-3"
+   },
+   {
+    "cell": 166,
+    "level": 1,
+    "playerId": "player-1"
+   },
+   {
+    "cell": 243,
+    "level": 3,
+    "playerId": "player-3"
+   },
+   {
+    "cell": 262,
+    "level": 2,
+    "playerId": "player-3"
+   },
+   {
+    "cell": 47,
+    "level": 2,
+    "playerId": "player-3"
+   },
+   {
+    "cell": 139,
+    "level": 4,
+    "playerId": "player-1"
+   },
+   {
+    "cell": 117,
+    "level": 1,
+    "playerId": "player-1"
+   },
+   {
+    "cell": 181,
+    "level": 1,
+    "playerId": "player-1"
+   },
+   {
+    "cell": 85,
+    "level": 1,
+    "playerId": "player-2"
+   },
+   {
+    "cell": 43,
+    "level": 1,
+    "playerId": "player-3"
+   }
+  ],
+  "districts": [
+   {
+    "tokenId": 9,
+    "cell": 146
+   },
+   {
+    "tokenId": 5,
+    "cell": 252
+   },
+   {
+    "tokenId": 7,
+    "cell": 241
+   },
+   {
+    "tokenId": 8,
+    "cell": 160
+   },
+   {
+    "tokenId": 4,
+    "cell": 66
+   },
+   {
+    "tokenId": 0,
+    "cell": 22
+   }
+  ],
+  "display": [],
+  "reserve": [],
+  "period": 2,
+  "apLeft": 6,
+  "tokensTaken": 0,
+  "acted": false,
+  "idleTurns": 0
+ },
+ "actions": []
+}
