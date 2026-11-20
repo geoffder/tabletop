@@ -2,19 +2,21 @@
     import {
         type Axis,
         type Cell,
+        cellAt,
         cellName,
         columnOf,
-        isPalace,
-        isStart,
+        isLand,
         LAND_CELLS,
         type Level,
-        PALACE_CENTRE,
         rowOf,
         tokenSize,
         placePoints
     } from '@tabletop/mexica'
     import { getGameSession } from '$lib/model/sessionContext.svelte.js'
-    import { CELL } from '$lib/board/view.js'
+    import { CELL, type PlanStep } from '$lib/board/view.js'
+    import { LOOK_URLS } from '$lib/board/lookUrls.js'
+    import { CANAL_LOOK, LAKE_LOOK, PAVING_LOOK } from '$lib/board/looks.js'
+    import { PLAN } from '$lib/board/plan.js'
     import {
         bridgePaths,
         octagon,
@@ -65,19 +67,53 @@
         )
     })
 
-    const canalTiles = $derived(game.canals)
+    const WALL = 0.22
+    // Neighbouring canal cells overlap a little, or their clipped edges leave a seam.
+    const CLIP_OVERLAP = 0.5
+    const WALL_SHADOW = 7
 
-    function tileRect(cells: readonly Cell[]) {
-        const columns = cells.map(columnOf)
-        const rows = cells.map(rowOf)
-        const inset = 0.05
-        return view.planBox(
-            Math.min(...columns) + inset,
-            Math.min(...rows) + inset,
-            Math.max(...columns) + 1 - inset,
-            Math.max(...rows) + 1 - inset
-        )
+    const isWaterAt = (cell: Cell, step: PlanStep) => {
+        const next = cellAt(columnOf(cell) + step.column, rowOf(cell) + step.row)
+        return next === undefined || !isLand(next) || layout.canals.has(next)
     }
+
+    // A wall drops from each stretch of land to the water just in front of it on screen, and the
+    // land shades the water beyond it from the light at the upper left.
+    const shore = $derived.by(() => {
+        const height = view.lift(WALL)
+        const ground = LAND_CELLS.filter((cell) => !layout.canals.has(cell))
+        const walls = ground
+            .filter((cell) => isWaterAt(cell, view.nearer))
+            .map((cell) => {
+                const box = view.cellBox(cell)
+                const bottom = box.y + box.height
+                return {
+                    cell,
+                    face: { x: box.x - 0.3, y: bottom, width: box.width + 0.6, height },
+                    shadow: {
+                        x: box.x - 0.3,
+                        y: bottom + height,
+                        width: box.width + 0.6,
+                        height: WALL_SHADOW * view.tilt
+                    }
+                }
+            })
+        const sides = ground
+            .filter((cell) => isWaterAt(cell, view.rightward))
+            .map((cell) => {
+                const box = view.cellBox(cell)
+                return {
+                    cell,
+                    shadow: {
+                        x: box.x + box.width,
+                        y: box.y,
+                        width: WALL_SHADOW,
+                        height: box.height + height
+                    }
+                }
+            })
+        return { walls, sides }
+    })
 
     const playerFill = (playerId?: string) =>
         playerId === undefined
@@ -147,7 +183,57 @@
         role="group"
         aria-label="The island of Tenochtitlan"
     >
-        <rect x={0} y={0} width={view.width} height={view.depth} class="lake" rx="6"></rect>
+        <defs>
+            <clipPath id="mx-canal-clip">
+                {#each [...layout.canals] as cell (cell)}
+                    <rect
+                        x={columnOf(cell) * CELL - CLIP_OVERLAP}
+                        y={rowOf(cell) * CELL - CLIP_OVERLAP}
+                        width={CELL + CLIP_OVERLAP * 2}
+                        height={CELL + CLIP_OVERLAP * 2}
+                    ></rect>
+                {/each}
+            </clipPath>
+            <linearGradient id="mx-wall" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0" stop-color="#ddd3ba"></stop>
+                <stop offset="0.25" stop-color="#bdb093"></stop>
+                <stop offset="0.85" stop-color="#90846a"></stop>
+                <stop offset="1" stop-color="#4f5a52"></stop>
+            </linearGradient>
+            <linearGradient id="mx-side-shadow" x1="0" y1="0" x2="1" y2="0">
+                <stop offset="0" stop-color="#062c3a" stop-opacity="0.3"></stop>
+                <stop offset="1" stop-color="#062c3a" stop-opacity="0"></stop>
+            </linearGradient>
+            <linearGradient id="mx-wall-shadow" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0" stop-color="#062c3a" stop-opacity="0.38"></stop>
+                <stop offset="1" stop-color="#062c3a" stop-opacity="0"></stop>
+            </linearGradient>
+        </defs>
+
+        <g transform={view.planTransform}>
+            <image href={LOOK_URLS[LAKE_LOOK]} {...PLAN} preserveAspectRatio="none" class="surface"
+            ></image>
+            <image
+                href={LOOK_URLS[PAVING_LOOK]}
+                {...PLAN}
+                preserveAspectRatio="none"
+                class="surface"
+            ></image>
+            <image
+                href={LOOK_URLS[CANAL_LOOK]}
+                {...PLAN}
+                preserveAspectRatio="none"
+                clip-path="url(#mx-canal-clip)"
+                class="surface"
+            ></image>
+        </g>
+        {#each shore.sides as side (side.cell)}
+            <rect {...side.shadow} fill="url(#mx-side-shadow)" class="surface"></rect>
+        {/each}
+        {#each shore.walls as wall (wall.cell)}
+            <rect {...wall.shadow} fill="url(#mx-wall-shadow)" class="surface"></rect>
+            <rect {...wall.face} fill="url(#mx-wall)" class="surface"></rect>
+        {/each}
 
         {#if session.showCoordinates}
             {#each view.labels as label (label.key)}
@@ -156,34 +242,6 @@
                 >
             {/each}
         {/if}
-
-        {#each landCells as cell (cell)}
-            {@const rect = view.cellBox(cell)}
-            <rect {...rect} class="land" class:palace={isPalace(cell)} class:start={isStart(cell)}
-            ></rect>
-        {/each}
-        {#if PALACE_CENTRE !== undefined}
-            {@const centre = view.centre(PALACE_CENTRE)}
-            <ellipse
-                cx={centre.x}
-                cy={centre.y}
-                rx={CELL * 0.3}
-                ry={CELL * 0.3 * view.tilt}
-                class="emblem"
-            ></ellipse>
-        {/if}
-
-        {#each canalTiles as tile, index (index)}
-            {@const rect = tileRect(tile.cells)}
-            <rect {...rect} rx="3" class="canal"></rect>
-            <rect
-                x={rect.x}
-                y={rect.y + rect.height - 2}
-                width={rect.width}
-                height="2"
-                class="canal-edge"
-            ></rect>
-        {/each}
 
         {#each game.districts as district (district.tokenId)}
             {@const centre = view.centre(district.cell)}
@@ -378,8 +436,8 @@
         display: block;
     }
 
-    .lake {
-        fill: var(--mx-lake);
+    .surface {
+        pointer-events: none;
     }
 
     .label {
@@ -387,37 +445,6 @@
         fill: var(--mx-table-ink);
         letter-spacing: 0.5px;
         pointer-events: none;
-    }
-
-    .land {
-        fill: var(--mx-land);
-        stroke: var(--mx-grid);
-        stroke-width: 0.8;
-    }
-
-    .land.palace {
-        fill: var(--mx-palace);
-    }
-
-    .land.start {
-        fill: var(--mx-palace-start);
-    }
-
-    .emblem {
-        fill: none;
-        stroke: var(--mx-palace-ink);
-        stroke-width: 1.5;
-    }
-
-    .canal {
-        fill: var(--mx-canal);
-        stroke: var(--mx-canal-ink);
-        stroke-width: 0.8;
-    }
-
-    .canal-edge {
-        fill: var(--mx-canal-ink);
-        opacity: 0.5;
     }
 
     .token-side {
