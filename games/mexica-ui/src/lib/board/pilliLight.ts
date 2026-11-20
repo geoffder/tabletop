@@ -17,6 +17,7 @@ import {
     type Vec
 } from './light.js'
 import { PILLI_DESIGN, PILLI_PIXELS, type PilliDesign, pilliBounds } from './pilliShape.js'
+import { PILLI_SIZE } from './view.js'
 import {
     castRays,
     LIGHT,
@@ -46,7 +47,11 @@ export function renderPilli(
     pixels = PILLI_PIXELS
 ): PilliLook {
     const box = pilliBounds(tilt, design)
-    const figure = FIGURES[design]
+    const full = FIGURES[design]
+    const figure: Figure = {
+        scene: (p) => full.scene(scale(p, 1 / PILLI_SIZE)) * PILLI_SIZE,
+        finish: (p) => full.finish(scale(p, 1 / PILLI_SIZE))
+    }
     const toward: Vec = [0, Math.sqrt(1 - tilt * tilt), tilt]
     const { bitmap, hits } = castRays(
         box,

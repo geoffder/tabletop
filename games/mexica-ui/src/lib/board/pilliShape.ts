@@ -1,5 +1,5 @@
 import { riseOf } from './templeShape.js'
-import type { Box } from './view.js'
+import { type Box, PILLI_SIZE } from './view.js'
 
 // A Pilli Mexica as a painted wooden figure, feet at the origin: x to the right, y towards the
 // viewer, z up, in board units.
@@ -14,7 +14,7 @@ export const PILLI_DESIGN: PilliDesign = 'fan'
 
 export const PILLI_PIXELS = 3
 
-// What each design takes up: half its width and depth, and its height.
+// What each design takes up at full size: half its width and depth, and its height.
 const EXTENT: Record<PilliDesign, { half: number; depth: number; height: number }> = {
     fan: { half: 9.5, depth: 9.5, height: 31.5 },
     crown: { half: 9.5, depth: 9.5, height: 30 },
@@ -22,7 +22,9 @@ const EXTENT: Record<PilliDesign, { half: number; depth: number; height: number 
 }
 
 export function pilliBounds(tilt: number, design: PilliDesign = PILLI_DESIGN): Box {
-    const { half, depth, height } = EXTENT[design]
+    const half = EXTENT[design].half * PILLI_SIZE
+    const depth = EXTENT[design].depth * PILLI_SIZE
+    const height = EXTENT[design].height * PILLI_SIZE
     const margin = 1
     const top = -depth * tilt - height * riseOf(tilt)
     return {
