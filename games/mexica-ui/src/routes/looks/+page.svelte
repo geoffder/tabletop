@@ -41,9 +41,8 @@
     let figures: Record<string, Figure> | undefined = $state()
     // Dry-brushed over the darker paints in a range of strengths.
     const FIGURE_STYLES: [string, PilliStyle][] = [
-        ['fret', { ...PILLI_STYLE, hem: 'fret' }],
-        ['studs', { ...PILLI_STYLE, hem: 'studs' }],
-        ['lines', { ...PILLI_STYLE, hem: 'lines' }]
+        ['lines', { ...PILLI_STYLE, hem: 'lines' }],
+        ['triangles', { ...PILLI_STYLE, hem: 'triangles' }]
     ]
     const SHINES = [PILLI_SHINE]
     const FIGURE_ROWS = FIGURE_STYLES.flatMap(([name]) => SHINES.map((shine) => ({ name, shine })))

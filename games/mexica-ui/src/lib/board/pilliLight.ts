@@ -96,18 +96,21 @@ function bend(p: Vec, scene: Scene): number {
     return sum / (e * e)
 }
 
-function shineOf(p: Vec, normal: Vec, scene: Scene, tone: number): Sample {
+// `below` is the paving reflected in the satin paint, which shows on dark paint only.
+function shineOf(p: Vec, normal: Vec, scene: Scene, tone: number, below: number): Sample {
     const edge = smoothstep(DRY_BRUSH.from, DRY_BRUSH.to, bend(p, scene))
     const up = 0.5 + 0.5 * clamp(normal[2])
     // Strokes drawn up and down the figure.
     const stroke = 0.35 + 0.65 * smoothstep(0.32, 0.68, brush(p[0] * 1.1 + p[1] * 1.1, p[2] * 0.3))
     const detail = DRY_BRUSH.lighter * clamp((tone - 1) / 0.4)
-    return { color: [1, 1, 1], alpha: clamp(DRY_BRUSH.strength * edge * up * stroke + detail) }
+    const brushed = DRY_BRUSH.strength * edge * up * stroke
+    return { color: [1, 1, 1], alpha: clamp(brushed + detail + srgb(below)) }
 }
 
 // Lit as ZÈRTZ lights its pieces: a key light from above, to the left and a little in front,
 // so the side towards the viewer shows its form; little light besides; the edges turned from
-// the viewer reflecting the room above and the paving below, as satin paint does.
+// the viewer reflecting the room above, as satin paint does. The paving below shows in it too,
+// but only on dark paint, where it gives the foot its edge; it clouded lighter paint.
 const KEY: Vec = normalize([-0.62, 0.24, 0.75])
 const AMBIENT = 0.22
 const ROOM = 0.32
@@ -127,8 +130,9 @@ function shade(p: Vec, figure: Figure, toward: Vec): Sample[] {
     const sky = AMBIENT * (0.7 + 0.3 * normal[2])
     const light = (sky + 0.95 * sun) * occluded
     const mirror = add(scale(normal, 2 * dot(normal, toward)), scale(toward, -1))
-    const surround = ROOM + (PAVING - ROOM) * smoothstep(0, -0.35, mirror[2])
-    const glance = fresnel(dot(normal, toward)) * surround * occluded
+    const sheen = fresnel(dot(normal, toward)) * occluded
+    const glance = sheen * ROOM * (1 - smoothstep(0, -0.35, mirror[2]))
+    const below = sheen * PAVING * smoothstep(0, -0.35, mirror[2]) * SATIN
     const finish = figure.finish(p)
     if (finish.kind === 'wood') {
         const grain = mix(WOOD.dark, WOOD.light, 0.55 + 0.45 * Math.sin(p[2] * 2.1 + p[0] * 0.4))
@@ -148,7 +152,7 @@ function shade(p: Vec, figure: Figure, toward: Vec): Sample[] {
     const white = clamp(Math.max(0, factor - 1) * 0.6 + srgb(glance * SATIN))
     const keep = Math.min(factor, 1) * (1 - white)
     const alpha = 1 - keep
-    const shine = shineOf(p, normal, figure.scene, finish.tone)
+    const shine = shineOf(p, normal, figure.scene, finish.tone, below)
     if (alpha <= 0) return [{ color: [0, 0, 0], alpha: 0 }, shine]
     const grey = white / alpha
     return [{ color: [grey, grey, grey], alpha }, shine]
@@ -202,7 +206,7 @@ const GILT: Finish = { kind: 'gold', tone: 1 }
 
 // The robe up to the neck, the cape over the shoulders, the head on top.
 const ROBE = { foot: 8.6, neck: 4.6, height: 15.5, round: 1.3 }
-const PLINTH = { height: 1.8, radius: 9.1, round: 0.7 }
+const PLINTH = { height: 1.8, radius: 9.1, round: 0.45 }
 const CAPE: Vec = [6.4, 4.6, 2.9]
 const CAPE_AT = 15.6
 const HEAD = { radius: 3.7, at: [0, 0.3, 21.2] satisfies Vec }
@@ -216,7 +220,8 @@ const HEM = {
     line: 0.32,
     soft: 0.14,
     studs: 18,
-    stud: 0.55
+    stud: 0.55,
+    teeth: 12
 }
 
 // The pawn's radius at a height: flaring out towards the foot.
@@ -243,7 +248,7 @@ function robe(style: PilliStyle, p: Vec): number {
     const flare = (r - pawnRadius(p[2])) / Math.hypot(1, pawnSlope(p[2]))
     const body = Math.max(flare, p[2] - ROBE.height)
     const plinth = frustum(p, 0, PLINTH.height, PLINTH.radius, PLINTH.radius - 0.3, PLINTH.round)
-    return blend(body, plinth, 0.9)
+    return blend(body, plinth, 0.35)
 }
 
 // Forearms from the shoulders to hands clasped in front, standing just off the robe.
@@ -368,7 +373,25 @@ function hemLine(p: Vec): number {
 }
 
 function hemPattern(style: PilliStyle, p: Vec): number {
-    return style.hem === 'fret' ? fret(p) : 0
+    if (style.hem === 'fret') return fret(p)
+    if (style.hem === 'triangles') return triangles(style, p)
+    return 0
+}
+
+// Raised triangles standing on the lower line, their tips just short of the upper one.
+function triangles(style: PilliStyle, p: Vec): number {
+    const turn = (Math.atan2(p[0], p[1]) / (2 * Math.PI)) * HEM.teeth
+    const s = turn - Math.floor(turn)
+    const floor = HEM.foot + HEM.line
+    const height = HEM.top - HEM.line - floor - 0.25
+    const top = floor + height * (1 - Math.abs(2 * s - 1))
+    // Across the slanted edges rather than straight down.
+    const width = (2 * Math.PI * robeRadius(style, p[2])) / HEM.teeth
+    const slant = 1 / Math.hypot(1, (2 * height) / width)
+    return (
+        smoothstep(-HEM.soft, HEM.soft, (top - p[2]) * slant) *
+        smoothstep(-HEM.soft, HEM.soft, p[2] - floor)
+    )
 }
 
 // Round studs in a ring between the hem's lines, standing on the robe.
@@ -410,7 +433,6 @@ function bodyFinish(style: PilliStyle, p: Vec): Finish {
         if (p[2] > HEM.top && p[2] < CAPE_AT - 2 && openingAt(p)) return paint(0.7)
         if (cord(p) < 0.15) return paint(1.2)
     }
-    if (style.robe === 'pawn' && p[2] < PLINTH.height + 0.2) return paint(0.8)
     if (style.robe === 'bell' && p[2] < 2.4) return paint(0.72)
     if (!style.trim && Math.abs(p[2] - CAPE_EDGE) < 0.7) return paint(1.3)
     return paint()
