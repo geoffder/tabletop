@@ -6,7 +6,7 @@
         renderCanal,
         renderLake,
         renderPaving,
-        renderPier,
+        renderSpill,
         renderShore,
         renderSlope,
         renderSlopeCorner,
@@ -17,17 +17,18 @@
         CANAL_LOOK,
         LAKE_LOOK,
         PAVING_LOOK,
-        PIER_LOOK,
         SHORE_LOOK,
         type SlopeCorner,
         slopeCornerLook,
         slopeLook,
         type SlopeSide,
+        SPILL_VARIANTS,
+        spillLook,
         templeLook
     } from '$lib/board/looks.js'
     import type { Bitmap } from '$lib/board/light.js'
     import { renderTemple } from '$lib/board/templeLight.js'
-    import { PIER_RADIUS } from '$lib/board/waterworks.js'
+    import { SPILL_REACH } from '$lib/board/waterworks.js'
     import { DESIGN, type TempleDesign, templeBounds } from '$lib/board/templeShape.js'
     import { ownerMark } from '$lib/board/templeMarks.js'
     import { renderPilli } from '$lib/board/pilliLight.js'
@@ -98,7 +99,14 @@
         drawn[CANAL_LOOK] = toUrl(renderCanal(TURQUOISE), 0.86)
         drawn[SHORE_LOOK] = toUrl(renderShore(), 0.86)
         for (const side of SLOPE_SIDES) drawn[slopeLook(side)] = toUrl(renderSlope(side), 0.9)
-        drawn[PIER_LOOK] = toUrl(renderPier(PIER_RADIUS), 0.9)
+        for (const side of SLOPE_SIDES) {
+            for (let variant = 0; variant < SPILL_VARIANTS; variant++) {
+                drawn[spillLook(side, variant)] = toUrl(
+                    renderSpill(side, variant, SPILL_REACH),
+                    0.9
+                )
+            }
+        }
         for (const corner of SLOPE_CORNERS) {
             drawn[slopeCornerLook(corner)] = toUrl(renderSlopeCorner(corner), 0.9)
         }

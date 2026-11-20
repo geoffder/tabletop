@@ -27,12 +27,12 @@ function northCoastBetweenLand(): Cell {
 }
 
 describe('waterworks', () => {
-    it('builds a canal into the lake a mouth between two jetties with pier heads', () => {
+    it("spills rocks over the shore cut short either side of a canal's mouth", () => {
         const canal = northCoastBetweenLand()
         const works = waterworks(LAND_CELLS, new Set([canal]))
-        expect(works.piers).toHaveLength(2)
+        expect(works.spills).toHaveLength(2)
         const top = rowOf(canal) * CELL
-        for (const pier of works.piers) expect(pier.y).toBeLessThan(top)
+        for (const spill of works.spills) expect(spill.y).toBeLessThan(top)
     })
 
     it('leaves no shore in the mouth of a canal', () => {
@@ -55,6 +55,6 @@ describe('waterworks', () => {
         expect(works.banks.filter((bank) => bank.key.startsWith('bank-'))).toHaveLength(3)
         const none = waterworks(LAND_CELLS, new Set())
         expect(none.banks).toHaveLength(0)
-        expect(none.piers).toHaveLength(0)
+        expect(none.spills).toHaveLength(0)
     })
 })

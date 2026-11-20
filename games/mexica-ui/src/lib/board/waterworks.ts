@@ -1,7 +1,7 @@
 import type { Point } from '@tabletop/common'
 import { type Cell, cellAt, columnOf, isLand, rowOf } from '@tabletop/mexica'
 import { SLOPE_WIDTH, type SlopeCorner, type SlopeSide } from './looks.js'
-import { SHORE_ZONE, shoreDepth } from './surfaceTexture.js'
+import { SHORE_ZONE } from './surfaceTexture.js'
 import { CELL } from './view.js'
 
 // The island's built edges, in plan, for a set of canals.
@@ -9,14 +9,14 @@ import { CELL } from './view.js'
 // Each canal is banked in tezontle brick wherever it meets land. Where a canal opens into the
 // lake, the square of lake in front of it is its mouth: banked like the canal, with quays along
 // any land beside it. The island's shore is the stones and rocks beyond each square of land on
-// its lake sides; a canal's square has none, and neither has a mouth. Where a mouth cuts off a
-// neighbour's shore, a jetty runs out along the cut through the shore to a round pier head.
+// its lake sides; a canal's square has none, and neither has a mouth. Where a shore is cut short
+// beside a canal or a mouth, rocks spill over the cut onto the brick.
 
 export type Spot = { column: number; row: number }
 
 export type Bank = { key: string; slope: SlopeSide; points: string }
 export type Curve = { key: string; corner: SlopeCorner; x: number; y: number }
-export type Pier = { key: string; x: number; y: number }
+export type Spill = { key: string; side: SlopeSide; variant: number; x: number; y: number }
 export type Kerb = { key: string; stone: Box; edge: Box }
 export type Zone = { key: string; points: string }
 type Box = { x: number; y: number; width: number; height: number }
@@ -24,15 +24,22 @@ type Box = { x: number; y: number; width: number; height: number }
 export type Waterworks = {
     banks: Bank[]
     curves: Curve[]
-    piers: Pier[]
+    spills: Spill[]
     kerbs: Kerb[]
     zones: Zone[]
 }
 
 export const BANK_WIDTH = SLOPE_WIDTH
-// How far a jetty laps over the cut edge of the shore beside it.
-const OVERLAP = 5
-export const PIER_RADIUS = 6.5
+// How far out from the land a spill of rocks reaches.
+export const SPILL_REACH = 16
+const SPILL_WIDE = SPILL_REACH * 0.4
+// The box of a spill's image round its centre, as renderSpill draws it.
+export const SPILL_BOX: Record<SlopeSide, { width: number; height: number }> = {
+    n: { width: SPILL_WIDE * 2 + 6, height: SPILL_REACH + 6 },
+    s: { width: SPILL_WIDE * 2 + 6, height: SPILL_REACH + 6 },
+    e: { width: SPILL_REACH + 6, height: SPILL_WIDE * 2 + 6 },
+    w: { width: SPILL_REACH + 6, height: SPILL_WIDE * 2 + 6 }
+}
 const KERB = { width: 2.6, line: 0.7 }
 
 export const SIDES: readonly SlopeSide[] = ['n', 'e', 's', 'w']
@@ -55,8 +62,6 @@ const CORNERS: readonly [SlopeCorner, SlopeSide, SlopeSide][] = [
     ['se', 's', 'e'],
     ['sw', 's', 'w']
 ]
-// The bank whose bricks slope down this way.
-const SLOPING: Record<SlopeSide, SlopeSide> = { s: 'n', n: 's', e: 'w', w: 'e' }
 
 const plus = (a: Spot, b: Spot): Spot => ({ column: a.column + b.column, row: a.row + b.row })
 const toward = (side: SlopeSide): Point => ({ x: STEP[side].column, y: STEP[side].row })
@@ -138,11 +143,10 @@ export function waterworks(landCells: readonly Cell[], canals: ReadonlySet<Cell>
         }
     }
     const grounds = landCells.map(spotOf).filter((spot) => island.ground(spot))
-    const jetties = jettiesOf(island, grounds)
     return {
-        banks: [...waters.flatMap((spot) => banksOf(island, spot)), ...jetties.banks],
+        banks: waters.flatMap((spot) => banksOf(island, spot)),
         curves: waters.flatMap((spot) => curvesOf(island, spot)),
-        piers: jetties.piers,
+        spills: spillsOf(island, grounds),
         kerbs: grounds.flatMap((spot) => kerbsOf(island, spot)),
         zones: landCells.map(spotOf).flatMap((spot) => zonesOf(island, spot))
     }
@@ -185,44 +189,43 @@ function curvesOf(island: Island, spot: Spot): Curve[] {
     }))
 }
 
-// Where a square's shore on the lake ends straight beside a canal or a mouth, a jetty runs out
-// along the end of the shore, as far as the shore reaches, to a pier head.
-function jettiesOf(island: Island, grounds: readonly Spot[]): { banks: Bank[]; piers: Pier[] } {
-    const banks: Bank[] = []
-    const piers: Pier[] = []
+// Wherever a square's shore on the lake is cut short, by a canal or a canal's mouth beside it,
+// rocks spill over the cut and onto the end of the brick there, so the stone runs into the
+// brick rather than stopping at it.
+function spillsOf(island: Island, grounds: readonly Spot[]): Spill[] {
+    const spills: Spill[] = []
     for (const spot of grounds) {
         for (const side of SIDES) {
             const host = plus(spot, STEP[side])
-            const onBoard = island.cell(host) !== undefined
-            if (!onBoard || !island.lake(host) || island.mouth(host)) continue
+            if (island.cell(host) === undefined || !island.lake(host) || island.mouth(host))
+                continue
             for (const end of ENDS[side]) {
                 const beside = plus(spot, STEP[end])
-                if (island.land(plus(host, STEP[end]))) continue
-                if (!island.canal(beside) && !island.mouth(beside)) continue
+                const across = plus(host, STEP[end])
+                const cut = island.land(across)
+                    ? !island.ground(across)
+                    : island.ground(beside)
+                      ? island.mouth(across)
+                      : island.canal(beside) || island.mouth(beside)
+                if (!cut) continue
                 const corner = cornerOf(spot, side, end)
-                const out = toward(side)
-                const water = toward(end)
-                const reach = Math.min(
-                    SHORE_ZONE,
-                    shoreDepth(corner.x + out.x * 3, corner.y + out.y * 3) + 2
+                const centre = offset(
+                    offset(corner, toward(side), SPILL_REACH / 2),
+                    toward(end),
+                    1.5
                 )
-                const tip = offset(corner, out, reach)
-                banks.push({
-                    key: `jetty-${keyOf(spot)}-${side}-${end}`,
-                    slope: SLOPING[end],
-                    points: shape([
-                        offset(corner, water, -OVERLAP),
-                        offset(tip, water, -OVERLAP),
-                        offset(tip, water, BANK_WIDTH),
-                        offset(corner, water, BANK_WIDTH)
-                    ])
+                const variant = Math.abs(spot.column * 7 + spot.row * 13 + SIDES.indexOf(end)) % 3
+                spills.push({
+                    key: `spill-${keyOf(spot)}-${side}-${end}`,
+                    side,
+                    variant,
+                    x: centre.x,
+                    y: centre.y
                 })
-                const head = offset(tip, water, BANK_WIDTH / 2 - OVERLAP / 2)
-                piers.push({ key: `pier-${keyOf(spot)}-${side}-${end}`, x: head.x, y: head.y })
             }
         }
     }
-    return { banks, piers }
+    return spills
 }
 
 // A kerb along every edge where a square of land meets water.

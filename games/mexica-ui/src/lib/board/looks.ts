@@ -2,7 +2,6 @@ export const PAVING_LOOK = 'paving'
 export const LAKE_LOOK = 'lake'
 export const CANAL_LOOK = 'canal'
 export const SHORE_LOOK = 'shore'
-export const PIER_LOOK = 'pier'
 
 export function templeLook(level: number, flat: boolean): string {
     return `temple-${level}${flat ? '-flat' : ''}`
@@ -21,4 +20,10 @@ export function slopeLook(side: SlopeSide): string {
 
 export function slopeCornerLook(corner: SlopeCorner): string {
     return `slope-corner-${corner}`
+}
+
+export const SPILL_VARIANTS = 3
+
+export function spillLook(side: SlopeSide, variant: number): string {
+    return `spill-${side}-${variant}`
 }
