@@ -12,7 +12,7 @@
     import { CANAL_LOOK, LAKE_LOOK, PAVING_LOOK, templeLook } from '$lib/board/looks.js'
     import type { Bitmap } from '$lib/board/light.js'
     import { renderTemple } from '$lib/board/templeLight.js'
-    import { DESIGNS, type TempleDesign, templeBounds } from '$lib/board/templeShape.js'
+    import { DESIGN, type TempleDesign, templeBounds } from '$lib/board/templeShape.js'
     import { ownerMark } from '$lib/board/templeMarks.js'
     import TempleMarks from '$lib/components/TempleMarks.svelte'
     import { CELL, FLAT, TILT } from '$lib/board/view.js'
@@ -30,9 +30,22 @@
         [1, Color.Green],
         [2, Color.Red],
         [3, Color.Yellow],
-        [2, Color.Blue]
+        [4, Color.Blue],
+        [2, Color.White],
+        [3, Color.Black]
     ]
-    const DESIGN_ROWS: [string, TempleDesign][] = Object.entries(DESIGNS)
+    // How much darker the stair's wash is, down the side; how strongly its treads show, across.
+    const SHADES = [0, 0.05, 0.1, 0.15, 0.2]
+    const TREADS = [
+        { name: 'no treads', glint: 0, riser: 1 },
+        { name: 'faint', glint: 0.14, riser: 0.92 },
+        { name: 'light', glint: 0.24, riser: 0.84 },
+        { name: 'medium', glint: 0.36, riser: 0.75 }
+    ]
+
+    function stairDesign(shade: number, glint: number, riser: number): TempleDesign {
+        return { ...DESIGN, stair: { shade, glint, riser, balustrade: false } }
+    }
 
     function toUrl(bitmap: Bitmap, quality: number): string {
         const canvas = document.createElement('canvas')
@@ -58,9 +71,10 @@
         millis = Math.round(performance.now() - start)
         setTimeout(() => {
             const designs: Record<string, string> = {}
-            for (const [name, design] of DESIGN_ROWS) {
+            for (const { riser } of TREADS) {
                 for (const level of LEVELS) {
-                    designs[`${name}-${level}`] = toUrl(renderTemple(level, TILT, design), 0.9)
+                    const design = stairDesign(0, 0, riser)
+                    designs[`${riser}-${level}`] = toUrl(renderTemple(level, TILT, design), 0.9)
                 }
             }
             previews = designs
@@ -97,46 +111,40 @@
         {@const paving = urls[PAVING_LOOK]}
         <h2>Stairs</h2>
         <table class="designs">
+            <thead>
+                <tr>
+                    <th>wash</th>
+                    {#each TREADS as treads (treads.name)}<th>{treads.name}</th>{/each}
+                </tr>
+            </thead>
             <tbody>
-                {#each DESIGN_ROWS as [name, design] (name)}
+                {#each SHADES as shade (shade)}
                     <tr>
-                        <th>{name}</th>
-                        <td>
-                            <svg viewBox="-24 -50 192 66" width="576" height="198">
-                                <rect x="-24" y="-50" width="192" height="66" fill="#e6dcc4"></rect>
-                                {#each LEVELS as level, index (level)}
-                                    {@render temple(
-                                        design,
-                                        drawn[`${name}-${level}`],
-                                        level,
-                                        index * 48,
-                                        Color.Green
-                                    )}
-                                {/each}
-                            </svg>
-                        </td>
-                        <td>
-                            <!-- At the size a desktop board shows them, on the paving. -->
-                            <svg viewBox="-20 -42 160 60" width="208" height="78">
-                                <image
-                                    href={paving}
-                                    x="-60"
-                                    y="-140"
-                                    width="840"
-                                    height="420"
-                                    preserveAspectRatio="none"
-                                ></image>
-                                {#each STRIP as [level, color], index (index)}
-                                    {@render temple(
-                                        design,
-                                        drawn[`${name}-${level}`],
-                                        level,
-                                        index * 40,
-                                        color
-                                    )}
-                                {/each}
-                            </svg>
-                        </td>
+                        <th>{shade === 0 ? 'tiers' : `+${shade}`}</th>
+                        {#each TREADS as { name, glint, riser } (name)}
+                            <td>
+                                <!-- At the size a desktop board shows them, on the paving. -->
+                                <svg viewBox="-20 -42 240 60" width="336" height="84">
+                                    <image
+                                        href={paving}
+                                        x="-60"
+                                        y="-140"
+                                        width="840"
+                                        height="420"
+                                        preserveAspectRatio="none"
+                                    ></image>
+                                    {#each STRIP as [level, color], index (index)}
+                                        {@render temple(
+                                            stairDesign(shade, glint, riser),
+                                            drawn[`${riser}-${level}`],
+                                            level,
+                                            index * 40,
+                                            color
+                                        )}
+                                    {/each}
+                                </svg>
+                            </td>
+                        {/each}
                     </tr>
                 {/each}
             </tbody>
