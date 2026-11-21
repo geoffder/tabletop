@@ -24,7 +24,8 @@ import {
     neighbour,
     neighbours,
     rowOf,
-    type Temple
+    type Temple,
+    tokenSize
 } from '@tabletop/mexica'
 import type { MexicaGameSession, MoveInterrupter } from '$lib/model/session.svelte.js'
 import type { Point } from '@tabletop/common'
@@ -1079,7 +1080,8 @@ export class BoardAnimator implements MoveInterrupter {
     private boardOf(state: HydratedMexicaGameState): DrawnBoard {
         return {
             districts: state.districts,
-            display: state.display,
+            // The display reads by value, smallest first, left to right then down.
+            display: state.display.toSorted((a, b) => tokenSize(a) - tokenSize(b) || a - b),
             canals: state.layout().canals,
             temples: state.temples,
             bridges: state.bridges,
