@@ -22,7 +22,10 @@
     import GameEndPanel from '$lib/components/GameEndPanel.svelte'
     import CardTray from '$lib/components/CardTray.svelte'
     import { WebOfPowerGameSession } from '$lib/model/session.svelte.js'
-    import { setGameSession } from '$lib/model/sessionContext.svelte.js'
+    import { getGameSession, setGameSession } from '$lib/model/sessionContext.svelte.js'
+    import { CardAnimator } from '$lib/animators/cardAnimator.svelte.js'
+    import { setCardAnimator } from '$lib/animators/cardAnimatorContext.js'
+    import Card from '$lib/components/Card.svelte'
     import AlmendraFont from '$lib/fonts/Almendra-Latin.woff2'
     import AlmendraItalicFont from '$lib/fonts/Almendra-Italic-Latin.woff2'
 
@@ -32,6 +35,10 @@
         $props()
     assert(gameSession instanceof WebOfPowerGameSession, 'Web of Power needs its own game session')
     setGameSession(gameSession)
+
+    // Moves cards between hands, the face-up row, the deck and the discard pile as moves play.
+    const cards = new CardAnimator(getGameSession())
+    setCardAnimator(cards)
 
     // The shared wrapper exposes full screen only as its dialog becoming modal.
     let expanded = $state(false)
@@ -70,7 +77,28 @@
     fontStyle="italic"
 />
 
-<div class="wop-table">
+<div class="wop-table" {@attach cards.attach}>
+    <!-- Cards in the air, over everything on the table. -->
+    <div class="fliers" aria-hidden="true">
+        {#each cards.fliers as flier (flier.id)}
+            <div
+                class="flier"
+                style:left="{flier.left}px"
+                style:top="{flier.top}px"
+                style:--wop-card-width="{flier.width}px"
+                {@attach cards.flier(flier.id)}
+            >
+                {#if flier.flips}
+                    <div class="spin">
+                        <div class="face"><Card /></div>
+                        <div class="face front"><Card card={flier.card} /></div>
+                    </div>
+                {:else}
+                    <Card card={flier.card} />
+                {/if}
+            </div>
+        {/each}
+    </div>
     <DefaultTableLayout>
         {#snippet mobileControlsContent()}
             <!-- Faded controls in a colour that still shows on the panels. -->
@@ -176,6 +204,35 @@
         box-shadow:
             inset 0 0 0 1px var(--wop-panel-edge),
             var(--wop-panel-shadow);
+    }
+
+    .fliers {
+        position: fixed;
+        inset: 0;
+        z-index: 50;
+        pointer-events: none;
+    }
+
+    .flier {
+        position: absolute;
+        transform-origin: 50% 50%;
+        perspective: 400px;
+    }
+
+    /* A card turning over: its back, and its face turned away until the card has turned. */
+    .spin {
+        position: relative;
+        transform-style: preserve-3d;
+    }
+
+    .face {
+        backface-visibility: hidden;
+    }
+
+    .face.front {
+        position: absolute;
+        inset: 0;
+        transform: rotateY(180deg);
     }
 
     .fullscreen-backdrop {

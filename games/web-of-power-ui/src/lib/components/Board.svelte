@@ -68,13 +68,13 @@
     const session = getGameSession()
 
     // The countries the chosen cards can put a piece in now, lit on the map.
-    const litCountries = $derived(new Set(session.targets.map((target) => target.country)))
+    const litCountries = $derived(new Set(session.shownTargets.map((target) => target.country)))
 
-    // Room round the map for the houses on spaces near its edges, with their shadows and choice
-    // rings (Whitland's reaches 37 above the map, La Oliva's and Poblet's 32 left of it, Zirc's 21
-    // right), which the board's frame would otherwise cut off.
-    const ROOM = { top: 40, left: 34, right: 24, bottom: 6 }
-    const viewBox = `${MAP_VIEW.x - ROOM.left} ${MAP_VIEW.y - ROOM.top} ${MAP_VIEW.width + ROOM.left + ROOM.right} ${MAP_VIEW.height + ROOM.top + ROOM.bottom}`
+    // The map reaches far enough past the printed frame that houses on spaces by its edges, with
+    // their shadows and choice rings, stand on it (the trace carries it out: map/trace.py).
+    // Above the map, room for Whitland's house and choice ring, which stand up past its edge.
+    const TOP_ROOM = 18
+    const viewBox = `${MAP_VIEW.x} ${MAP_VIEW.y - TOP_ROOM} ${MAP_VIEW.width} ${MAP_VIEW.height + TOP_ROOM}`
     const countries = Object.values(Country)
 
     // Places and lifts pieces as moves play; the board draws the pieces it is moving.
@@ -171,8 +171,8 @@
     <svg
         class="wop-board"
         {viewBox}
-        width={MAP_VIEW.width + ROOM.left + ROOM.right}
-        height={MAP_VIEW.height + ROOM.top + ROOM.bottom}
+        width={MAP_VIEW.width}
+        height={MAP_VIEW.height + TOP_ROOM}
         role="group"
         aria-label="Map of Europe"
         {@attach pieces.attach}

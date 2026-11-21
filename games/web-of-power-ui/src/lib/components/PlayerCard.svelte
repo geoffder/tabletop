@@ -2,10 +2,12 @@
     import type { HydratedWebOfPowerPlayerState } from '@tabletop/web-of-power'
     import { getGameSession } from '$lib/model/sessionContext.svelte.js'
     import Piece from './Piece.svelte'
+    import { getCardAnimator } from '$lib/animators/cardAnimatorContext.js'
 
     let { playerState }: { playerState: HydratedWebOfPowerPlayerState } = $props()
 
     const session = getGameSession()
+    const cards = getCardAnimator()
 
     const playerId = $derived(playerState.playerId)
     const isActive = $derived(session.gameState.activePlayerIds.includes(playerId))
@@ -45,7 +47,9 @@
             <b>{session.gameState.advisorsLeft(playerId)}</b>
         </span>
         <span class="tally" title="Cards in hand">
-            <span class="mini-card"></span><b>{playerState.handCount}</b>
+            <span class="mini-card" {@attach cards?.place(`player:${playerId}`)}></span><b
+                >{cards?.table.handCounts.get(playerId) ?? playerState.handCount}</b
+            >
         </span>
     </div>
 </div>

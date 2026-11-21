@@ -132,8 +132,6 @@ export class WebOfPowerGameSession extends GameSession<
     // Where the chosen cards could put a piece now.
     targets: PieceTarget[] = $derived.by(() => {
         const playerId = this.myPlayer?.id
-        // While a move plays, its places fade away under the piece going down.
-        if (this.updatingVisibleState) return []
         if (!this.canPlace || playerId === undefined || this.chosenCards.length === 0) return []
         const cards = this.chosenCards
         return this.gameState
@@ -141,9 +139,13 @@ export class WebOfPowerGameSession extends GameSession<
             .filter((target) => this.gameState.canPay(playerId, cards, target.country))
     })
 
+    // The places the board marks: none while a move plays, so they fade away under the piece
+    // going down while the prompt still reads as chosen.
+    shownTargets: PieceTarget[] = $derived(this.updatingVisibleState ? [] : this.targets)
+
     cloisterTargets: ReadonlySet<string> = $derived(
         new Set(
-            this.targets
+            this.shownTargets
                 .filter((target) => target.kind === PieceKind.Cloister)
                 .map((target) => target.abbey ?? '')
         )
@@ -151,7 +153,7 @@ export class WebOfPowerGameSession extends GameSession<
 
     advisorTargets: ReadonlySet<Country> = $derived(
         new Set(
-            this.targets
+            this.shownTargets
                 .filter((target) => target.kind === PieceKind.Advisor)
                 .map((target) => target.country)
         )
