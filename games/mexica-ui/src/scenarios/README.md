@@ -12,16 +12,16 @@ their own turn, in a different setting:
 
 The prompt offers the founding without forcing it: the Pilli Mexica's moves stay marked and the
 pieces can still be picked. The matching token on the display is ringed like a choice; choosing
-it picks up the founding, as **Found it** does, and choosing it again lets go.
+it picks up the founding, as **Found** does, and choosing it again lets go.
 
 - **Alice** stands at A4 in a district of 7 in the island's top left, across the board from the
-  Emperor's display. Choose **Found it**, then D3: the 7 lifts off the display and fades, the
+  Emperor's display. Choose **Found**, then D3: the 7 lifts off the display and fades, the
   tokens after it slide over to close the gap, and it drops onto D3 behind the tall green temple
   on D4, with a bounce.
-- **End turn. Bob** stands at R6 in a district of 8 right by the display. Found it, then P7: a
+- **End turn. Bob** stands at R6 in a district of 8 right by the display. Found, then P7: a
   short drop just above the display.
 - **End turn. Carol** stands at B7 in a district of 4 on the west side, where Dan's Pilli Mexica
-  also stands. Found it, then B8: Carol scores second place and Dan third as a visitor.
+  also stands. Found, then B8: Carol scores second place and Dan third as a visitor.
 - Undo after any founding: the token slides straight back to its place on the display and the
   others open up for it.
 

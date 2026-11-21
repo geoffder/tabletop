@@ -70,10 +70,10 @@
         <span>Build a {tool}-level temple: choose a space</span>
     {:else if foundingSize !== undefined}
         <span
-            >Your district of {foundingSize} can be founded:
-            <button type="button" class="inline" onclick={() => session.pickTool('found')}
-                >Found it</button
-            >, or move, pick a piece or {@render endTurn()}</span
+            ><button type="button" class="inline" onclick={() => session.pickTool('found')}
+                >Found</button
+            >
+            a district of {foundingSize}, move, pick a piece, or {@render endTurn()}</span
         >
     {:else}
         <span
