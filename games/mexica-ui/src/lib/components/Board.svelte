@@ -290,12 +290,7 @@
                     </g>
                 </mask>
                 <clipPath id="mx-foot-{flood.key}">
-                    <path d={flood.footPath}></path>
-                </clipPath>
-            {/each}
-            {#each animator.floods as flood (flood.key)}
-                <clipPath id="mx-flood-{flood.key}">
-                    <path clip-rule="evenodd" {@attach animator.floodEdge(flood.key)}></path>
+                    <path d={flood.waterPath}></path>
                 </clipPath>
             {/each}
             <clipPath id="mx-land-clip">
@@ -385,17 +380,12 @@
                     class="surface"
                 ></image>
             {/each}
-            <!-- The earth at the bottom of a canal being dug, over its banks until their bricks are
-                 laid, and under the water running in. -->
-            {#each animator.floods as flood (flood.key)}
-                <g class="surface" {@attach animator.floodFloor(flood.key)}>
-                    <path fill="url(#mx-canal-earth)" fill-rule="evenodd"></path>
-                    <path fill="url(#mx-canal-grit)" fill-rule="evenodd"></path>
-                </g>
-            {/each}
-            <!-- Water running into a dug canal from the water beside it. -->
+            <!-- The earth at the bottom of a canal being dug, and the water running into it from
+                 the water beside it. Clipped together, the water's edge has no rim of earth. -->
             {#each animator.floods as flood (flood.key)}
                 <g clip-path="url(#mx-foot-{flood.key})" class="surface">
+                    <path d={flood.footPath} fill="url(#mx-canal-earth)"></path>
+                    <path d={flood.footPath} fill="url(#mx-canal-grit)"></path>
                     <g filter="url(#mx-goo-{flood.key})">
                         {#each flood.springs as spring, index (index)}
                             <circle
@@ -409,13 +399,12 @@
                     </g>
                 </g>
             {/each}
-            <!-- The paving over a canal being dug, which the pit opens up. -->
+            <!-- The paving over a canal being dug, which runs away to show it. -->
             {#each animator.floods as flood (flood.key)}
                 <image
                     href={LOOK_URLS[PAVING_LOOK]}
                     {...PLAN}
                     preserveAspectRatio="none"
-                    clip-path="url(#mx-flood-{flood.key})"
                     mask="url(#mx-dig-{flood.key})"
                     class="surface"
                     {@attach animator.floodPaving(flood.key)}

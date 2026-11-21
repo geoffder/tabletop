@@ -46,13 +46,16 @@ const WALK = { hop: 0.15, glide: 0.2, height: -7 }
 // placed pieces drop in or lift off.
 const QUICK = 0.18
 const MARK_FADE = 0.15
-// A canal dug: a pit opens from the middle of the paving down into the earth, its brick walls
-// are built up from the pit's floor outward, the kerbs laid along their tops, and then water
-// runs in from the canal or lake beside it, or with none, spreads from the middle.
+// A canal dug: the paving runs away like a liquid to show its finished banks over the earth, and
+// then water runs in the same way from the canal or lake beside it, or with none, from the middle.
 const DIG = { build: 0.3, water: 0.32 }
 // The paving over a flooding square reaches this far into the land beside it, over the kerb the
 // canal brings there.
 const KERB_REACH = 3
+// Where the canal runs on into water already there, its new water reaches this far past the
+// square's edge, over the old; ending on the same line as the earth would leave a hairline of
+// earth showing between the two until the last.
+const WATER_OVERLAP = 1.5
 // The motion waits at most this long for its pieces to be drawn; any longer skips its start.
 const DRAW_WAIT = 0.01
 
@@ -65,22 +68,16 @@ export type DrawnBoard = {
     pillis: readonly DrawnPilli[]
 }
 
-// A square of paving laid over a canal square while the water floods it or the paving comes
-// back, in plan units, with the side the water comes from.
-// A canal tile being dug or filled in: its brick floor covers its squares, and its paving
-// reaches over the kerbs beside them.
+// A canal tile being dug or filled in, in plan units: its paving reaches over the kerbs beside
+// its squares (`box`).
 export type Flood = {
     key: string
     cells: readonly Cell[]
     box: Box
-    floor: Box
-    // How wide the bank is on each side: none where the water runs on into a canal or the lake.
-    banks: Record<Side, number>
-    // The walls' foot, rounded where two walls meet in a cove, as a box, its corners' radii
-    // clockwise from the top left, and a path.
-    foot: Box
-    coves: number[]
+    // The walls' foot, rounded where two walls meet in a cove: the earth at the canal's bottom.
     footPath: string
+    // Where the water runs: the foot, and a little past it into the water beside.
+    waterPath: string
     // Where the water runs in from: the middle of each edge it meets water by, or with none, the
     // middle of the floor; and how far a disc from each must reach to fill the foot.
     // `cover` is how far a disc must reach to clear the paving over the whole canal and kerbs.
@@ -129,8 +126,6 @@ export class BoardAnimator implements MoveInterrupter {
 
     private readonly parts = new Map<string, Parts>()
     private readonly marks = new Set<SVGElement>()
-    private readonly floodEdges = new Map<string, SVGPathElement>()
-    private readonly floodFloors = new Map<string, SVGGElement>()
     private readonly springNodes = new Map<string, SVGCircleElement>()
     private readonly floodPavings = new Map<string, SVGImageElement>()
     private readonly listener = (step: Step) => this.onGameStateChange(step)
@@ -176,27 +171,6 @@ export class BoardAnimator implements MoveInterrupter {
                 if (current?.[part] !== node) return
                 delete current[part]
                 if (Object.keys(current).length === 0) this.parts.delete(key)
-            }
-        }
-    }
-
-    // The clip of the paving over a canal being dug, which the pit opens up.
-    floodEdge(key: string): Attachment<SVGPathElement> {
-        return (node) => {
-            this.floodEdges.set(key, node)
-            return () => {
-                if (this.floodEdges.get(key) === node) this.floodEdges.delete(key)
-            }
-        }
-    }
-
-    // The earth at the bottom of a canal being dug, which the water rises over: a group of
-    // paths sharing one outline.
-    floodFloor(key: string): Attachment<SVGGElement> {
-        return (node) => {
-            this.floodFloors.set(key, node)
-            return () => {
-                if (this.floodFloors.get(key) === node) this.floodFloors.delete(key)
             }
         }
     }
@@ -392,40 +366,26 @@ export class BoardAnimator implements MoveInterrupter {
         animationContext.afterAnimations(land)
     }
 
-    // A pit opens from the middle of the paving down into the earth, the brick walls build up
-    // from its floor outward, the kerbs are laid along their tops, and the water runs in.
+    // The banks and kerbs show through the paving as it runs away like a liquid, and then the
+    // water runs in the same way. Without an action, or undone, the canal is shown finished, with
+    // the paving fading away from over it or back over it.
     private flood(flood: Flood, dug: boolean, timeline: Timeline, digging: boolean) {
-        const edge = this.floodEdges.get(flood.key)
-        const floor = this.floodFloors.get(flood.key)
         const paving = this.floodPavings.get(flood.key)
-        if (edge === undefined || floor === undefined || paving === undefined) {
-            throw new Error('A dug canal is drawn before it is dug')
-        }
-        const dig = this.digging(edge, floor, flood)
-        const immediateRender = true
-        // Without an action, or undone: the finished canal, with the paving fading away from
-        // over it or back over it.
+        if (paving === undefined) throw new Error('A dug canal is drawn before it is dug')
         if (!digging) {
-            timeline.set(dig, { pit: 0, walls: 1, kerbs: 0, water: 1 }, 0)
             this.runIn(flood, timeline, 1, 1, 0, 0)
             this.runIn(flood, timeline, 1, 1, 0, 0, 'build')
             const [from, to] = dug ? [1, 0] : [0, 1]
             timeline.fromTo(
                 paving,
                 { opacity: from },
-                { opacity: to, duration: QUICK, ease: 'power1.inOut', immediateRender },
+                { opacity: to, duration: QUICK, ease: 'power1.inOut', immediateRender: true },
                 0
             )
             return
         }
-        // The banks and kerbs show through the paving as it runs away like a liquid, and then
-        // the water runs in the same way.
-        timeline.set(dig, { pit: 0, walls: 1, kerbs: 0, water: 0 }, 0)
         this.runIn(flood, timeline, 0, 1, DIG.build, 0, 'build')
-        const at = DIG.build
-        this.runIn(flood, timeline, 0, 1, DIG.water, at)
-        // The earth goes as the water covers it, at the end.
-        timeline.set(dig, { water: 1 }, at + DIG.water)
+        this.runIn(flood, timeline, 0, 1, DIG.water, DIG.build)
     }
 
     // Water runs into the canal from each spring as a disc; the discs, blurred and cut back to a
@@ -450,113 +410,6 @@ export class BoardAnimator implements MoveInterrupter {
                 at
             )
         })
-    }
-
-    // The shapes of a canal being dug, drawn as its stages are set: the hole in the paving the
-    // pit has opened, and the earth not yet bricked or under water. Each
-    // stage runs from 0 to 1.
-    private digging(
-        edge: SVGPathElement,
-        group: SVGGElement,
-        flood: Flood
-    ): { pit: number; walls: number; kerbs: number; water: number } {
-        const earth = [...group.querySelectorAll('path')]
-        const stage = { pit: 0, walls: 0, kerbs: 0, water: 0 }
-        const rect = (x0: number, y0: number, x1: number, y1: number) =>
-            `M${x0} ${y0}H${x1}V${y1}H${x0}Z`
-        const { box, floor } = flood
-        const { banks } = flood
-        // A pool from the middle of `area`, `reach` of the way out and `beyond` past its edge,
-        // round at first and taking the corners `radii` as it fills out (`square` from 0 to 1).
-        const pool = (
-            area: Box,
-            beyond: number,
-            reach: number,
-            radii: number[],
-            square: number
-        ) => {
-            const cx = area.x + area.width / 2
-            const cy = area.y + area.height / 2
-            const hx = (area.width / 2 + beyond) * reach
-            const hy = (area.height / 2 + beyond) * reach
-            const round = Math.min(hx, hy)
-            return roundedRect(
-                cx - hx,
-                cy - hy,
-                cx + hx,
-                cy + hy,
-                radii.map((r) => round + (r - round) * square)
-            )
-        }
-        const write = () => {
-            // The pit: a hole in the paving from the middle out to the canal's squares, round at
-            // first and square as it reaches them; then the paving draws back off the kerbs.
-            const outline = rect(box.x, box.y, box.x + box.width, box.y + box.height)
-            const k = stage.kerbs
-            const hole =
-                k > 0
-                    ? rect(
-                          floor.x + (box.x - floor.x) * k,
-                          floor.y + (box.y - floor.y) * k,
-                          floor.x + floor.width + (box.x + box.width - floor.x - floor.width) * k,
-                          floor.y + floor.height + (box.y + box.height - floor.y - floor.height) * k
-                      )
-                    : stage.pit > 0
-                      ? pool(floor, 0, stage.pit, [0, 0, 0, 0], stage.pit)
-                      : ''
-            edge.setAttribute('d', outline + hole)
-            // The earth: the whole floor, less the bricked ring from the walls' foot out to
-            // where they have reached. The water runs in over it.
-            const x0 = floor.x
-            const y0 = floor.y
-            const x1 = floor.x + floor.width
-            const y1 = floor.y + floor.height
-            const built = 1 - stage.walls
-            let shape = rect(x0, y0, x1, y1)
-            if (stage.walls > 0) {
-                shape +=
-                    rect(
-                        x0 + banks.w * built,
-                        y0 + banks.n * built,
-                        x1 - banks.e * built,
-                        y1 - banks.s * built
-                    ) + flood.footPath
-            }
-            // Covered by the water at the end, the earth goes.
-            if (stage.water >= 1) shape = ''
-            for (const path of earth) path.setAttribute('d', shape)
-        }
-        write()
-        return {
-            get pit() {
-                return stage.pit
-            },
-            set pit(value: number) {
-                stage.pit = value
-                write()
-            },
-            get walls() {
-                return stage.walls
-            },
-            set walls(value: number) {
-                stage.walls = value
-                write()
-            },
-            get kerbs() {
-                return stage.kerbs
-            },
-            set kerbs(value: number) {
-                stage.kerbs = value
-                write()
-            },
-            get water() {
-                return stage.water
-            },
-            set water(value: number) {
-                stage.water = value
-                write()
-            }
-        }
     }
 
     // A canal tile, and the reach of its paving over the kerb on each side where land stays
@@ -657,11 +510,14 @@ export class BoardAnimator implements MoveInterrupter {
         return {
             key: cells.join('-'),
             cells,
-            floor,
-            banks,
-            foot,
-            coves,
             footPath: roundedRect(foot.x, foot.y, foot.x + foot.width, foot.y + foot.height, coves),
+            waterPath: roundedRect(
+                foot.x - (banks.w > 0 ? 0 : WATER_OVERLAP),
+                foot.y - (banks.n > 0 ? 0 : WATER_OVERLAP),
+                foot.x + foot.width + (banks.e > 0 ? 0 : WATER_OVERLAP),
+                foot.y + foot.height + (banks.s > 0 ? 0 : WATER_OVERLAP),
+                coves
+            ),
             springs:
                 edges.length > 0
                     ? edges
