@@ -1,7 +1,7 @@
 <script lang="ts">
     import { LEVELS, type HydratedMexicaPlayerState } from '@tabletop/mexica'
     import { getGameSession } from '$lib/model/sessionContext.svelte.js'
-    import TempleIcon from './TempleIcon.svelte'
+    import PieceIcon from './PieceIcon.svelte'
     import MaskIcon from './MaskIcon.svelte'
 
     let { playerState }: { playerState: HydratedMexicaPlayerState } = $props()
@@ -32,15 +32,15 @@
         </span>
     </div>
     <div class="body">
-        <span class="score"><b>{playerState.score}</b> points</span>
+        <span class="score"><b>{playerState.score}</b> <span class="word">points</span></span>
         {#each LEVELS as level (level)}
             <span class="tally" title={`${level}-level temples left this period`}>
-                <TempleIcon {level} {fill} />
+                <PieceIcon piece={level} {fill} size={26} />
                 <b>{session.gameState.templesLeft(playerId, level)}</b>
             </span>
         {/each}
         <span class="tally" title="Action tokens">
-            <MaskIcon size={18} /><b>{playerState.actionTokens}</b>
+            <MaskIcon size={22} /><b>{playerState.actionTokens}</b>
         </span>
     </div>
 </div>
@@ -91,6 +91,28 @@
     .tally {
         display: inline-flex;
         align-items: center;
-        gap: 4px;
+        gap: 2px;
+    }
+
+    /* On a narrow card the pieces shrink and the score drops its word, so all five tallies fit. */
+    .card {
+        container-type: inline-size;
+    }
+
+    @container (max-width: 300px) {
+        .body {
+            gap: 5px;
+            padding: 6px 8px;
+            font-size: 13px;
+        }
+
+        .tally :global(svg) {
+            width: 18px;
+            height: 18px;
+        }
+
+        .score .word {
+            display: none;
+        }
     }
 </style>
