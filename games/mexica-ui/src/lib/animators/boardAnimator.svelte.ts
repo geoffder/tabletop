@@ -47,9 +47,9 @@ const WALK = { hop: 0.15, glide: 0.2, height: -7 }
 const QUICK = 0.18
 const MARK_FADE = 0.15
 // A canal dug: a pit opens from the middle of the paving down into the earth, its brick walls
-// are built up from the pit's floor outward to the kerbs, and then the water wells up through
-// the earth from below, like ground water.
-const DIG = { pit: 0.28, walls: 0.3, water: 0.42 }
+// are built up from the pit's floor outward, the kerbs laid along their tops, and then the water
+// wells up through the earth from below, like ground water.
+const DIG = { pit: 0.28, walls: 0.3, kerbs: 0.14, water: 0.42 }
 // The paving over a flooding square reaches this far into the land beside it, over the kerb the
 // canal brings there.
 const KERB_REACH = 3
@@ -344,23 +344,24 @@ export class BoardAnimator implements MoveInterrupter {
             throw new Error('A dug canal is drawn before it is dug')
         }
         const dig = this.digging(edge, floor, flood)
-        const [pit, walls, water] = digging
-            ? [DIG.pit, DIG.walls, DIG.water]
-            : [QUICK / 3, QUICK / 3, QUICK / 3]
+        const [pit, walls, kerbs, water] = digging
+            ? [DIG.pit, DIG.walls, DIG.kerbs, DIG.water]
+            : [QUICK / 4, QUICK / 4, QUICK / 4, QUICK / 4]
         const immediateRender = true
-        const stages = dug
-            ? [
-                  { key: 'pit', at: 0, duration: pit, ease: 'power1.out' },
-                  { key: 'walls', at: pit, duration: walls, ease: 'power1.inOut' },
-                  { key: 'water', at: pit + walls, duration: water, ease: 'power1.out' }
-              ]
-            : [
-                  { key: 'water', at: 0, duration: water, ease: 'power1.in' },
-                  { key: 'walls', at: water, duration: walls, ease: 'power1.inOut' },
-                  { key: 'pit', at: water + walls, duration: pit, ease: 'power1.in' }
-              ]
+        const order = [
+            { key: 'pit', duration: pit, ease: 'power1.out' },
+            { key: 'walls', duration: walls, ease: 'power1.inOut' },
+            { key: 'kerbs', duration: kerbs, ease: 'power1.out' },
+            { key: 'water', duration: water, ease: 'power1.out' }
+        ]
+        let at = 0
+        const stages = (dug ? order : order.toReversed()).map((stage) => {
+            const placed = { ...stage, at }
+            at += stage.duration
+            return placed
+        })
         const [from, to] = dug ? [0, 1] : [1, 0]
-        timeline.set(dig, { pit: from, walls: from, water: from }, 0)
+        timeline.set(dig, { pit: from, walls: from, kerbs: from, water: from }, 0)
         for (const stage of stages) {
             timeline.fromTo(
                 dig,
@@ -378,9 +379,9 @@ export class BoardAnimator implements MoveInterrupter {
         edge: SVGPathElement,
         group: SVGGElement,
         flood: Flood
-    ): { pit: number; walls: number; water: number } {
+    ): { pit: number; walls: number; kerbs: number; water: number } {
         const earth = [...group.querySelectorAll('path')]
-        const stage = { pit: 0, walls: 0, water: 0 }
+        const stage = { pit: 0, walls: 0, kerbs: 0, water: 0 }
         const rect = (x0: number, y0: number, x1: number, y1: number) =>
             `M${x0} ${y0}H${x1}V${y1}H${x0}Z`
         // A rectangle with its corners rounded by `radii`, clockwise from the top left.
@@ -432,13 +433,22 @@ export class BoardAnimator implements MoveInterrupter {
             )
         }
         const write = () => {
-            // The pit: a hole from the middle of the paving's reach out to all of it.
-            const pit = stage.pit
+            // The pit: a hole in the paving from the middle out to the canal's squares, round at
+            // first and square as it reaches them; then the paving draws back off the kerbs.
             const outline = rect(box.x, box.y, box.x + box.width, box.y + box.height)
-            edge.setAttribute(
-                'd',
-                pit <= 0 ? outline : outline + pool(box, 1, pit, [0, 0, 0, 0], 0)
-            )
+            const k = stage.kerbs
+            const hole =
+                k > 0
+                    ? rect(
+                          floor.x + (box.x - floor.x) * k,
+                          floor.y + (box.y - floor.y) * k,
+                          floor.x + floor.width + (box.x + box.width - floor.x - floor.width) * k,
+                          floor.y + floor.height + (box.y + box.height - floor.y - floor.height) * k
+                      )
+                    : stage.pit > 0
+                      ? pool(floor, 0, stage.pit, [0, 0, 0, 0], stage.pit)
+                      : ''
+            edge.setAttribute('d', outline + hole)
             // The earth: the whole floor, less the bricked ring from the walls' foot out to
             // where they have reached, less the pool; the pool fills to the walls' foot exactly,
             // so as it ends no earth is left and none is drawn over the walls.
@@ -474,6 +484,13 @@ export class BoardAnimator implements MoveInterrupter {
             },
             set walls(value: number) {
                 stage.walls = value
+                write()
+            },
+            get kerbs() {
+                return stage.kerbs
+            },
+            set kerbs(value: number) {
+                stage.kerbs = value
                 write()
             },
             get water() {
