@@ -22,6 +22,7 @@ import {
     type Vec
 } from './light.js'
 import { PILLI, PILLI_PIXELS, pilliBounds } from './pilliShape.js'
+import { FLAT } from './view.js'
 import {
     castRays,
     normalAt,
@@ -49,15 +50,18 @@ export type PilliLook = { bitmap: Bitmap; shine: Bitmap; outline: string }
 
 export function renderPilli(tilt: number, pixels = PILLI_PIXELS, proportions = PILLI): PilliLook {
     const box = pilliBounds(tilt, proportions)
-    const full = figureWith(proportions.headdress)
-    // From the board's units back to the figure as drawn.
+    const faceUp = tilt === FLAT
+    const full = figureWith(proportions.headdress, faceUp)
+    // From the board's units back to the figure as drawn; lying down, it keeps its width's
+    // proportions every way.
+    const tall = faceUp ? proportions.width : proportions.height
     const unscaled = (p: Vec): Vec => [
         p[0] / proportions.width,
         p[1] / proportions.width,
-        p[2] / proportions.height
+        p[2] / tall
     ]
     const figure: Figure = {
-        scene: (p) => full.scene(unscaled(p)) * Math.min(proportions.width, proportions.height),
+        scene: (p) => full.scene(unscaled(p)) * Math.min(proportions.width, tall),
         finish: (p) => full.finish(unscaled(p))
     }
     const toward: Vec = [0, Math.sqrt(1 - tilt * tilt), tilt]
@@ -535,12 +539,17 @@ function scaledFan(fan: Fan, by: number): Fan {
     }
 }
 
-// The figure with its headdress scaled by `headdress`.
-function figureWith(headdress: number): Figure {
+// Seen from straight above, the figure shows only its mask, lying face up on the ground with
+// its feathers spreading above it on the board: the head's centre `lift` above the ground and
+// `shift` towards the viewer from the figure's foot, so mask and feathers fit its box.
+const FACE_UP = { lift: 4.2, shift: 2.4 }
+
+// The figure with its headdress scaled by `headdress`, standing or lying face up.
+function figureWith(headdress: number, faceUp: boolean): Figure {
     const parts: Part[] = [
         { distance: mask, finish: maskFinish },
         HOODED,
-        { distance: body, finish: bodyFinish },
+        ...(faceUp ? [] : [{ distance: body, finish: bodyFinish }]),
         ...[BACK_FAN, FRONT_FAN].map((row) => {
             const fan = scaledFan(row, headdress)
             return {
@@ -549,6 +558,16 @@ function figureWith(headdress: number): Figure {
             }
         })
     ]
+    // Lying face up, the figure turns a quarter about its width: its face to the sky, the
+    // top of its head away from the viewer.
+    const posed = (p: Vec): Vec =>
+        faceUp
+            ? [
+                  p[0] + HEAD.at[0],
+                  HEAD.at[1] + p[2] - FACE_UP.lift,
+                  HEAD.at[2] + FACE_UP.shift - p[1]
+              ]
+            : p
     const nearestPart = (p: Vec): { part: Part; distance: number } => {
         let part = parts[0]
         let distance = Infinity
@@ -562,7 +581,7 @@ function figureWith(headdress: number): Figure {
         return { part, distance }
     }
     return {
-        scene: (p) => Math.max(nearestPart(p).distance, -p[2]),
-        finish: (p) => nearestPart(p).part.finish(p)
+        scene: (p) => Math.max(nearestPart(posed(p)).distance, -p[2]),
+        finish: (p) => nearestPart(posed(p)).part.finish(posed(p))
     }
 }
