@@ -17,6 +17,9 @@ import {
     MexicaInfo,
     MexicaRuntime,
     neighbours,
+    cellAt,
+    columnOf,
+    rowOf,
     START_CELLS,
     tokenSize
 } from '@tabletop/mexica'
@@ -228,3 +231,40 @@ const late = firstFound(
 )
 write('late-game', 'Late game', late)
 console.log(`Late game: ${describe(late.state)}`)
+
+// A founding in the island's far corner from the display, top left, with a tall temple in front
+// of a free square of the district for the token to land behind: the player to move walks there
+// and founds.
+function foundingBehindTemple(state) {
+    const hydrated = new HydratedMexicaGameState(structuredClone(state))
+    const [playerId] = state.activePlayerIds
+    for (const [cell, move] of hydrated.moves(playerId)) {
+        if (move.cost > 5) continue
+        const after = new HydratedMexicaGameState(structuredClone(state))
+        after.placePilli(playerId, cell)
+        const layout = after.layout()
+        if (after.foundingToken(playerId, layout) === undefined) continue
+        const district = layout.districtOf(cell)
+        if (district === undefined) continue
+        const hidden = district.some((square) => {
+            if (square === cell || !layout.isBuildable(square)) return false
+            if (columnOf(square) > 7 || rowOf(square) > 5) return false
+            const front = cellAt(columnOf(square), rowOf(square) + 1)
+            return after.temples.some((temple) => temple.cell === front && temple.level >= 3)
+        })
+        if (hidden) return true
+    }
+    return false
+}
+
+const founding = (() => {
+    for (const players of [4, 3]) {
+        for (let seed = 1; seed < 400; seed++) {
+            const found = playUntil(start(players), seed, foundingBehindTemple)
+            if (found) return found
+        }
+    }
+    throw Error('No seed reached a founding in the far corner')
+})()
+write('founding', 'Founding', founding)
+console.log(`Founding: ${describe(founding.state)}`)

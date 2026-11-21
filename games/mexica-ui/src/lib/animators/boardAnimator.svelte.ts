@@ -9,6 +9,7 @@ import type {
 import {
     areAdjacent,
     type Bridge,
+    type District,
     type Cell,
     cellAt,
     CELL_COUNT,
@@ -29,6 +30,7 @@ import type { MexicaGameSession, MoveInterrupter } from '$lib/model/session.svel
 import type { Point } from '@tabletop/common'
 import { type Box, type BoardView, BRIDGE_RISE, CELL } from '$lib/board/view.js'
 import { pilliSpot } from '$lib/board/pilliSpot.js'
+import { TOKEN, TOKEN_ON_BOARD } from '$lib/board/tokenShape.js'
 import { COVE_TOE } from '$lib/board/looks.js'
 import { BANK_WIDTH } from '$lib/board/waterworks.js'
 import { poseOf, setPose } from './svgPose.js'
@@ -67,6 +69,10 @@ const BOAT = {
     sink: 3,
     emerge: 0.3
 }
+// The display closing up behind a token that leaves, once it has lifted off.
+const CLOSE_UP = { at: 0.2, duration: 0.35 }
+// How much bigger the display shows a token than the board does.
+const TOKEN_ON_DISPLAY = TOKEN.radius / TOKEN_ON_BOARD
 // A step without an action ends within QUICK: pieces slide straight to where they end, and
 // placed pieces drop in or lift off.
 const QUICK = 0.18
@@ -86,6 +92,8 @@ const DRAW_WAIT = 0.01
 export type DrawnPilli = { playerId: string; cell: Cell }
 // What the board draws: the state shown, or while a step plays, everything on screen during it.
 export type DrawnBoard = {
+    districts: readonly District[]
+    display: readonly number[]
     canals: ReadonlySet<Cell>
     temples: readonly Temple[]
     bridges: readonly Bridge[]
@@ -151,6 +159,8 @@ export class BoardAnimator implements MoveInterrupter {
     floods: readonly Flood[] = $state.raw([])
     // The canoes Pilli Mexica are riding in this move.
     boats: readonly string[] = $state.raw([])
+    // Calpulli tokens going between the Emperor's display and the board, drawn over everything.
+    flights: readonly District[] = $state.raw([])
 
     private readonly parts = new Map<string, Parts>()
     private readonly marks = new Set<SVGElement>()
@@ -165,7 +175,9 @@ export class BoardAnimator implements MoveInterrupter {
 
     constructor(
         private readonly session: MexicaGameSession,
-        private readonly view: () => BoardView
+        private readonly view: () => BoardView,
+        // Where the Emperor's display shows the token at an index.
+        private readonly slot: (index: number) => Point
     ) {}
 
     readonly attach: Attachment = () => {
@@ -262,6 +274,7 @@ export class BoardAnimator implements MoveInterrupter {
             this.walking = new Map()
             this.floods = []
             this.boats = []
+            this.flights = []
             throw error
         }
     }
@@ -287,7 +300,14 @@ export class BoardAnimator implements MoveInterrupter {
         const gone = before.pillis.filter(
             (pilli) => !after.pillis.some((other) => other.playerId === pilli.playerId)
         )
+        const founded = after.districts.filter(
+            (district) => !before.districts.some((other) => other.tokenId === district.tokenId)
+        )
+        const unfounded = before.districts.filter(
+            (district) => !after.districts.some((other) => other.tokenId === district.tokenId)
+        )
         if (
+            founded.length + unfounded.length === 0 &&
             dug.length + filled.length === 0 &&
             temples.added.length + temples.removed.length === 0 &&
             bridges.added.length + bridges.removed.length === 0 &&
@@ -301,7 +321,15 @@ export class BoardAnimator implements MoveInterrupter {
         const touched: SVGGElement[] = []
         // Pieces taken off stay on screen until they have gone; pieces put down are drawn from
         // the start, hidden until they drop.
+        // A token on its way is drawn as a flight over everything; the display keeps its slot
+        // until the move ends.
+        // Dropped onto its square, a founded token is in the board's layer from the start; one
+        // sliding between the display and the board goes over everything.
+        const flying = [...(quick ? founded : []), ...unfounded]
+        this.flights = flying
         this.drawn = {
+            districts: after.districts.filter((district) => !flying.includes(district)),
+            display: before.display.length >= after.display.length ? before.display : after.display,
             canals: new Set([...before.canals, ...after.canals]),
             temples: [...before.temples, ...temples.added],
             bridges: [...before.bridges, ...bridges.added],
@@ -369,6 +397,40 @@ export class BoardAnimator implements MoveInterrupter {
         for (const pilli of gone) {
             this.liftOff(`pilli-${pilli.playerId}`, timeline, touched, lift)
         }
+        for (const district of founded) {
+            this.found(district, before.display.indexOf(district.tokenId), timeline, touched, quick)
+        }
+        for (const district of unfounded) {
+            this.unfound(district, after.display.indexOf(district.tokenId), timeline, touched)
+        }
+        // The tokens left on the display close up behind one that leaves, and open up for one
+        // put back.
+        if (founded.length + unfounded.length > 0) {
+            const drawnDisplay = this.drawn.display
+            const ends = after.display
+            drawnDisplay.forEach((tokenId, index) => {
+                if (flying.some((district) => district.tokenId === tokenId)) return
+                const goes = ends.indexOf(tokenId)
+                const was = before.display.indexOf(tokenId)
+                if (goes === was) return
+                const { body } = this.partsOf(`display-${tokenId}`, touched)
+                const shown = this.slot(index)
+                const from = this.slot(was)
+                const to = this.slot(goes)
+                timeline.fromTo(
+                    poseOf(body),
+                    { x: from.x - shown.x, y: from.y - shown.y },
+                    {
+                        x: to.x - shown.x,
+                        y: to.y - shown.y,
+                        duration: quick ? QUICK : CLOSE_UP.duration,
+                        ease: 'power2.inOut',
+                        immediateRender: false
+                    },
+                    quick ? 0 : CLOSE_UP.at
+                )
+            })
+        }
         const view = this.view()
         const decks = decksOf(before, after)
         for (const move of moves) {
@@ -408,6 +470,7 @@ export class BoardAnimator implements MoveInterrupter {
             this.walking = new Map()
             this.floods = []
             this.boats = []
+            this.flights = []
             for (const node of touched) {
                 setPose(node, { x: 0, y: 0, scale: 1 })
                 gsap.set(node, { opacity: 1 })
@@ -846,6 +909,63 @@ export class BoardAnimator implements MoveInterrupter {
         return Math.max(landing + BOAT.hop, under + BOAT.emerge)
     }
 
+    // A district founded: its token lifts off the Emperor's display, fading, and drops onto its
+    // square with a bounce, behind any temple in front of it.
+    private found(
+        district: District,
+        index: number,
+        timeline: Timeline,
+        touched: SVGGElement[],
+        quick: boolean
+    ) {
+        const flight = `flight-${district.tokenId}`
+        const shown = `display-${district.tokenId}`
+        if (!quick) {
+            this.liftOff(shown, timeline, touched, LIFT_OFF.duration)
+            this.drop(
+                `token-${district.tokenId}`,
+                timeline,
+                touched,
+                DROP.fall,
+                true,
+                LIFT_OFF.duration * 0.6
+            )
+            return
+        }
+        // Without an action it slides from the display straight to its square.
+        const { body } = this.partsOf(flight, touched)
+        const start = this.slot(index)
+        const end = this.view().centre(district.cell)
+        timeline.set(this.partsOf(shown, touched).body, { opacity: 0 }, 0)
+        timeline.fromTo(
+            poseOf(body),
+            { x: start.x - end.x, y: start.y - end.y, scale: TOKEN_ON_DISPLAY },
+            { x: 0, y: 0, scale: 1, duration: QUICK, ease: 'power1.inOut' },
+            0
+        )
+    }
+
+    // A founding undone: the token goes back to its place on the display.
+    private unfound(district: District, index: number, timeline: Timeline, touched: SVGGElement[]) {
+        const flight = `flight-${district.tokenId}`
+        const shown = `display-${district.tokenId}`
+        const { body } = this.partsOf(flight, touched)
+        const start = this.view().centre(district.cell)
+        const end = this.slot(index)
+        timeline.set(this.partsOf(shown, touched).body, { opacity: 0 }, 0)
+        timeline.to(
+            poseOf(body),
+            {
+                x: end.x - start.x,
+                y: end.y - start.y,
+                scale: TOKEN_ON_DISPLAY,
+                duration: QUICK,
+                ease: 'power1.inOut'
+            },
+            0
+        )
+    }
+
     // Five action points take the Pilli Mexica anywhere: it lifts off and drops in there.
     private teleport(
         key: string,
@@ -958,6 +1078,8 @@ export class BoardAnimator implements MoveInterrupter {
 
     private boardOf(state: HydratedMexicaGameState): DrawnBoard {
         return {
+            districts: state.districts,
+            display: state.display,
             canals: state.layout().canals,
             temples: state.temples,
             bridges: state.bridges,

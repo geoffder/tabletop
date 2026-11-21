@@ -68,7 +68,11 @@
         | { kind: 'bridge'; cell: Cell; axis: Axis }
         | { kind: 'bridgeFront'; cell: Cell }
 
-    const animator = new BoardAnimator(session, () => view)
+    const animator = new BoardAnimator(
+        session,
+        () => view,
+        (index) => slotCentre(index)
+    )
     const drawn = $derived(animator.drawn)
     const decks = $derived(new Set(drawn.bridges.map((bridge) => bridge.cell)))
 
@@ -181,7 +185,7 @@
     }
 
     // The Emperor's commands, in the lake at the bottom right as on the printed board.
-    const display = $derived(game.display)
+    const display = $derived(drawn.display)
     const DISPLAY = { left: 14.9, top: 10.8, slot: 1.42, columns: 4, rows: 2 }
     const displayBox = $derived(
         view.planBox(
@@ -542,8 +546,13 @@
             {/each}
         {/if}
 
-        {#each game.districts as district (district.tokenId)}
-            {@render calpulli(view.centre(district.cell), district.tokenId, TOKEN_ON_BOARD)}
+        {#each drawn.districts as district (district.tokenId)}
+            {@const at = view.centre(district.cell)}
+            <g transform="translate({at.x} {at.y})">
+                <g {@attach animator.piece(`token-${district.tokenId}`, 'body')}>
+                    {@render calpulli({ x: 0, y: 0 }, district.tokenId, TOKEN_ON_BOARD)}
+                </g>
+            </g>
         {/each}
 
         <!-- Ground marks: where the chosen tool or the Pilli Mexica can go. -->
@@ -723,9 +732,24 @@
                 class="display-frame"
             ></rect>
             {#each display as tokenId, index (tokenId)}
-                {@render calpulli(slotCentre(index), tokenId, TOKEN.radius)}
+                {@const at = slotCentre(index)}
+                <g transform="translate({at.x} {at.y})">
+                    <g {@attach animator.piece(`display-${tokenId}`, 'body')}>
+                        {@render calpulli({ x: 0, y: 0 }, tokenId, TOKEN.radius)}
+                    </g>
+                </g>
             {/each}
         </g>
+
+        <!-- Tokens on their way between the display and the board, over everything. -->
+        {#each animator.flights as district (district.tokenId)}
+            {@const at = view.centre(district.cell)}
+            <g transform="translate({at.x} {at.y})">
+                <g {@attach animator.piece(`flight-${district.tokenId}`, 'body')}>
+                    {@render calpulli({ x: 0, y: 0 }, district.tokenId, TOKEN_ON_BOARD)}
+                </g>
+            </g>
+        {/each}
 
         <!-- Hit areas over every cell, nearest last. -->
         {#each landCells as cell (cell)}
