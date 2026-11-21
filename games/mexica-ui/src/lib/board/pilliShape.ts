@@ -14,11 +14,20 @@ export const PILLI_PIXELS = 3
 
 // What the figure takes up as drawn: half its width and depth, and its height.
 const EXTENT = { half: 9.6, depth: 9.5, height: 31.5 }
+// The back row of feathers: half as wide, and how much higher its top reaches for each step
+// the headdress is scaled up from its foot.
+export const HEADDRESS = { half: 7.8, rise: 11.2 }
 
-export function pilliBounds(tilt: number): Box {
-    const half = EXTENT.half * PILLI_WIDTH
-    const depth = EXTENT.depth * PILLI_WIDTH
-    const height = EXTENT.height * PILLI_SIZE
+// The figure's height and width as multiples of it as drawn, and its headdress's scale.
+export type PilliProportions = { height: number; width: number; headdress: number }
+export const PILLI: PilliProportions = { height: PILLI_SIZE, width: PILLI_WIDTH, headdress: 1.2 }
+
+export function pilliBounds(tilt: number, proportions = PILLI): Box {
+    const half =
+        Math.max(EXTENT.half, HEADDRESS.half * proportions.headdress + 1.5) * proportions.width
+    const depth = EXTENT.depth * proportions.width
+    const height =
+        (EXTENT.height + HEADDRESS.rise * (proportions.headdress - 1)) * proportions.height
     const margin = 1
     const top = -depth * tilt - height * riseOf(tilt)
     return {

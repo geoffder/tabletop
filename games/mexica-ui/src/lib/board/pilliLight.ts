@@ -20,8 +20,7 @@ import {
     srgb,
     type Vec
 } from './light.js'
-import { PILLI_PIXELS, pilliBounds } from './pilliShape.js'
-import { PILLI_SIZE, PILLI_WIDTH } from './view.js'
+import { PILLI, PILLI_PIXELS, pilliBounds } from './pilliShape.js'
 import {
     castRays,
     normalAt,
@@ -60,14 +59,17 @@ type Figure = { scene: Scene; finish: (p: Vec) => Finish }
 // The figure's light over its paint, a second layer of light for dark paint, and its outline.
 export type PilliLook = { bitmap: Bitmap; shine: Bitmap; outline: string }
 
-// From the board's units back to the figure as drawn, slimmed to PILLI_WIDTH across.
-const unscaled = (p: Vec): Vec => [p[0] / PILLI_WIDTH, p[1] / PILLI_WIDTH, p[2] / PILLI_SIZE]
-
-export function renderPilli(tilt: number, pixels = PILLI_PIXELS): PilliLook {
-    const box = pilliBounds(tilt)
-    const full = FIGURE
+export function renderPilli(tilt: number, pixels = PILLI_PIXELS, proportions = PILLI): PilliLook {
+    const box = pilliBounds(tilt, proportions)
+    const full = figureWith(proportions.headdress)
+    // From the board's units back to the figure as drawn.
+    const unscaled = (p: Vec): Vec => [
+        p[0] / proportions.width,
+        p[1] / proportions.width,
+        p[2] / proportions.height
+    ]
     const figure: Figure = {
-        scene: (p) => full.scene(unscaled(p)) * Math.min(PILLI_WIDTH, PILLI_SIZE),
+        scene: (p) => full.scene(unscaled(p)) * Math.min(proportions.width, proportions.height),
         finish: (p) => full.finish(unscaled(p))
     }
     const toward: Vec = [0, Math.sqrt(1 - tilt * tilt), tilt]
@@ -409,30 +411,44 @@ function fanFinish(fan: Fan, p: Vec): Finish {
     return paint(fan.tone)
 }
 
-const PARTS: Part[] = [
-    { distance: body, finish: bodyFinish },
-    NECKED,
-    ...[BACK_FAN, FRONT_FAN].map((fan) => ({
-        distance: (p: Vec) => featherFan(fan, p),
-        finish: (p: Vec) => fanFinish(fan, p)
-    })),
-    CIRCLETED
-]
-
-function nearestPart(p: Vec): { part: Part; distance: number } {
-    let part = PARTS[0]
-    let distance = Infinity
-    for (const candidate of PARTS) {
-        const d = candidate.distance(p)
-        if (d < distance) {
-            distance = d
-            part = candidate
-        }
+// A row of feathers scaled up from its foot.
+function scaledFan(fan: Fan, by: number): Fan {
+    const foot = fan.centre[2] - 0.75 * fan.radii[2]
+    return {
+        ...fan,
+        centre: [fan.centre[0], fan.centre[1], foot + 0.75 * fan.radii[2] * by],
+        radii: scale(fan.radii, by)
     }
-    return { part, distance }
 }
 
-const FIGURE: Figure = {
-    scene: (p) => Math.max(nearestPart(p).distance, -p[2]),
-    finish: (p) => nearestPart(p).part.finish(p)
+// The figure with its headdress scaled by `headdress`.
+function figureWith(headdress: number): Figure {
+    const parts: Part[] = [
+        { distance: body, finish: bodyFinish },
+        NECKED,
+        ...[BACK_FAN, FRONT_FAN].map((row) => {
+            const fan = scaledFan(row, headdress)
+            return {
+                distance: (p: Vec) => featherFan(fan, p),
+                finish: (p: Vec) => fanFinish(fan, p)
+            }
+        }),
+        CIRCLETED
+    ]
+    const nearestPart = (p: Vec): { part: Part; distance: number } => {
+        let part = parts[0]
+        let distance = Infinity
+        for (const candidate of parts) {
+            const d = candidate.distance(p)
+            if (d < distance) {
+                distance = d
+                part = candidate
+            }
+        }
+        return { part, distance }
+    }
+    return {
+        scene: (p) => Math.max(nearestPart(p).distance, -p[2]),
+        finish: (p) => nearestPart(p).part.finish(p)
+    }
 }
