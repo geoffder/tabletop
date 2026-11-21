@@ -11,9 +11,10 @@ export const BRIDGE_RISE = 0.16
 // drawn size.
 // A Pilli Mexica's height, and its width and depth, as multiples of the figure as drawn: tall
 // enough to show behind a temple, slim enough to stand between a bridge's curbs.
-export const PILLI_SIZE = 1.3
-export const PILLI_WIDTH = 1.05
-export const PILLI_HEIGHT = 0.8 * PILLI_SIZE
+export const PILLI_SIZE = 1.4
+export const PILLI_WIDTH = 1.08
+// To the top of its headdress, as a share of a cell.
+export const PILLI_HEIGHT = 0.85 * PILLI_SIZE
 export const PILLI_DEPTH = 0.24 * PILLI_WIDTH
 
 const LABEL_SIZE = 12

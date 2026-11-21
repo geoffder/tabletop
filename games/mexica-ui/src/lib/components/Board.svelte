@@ -101,9 +101,9 @@
 
     const playerFill = (playerId?: string) =>
         playerId === undefined ? 'var(--mx-neutral)' : session.playerFill(playerId)
-    // A Pilli Mexica's paint, toned a quarter of the way towards the island's earth so the
+    // A Pilli Mexica's paint, toned a little towards the island's earth so the
     // figures sit among the stone.
-    const pilliPaint = (fill: string) => `color-mix(in srgb, ${fill} 75%, #8c7f6a)`
+    const pilliPaint = (fill: string) => `color-mix(in srgb, ${fill} 88%, #8c7f6a)`
 
     // What a tap on each cell would do now.
     const choosable: ReadonlySet<Cell> = $derived.by(() => {
