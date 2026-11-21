@@ -18,6 +18,7 @@
         return token === undefined ? undefined : tokenSize(token)
     })
     const tool = $derived(session.tool)
+    const singles = $derived(session.gameState.singleCanalsLeft())
     const AXIS_NAMES: Record<Axis, string> = {
         [Axis.NorthSouth]: '↕',
         [Axis.EastWest]: '↔'
@@ -50,18 +51,14 @@
                     onclick={() => session.chooseAxis(axis)}>{AXIS_NAMES[axis]}</button
                 >{/each}</span
         >
-    {:else if tool === 'canal' && session.chosenCell !== undefined && !session.canDigChosenAlone}
-        <span>Tap a neighbour for a double canal</span>
+    {:else if tool === 'canal' && session.chosenCell !== undefined && session.canDigChosenAlone}
+        <span>Tap a neighbour for a double canal, or the same space again for a single</span>
     {:else if tool === 'canal' && session.chosenCell !== undefined}
-        <span
-            >Tap a neighbour for a double canal, or <button
-                type="button"
-                class="inline"
-                onclick={() => session.digCanal([session.chosenCell ?? 0])}>Single</button
-            ></span
-        >
+        <span>Tap a neighbour for a double canal</span>
+    {:else if tool === 'canal' && singles > 0}
+        <span>Tap a space to dig, twice for a single ({singles}&nbsp;left)</span>
     {:else if tool === 'canal'}
-        <span>Dig a canal: tap a space</span>
+        <span>Tap two neighbouring spaces to dig</span>
     {:else if tool === 'bridge'}
         <span>Build a bridge: tap a canal</span>
     {:else if tool === 'moveBridge'}
