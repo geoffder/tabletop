@@ -32,6 +32,9 @@
 
     // The shared wrapper exposes full screen only as its dialog becoming modal.
     let expanded = $state(false)
+    // The board's space, so it leaves its overlaid controls their room at any size.
+    let spaceWidth = $state(0)
+    let spaceHeight = $state(0)
     const watchExpansion: Attachment<HTMLElement> = (node) => {
         const dialog = node.closest('dialog')
         if (!dialog) return
@@ -105,7 +108,12 @@
             <div class="shrink-0">
                 {@render turnControls()}
             </div>
-            <div class="grow-0 overflow-hidden pt-2" style="flex:1; min-height: 40dvh;">
+            <div
+                class="grow-0 overflow-hidden pt-2"
+                style="flex:1; min-height: 40dvh;"
+                bind:clientWidth={spaceWidth}
+                bind:clientHeight={spaceHeight}
+            >
                 <ScalingWrapper
                     justify="center"
                     controls="bottom-left"
@@ -114,7 +122,7 @@
                     renderAtViewScale
                     expandable
                 >
-                    <Board />
+                    <Board space={{ width: spaceWidth, height: spaceHeight - 8 }} />
                     {#snippet overlay()}
                         <div
                             class="pointer-events-auto absolute right-3 bottom-2 z-10 flex items-center gap-1.5"
