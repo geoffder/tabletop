@@ -5,8 +5,8 @@ import { type Box, PILLI_SIZE, PILLI_WIDTH } from './view.js'
 // A Pilli Mexica as a painted wooden figure, feet at the origin: x to the right, y towards the
 // viewer, z up, in board units at full size: a noble in a robe flaring like a pawn's to a ring at
 // the foot, studs round the hem between raised lines, the cloak's opening down the front, a
-// cord along the cape's edge, a head of turned wood in a gold circlet set with turquoise, and
-// two rows of feathers behind.
+// cord along the cape's edge, a mask after the one on the box over a painted hood, and two rows
+// of feathers springing from the mask's frame.
 // How strongly the shine layer lies over the darkest paint.
 export const PILLI_SHINE = 0.3
 

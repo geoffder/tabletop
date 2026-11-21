@@ -1,7 +1,8 @@
 // A Pilli Mexica, lit pixel by pixel by marching rays against its distance field. The board
 // fills the figure's outline with its owner's colour and lays this image over it: where the
 // figure is painted, the image holds only the light, as black that darkens the paint and white
-// that lights it; bare wood and gold show as themselves. So one image serves every player colour.
+// that lights it; gold, shell and obsidian show as themselves. So one image serves every player
+// colour.
 // Only scripts/render-looks.mjs runs this, through the /looks page; rerun it after changing the
 // figure.
 import {
@@ -31,28 +32,15 @@ import {
     softShadow
 } from './raymarch.js'
 
-const WOOD = { light: linear('#e2bf91'), dark: linear('#b98a5a'), late: linear('#93683f') }
-// Turned wood: growth rings round the upright axis the head was turned on, wandering a little,
-// so the top shows rings and the sides streaks, and the wood itself mottled; matte.
-const WOOD_GRAIN = { spacing: 0.55, wander: 1.4, mottle: 0.3, strength: 0.5 }
-const grainNoise = fractal(noise2(173), 3)
-
-function woodAt(p: Vec): Rgb {
-    const wander = (grainNoise(p[0] * 0.35 + p[1] * 0.35, p[2] * 0.12) - 0.5) * WOOD_GRAIN.wander
-    const radius = length2(p[0] - HEAD.at[0], p[1] - HEAD.at[1]) + wander
-    const ring = 0.5 + 0.5 * Math.sin((radius / WOOD_GRAIN.spacing) * 2 * Math.PI)
-    const tone = 0.6 + (grainNoise(p[0] * 0.8 + 5, p[2] * 0.8) - 0.5) * WOOD_GRAIN.mottle * 2
-    const body = mix(WOOD.dark, WOOD.light, clamp(tone))
-    return mix(body, WOOD.late, smoothstep(0.55, 0.95, ring) * WOOD_GRAIN.strength)
-}
 const GOLD = { light: linear('#f0c85a'), dark: linear('#8a5a1c') }
-const TURQUOISE = { light: linear('#4cc3b4'), dark: linear('#0f5e5a') }
+const SHELL = linear('#efe6d2')
+const OBSIDIAN = linear('#17140f')
 // The light on a painted face turned towards it shows the paint as it is.
 const FULL_LIGHT = 0.95
 
 // What a point of the figure is made of: paint, lightened (above 1) or darkened (below) by
-// what is painted there, bare wood, gold or turquoise.
-type Finish = { kind: 'paint' | 'wood' | 'gold' | 'turquoise'; tone: number }
+// what is painted there, gold, shell or obsidian.
+type Finish = { kind: 'paint' | 'gold' | 'shell' | 'obsidian'; tone: number }
 type Part = { distance: (p: Vec) => number; finish: (p: Vec) => Finish }
 type Figure = { scene: Scene; finish: (p: Vec) => Finish }
 
@@ -151,7 +139,6 @@ function shade(p: Vec, figure: Figure, toward: Vec): Sample[] {
     const glance = sheen * ROOM * (1 - smoothstep(0, -0.35, mirror[2]))
     const below = sheen * PAVING * smoothstep(0, -0.35, mirror[2]) * SATIN
     const finish = figure.finish(p)
-    if (finish.kind === 'wood') return opaque(scale(woodAt(p), light))
     if (finish.kind === 'gold') {
         const half = normalize(add(KEY, toward))
         const facing = clamp(dot(normal, half))
@@ -159,11 +146,11 @@ function shade(p: Vec, figure: Figure, toward: Vec): Sample[] {
         const shine = GOLD_SHINE * facing ** 24
         return opaque(add(scale(metal, 0.3 + 0.8 * light), [shine, shine * 0.9, shine * 0.6]))
     }
-    if (finish.kind === 'turquoise') {
+    if (finish.kind === 'shell') return opaque(scale(SHELL, 0.35 + 0.75 * light))
+    if (finish.kind === 'obsidian') {
         const half = normalize(add(KEY, toward))
-        const polish = 0.25 * clamp(dot(normal, half)) ** 30
-        const stone = mix(TURQUOISE.dark, TURQUOISE.light, 0.5 + 0.5 * sun)
-        return opaque(add(scale(stone, 0.35 + 0.75 * light), [polish, polish, polish]))
+        const polish = 0.3 * clamp(dot(normal, half)) ** 40
+        return opaque(add(scale(OBSIDIAN, 0.5 + light), [polish, polish, polish]))
     }
     // As a factor on the paint's sRGB colour; more than full light, and the sheen's
     // reflections, lighten it.
@@ -180,6 +167,7 @@ function shade(p: Vec, figure: Figure, toward: Vec): Sample[] {
 type Flat = [number, number]
 
 const length2 = (x: number, y: number) => Math.hypot(x, y)
+const sub = (a: Vec, b: Vec): Vec => [a[0] - b[0], a[1] - b[1], a[2] - b[2]]
 
 // Smooth union: the two shapes meet in a fillet `k` wide.
 function blend(a: number, b: number, k: number): number {
@@ -220,9 +208,7 @@ function frustum(p: Vec, z0: number, z1: number, r0: number, r1: number, round: 
 }
 
 const paint = (tone = 1): Finish => ({ kind: 'paint', tone })
-const WOODEN: Finish = { kind: 'wood', tone: 1 }
 const GILT: Finish = { kind: 'gold', tone: 1 }
-const STONE: Finish = { kind: 'turquoise', tone: 1 }
 
 // The robe flares like a pawn's down to a ring at the foot, a cape lies over the shoulders, and
 // the head stands clear of the cape on a short neck.
@@ -319,64 +305,183 @@ function head(p: Vec): number {
     return sphere(p, HEAD.at, HEAD.radius)
 }
 
-// The head and neck, turned from one piece of wood.
-const NECKED: Part = {
+// The head and neck, painted as a hood that runs into the mask's frame.
+const HOODED: Part = {
     distance: (p) => blend(head(p), capsule(p, NECK.from, HEAD.at, NECK.radius), 0.6),
-    finish: () => WOODEN
+    finish: () => paint(0.95)
 }
-// A gold circlet high on the brow: a flat strip following the curve of the head, its edges
-// rounded, with a medallion set with turquoise at the front.
-const CIRCLET = { rise: 1.9, height: 0.95, depth: 0.32, round: 0.14, medallion: 1.05, disc: 0.32 }
-const MEDALLION: Vec = [
-    0,
-    HEAD.at[1] + Math.sqrt(HEAD.radius ** 2 - CIRCLET.rise ** 2) + CIRCLET.depth + 0.12,
-    HEAD.at[2] + CIRCLET.rise
+
+// A mask after the one on the box, in the owner's paint, worn over the whole face with its
+// features larger than life: a squared face in a raised frame, a heavy brow, bulging gold eyes
+// ringed in black with obsidian pupils, a broad nose, an open mouth of shell teeth between
+// lips, gold spools at the ears and a pendant at the chin. Its plate is part of a sphere
+// `radius` round a point `sink` behind and `drop` below the head's centre, so it turns its face
+// up towards the viewer; its outline is `half` wide, narrowing to `chin`, from `bottom` to `top`
+// round the head's centre. The feathers spring from the frame's top.
+const MASK = {
+    radius: 7,
+    sink: 2.7,
+    drop: 1.6,
+    thick: 0.55,
+    half: 3.9,
+    chin: 3.0,
+    top: 2.7,
+    bottom: -3.4
+}
+const FRAME = { width: 0.75, raise: 0.32, down: -1.4 }
+const BROW = { z: 1.75, half: 3.1, radius: 0.62 }
+// `ring` is the black line round each eye, as a share of its size.
+const EYE = { x: 1.62, z: 0.72, width: 1.28, height: 0.72, pupil: 0.42, bulge: 0.3, ring: 0.22 }
+const NOSE = { top: 1.0, tip: -0.8, radius: 0.88 }
+const MOUTH = { z: -1.7, width: 2.05, height: 0.8, tooth: 0.6, lips: 0.3 }
+const SPOOL = { x: 4.25, z: 0.15, radius: 1.12, depth: 0.45 }
+
+const BLACK: Finish = { kind: 'obsidian', tone: 1 }
+const WHITE: Finish = { kind: 'shell', tone: 1 }
+
+// The point on the mask's face at (x, z) round the head's centre, `out` in front of it.
+const onMask = (x: number, z: number, out = 0): Vec => [
+    x,
+    HEAD.at[1] -
+        MASK.sink +
+        Math.sqrt(Math.max(0, (MASK.radius + out) ** 2 - x * x - (z + MASK.drop) ** 2)),
+    HEAD.at[2] + z
 ]
 
-function circletBand(p: Vec): number {
+// How far (x, z), round the head's centre, lies outside the mask's outline: a rounded square
+// above, narrowing to the chin below.
+function maskOutline(x: number, z: number): number {
+    const below = Math.max(0, -z) / -MASK.bottom
+    const half = MASK.half + (MASK.chin - MASK.half) * below ** 1.5
+    const corner = 1.3
+    const qx = Math.abs(x) - half + corner
+    const qz = (z > 0 ? z - MASK.top : -z + MASK.bottom) + corner
+    return Math.min(Math.max(qx, qz), 0) + length2(Math.max(qx, 0), Math.max(qz, 0)) - corner
+}
+
+function maskSpherical(p: Vec, out: number, thick: number): number {
+    const q: Vec = [
+        p[0] - HEAD.at[0],
+        p[1] - (HEAD.at[1] - MASK.sink),
+        p[2] - (HEAD.at[2] - MASK.drop)
+    ]
+    return Math.max(Math.abs(Math.hypot(q[0], q[1], q[2]) - MASK.radius - out) - thick / 2, -q[1])
+}
+
+function nose(p: Vec): number {
+    return capsule(
+        p,
+        onMask(0, NOSE.top, 0.2),
+        onMask(0, NOSE.tip, NOSE.radius * 0.75),
+        NOSE.radius
+    )
+}
+
+function mask(p: Vec): number {
+    const x = p[0] - HEAD.at[0]
     const z = p[2] - HEAD.at[2]
-    const onHead = Math.sqrt(Math.max(0, HEAD.radius ** 2 - z * z))
-    const qx = length2(p[0], p[1] - HEAD.at[1]) - onHead - CIRCLET.depth / 2 + 0.05
-    const qz = z - CIRCLET.rise
-    const ax = Math.abs(qx) - CIRCLET.depth / 2 + CIRCLET.round
-    const az = Math.abs(qz) - CIRCLET.height / 2 + CIRCLET.round
-    const box = Math.min(Math.max(ax, az), 0) + length2(Math.max(ax, 0), Math.max(az, 0))
-    return (box - CIRCLET.round) * 0.8
+    const edge = maskOutline(x, z)
+    const plate = Math.max(maskSpherical(p, 0, MASK.thick), edge)
+    const frame = Math.max(
+        maskSpherical(p, FRAME.raise / 2, MASK.thick + FRAME.raise),
+        edge,
+        -(edge + FRAME.width),
+        FRAME.down - z
+    )
+    const brow = capsule(
+        p,
+        onMask(-BROW.half, BROW.z, 0.15),
+        onMask(BROW.half, BROW.z, 0.15),
+        BROW.radius
+    )
+    const eyes = Math.min(
+        ...[-1, 1].map((side) =>
+            ellipsoid(sub(p, onMask(side * EYE.x, EYE.z, -0.1)), [
+                EYE.width,
+                EYE.bulge + 0.3,
+                EYE.height
+            ])
+        )
+    )
+    const lips = Math.min(
+        ...[MOUTH.height, -MOUTH.height].map((dz) =>
+            capsule(
+                p,
+                onMask(-MOUTH.width * 0.9, MOUTH.z + dz, 0.05),
+                onMask(MOUTH.width * 0.9, MOUTH.z + dz, 0.05),
+                MOUTH.lips
+            )
+        )
+    )
+    const spools = Math.min(
+        ...[-1, 1].map((side) => {
+            const at = onMask(side * SPOOL.x, SPOOL.z)
+            const across = Math.hypot(p[0] - at[0], p[2] - at[2]) - SPOOL.radius
+            const along = Math.abs(p[1] - at[1] - 0.1) - SPOOL.depth / 2
+            return (
+                Math.min(Math.max(across, along), 0) +
+                length2(Math.max(across, 0), Math.max(along, 0))
+            )
+        })
+    )
+    const chin = onMask(0, MASK.bottom + 0.3, 0.1)
+    const pendant = capsule(p, chin, add(chin, [0, 0.15, -1.0]), 0.45)
+    const features = Math.min(brow, nose(p), eyes, lips)
+    return Math.min(blend(Math.min(plate, frame), features, 0.3), spools, pendant)
 }
 
-// A disc `radius` across and `depth` thick, facing the viewer, its edge rounded.
-function medallion(p: Vec, radius: number, depth: number): number {
-    const along = Math.abs(p[1] - MEDALLION[1]) - depth / 2
-    const out = length2(p[0] - MEDALLION[0], p[2] - MEDALLION[2]) - radius
-    const round = Math.min(depth / 2, 0.2)
-    const qx = out + round
-    const qy = along + round
-    return Math.min(Math.max(qx, qy), 0) + length2(Math.max(qx, 0), Math.max(qy, 0)) - round
+function maskFinish(p: Vec): Finish {
+    const x = p[0] - HEAD.at[0]
+    const z = p[2] - HEAD.at[2]
+    if (z < MASK.bottom + 0.2) return GILT
+    const toSpool = Math.hypot(Math.abs(x) - SPOOL.x, z - SPOOL.z)
+    if (toSpool < SPOOL.radius + 0.15) return toSpool < SPOOL.radius * 0.45 ? BLACK : GILT
+    // The nose's sides stay paint, however close the eyes come.
+    if (nose(p) > 0.08) {
+        const inEye = Math.hypot((Math.abs(x) - EYE.x) / EYE.width, (z - EYE.z) / EYE.height)
+        if (inEye < 1) return Math.hypot(Math.abs(x) - EYE.x, z - EYE.z) < EYE.pupil ? BLACK : GILT
+        if (inEye < 1 + EYE.ring) return BLACK
+    }
+    if (Math.abs(x) < MOUTH.width * 0.85 && Math.abs(z - MOUTH.z) < MOUTH.height * 0.75) {
+        const tooth = (((x / MOUTH.tooth) % 1) + 1) % 1 > 0.16
+        return z > MOUTH.z - 0.05 && tooth ? WHITE : BLACK
+    }
+    if (maskOutline(x, z) > -FRAME.width - 0.05 && z > FRAME.down - 0.1) return paint(1.25)
+    return paint(1.08)
 }
 
-const CIRCLETED: Part = {
-    distance: (p) => Math.min(circletBand(p), medallion(p, CIRCLET.medallion, CIRCLET.disc)),
-    finish: (p) => (medallion(p, CIRCLET.medallion * 0.55, CIRCLET.disc + 0.1) < 0 ? STONE : GILT)
+// Two rows of feathers spring from the mask's frame and spread up and out, the front row
+// shorter and lighter, each feather curving outward and down towards its tip as the plumes
+// on the box do. A row's feathers spread from a point `below` its centre, as a share of its
+// height, and it is cut off below that point; `bend` is how far its feathers curve.
+type Fan = {
+    centre: Vec
+    radii: Vec
+    lean: number
+    spacing: number
+    tone: number
+    below: number
+    bend: number
 }
-
-// Two rows of feathers stand behind the head, leaning back, the front row shorter and lighter;
-// each row's feathers spread from a point below its centre.
-type Fan = { centre: Vec; radii: Vec; lean: number; spacing: number; tone: number }
+const CROWN_ROOT = HEAD.at[2] + 2.3 - 0.4
 const BACK_FAN: Fan = {
-    centre: [0, -3.4, 25],
-    radii: [7.8, 0.9, 6.4],
-    lean: 0.42,
-    spacing: 0.27,
-    tone: 1
+    centre: [0, -2.0, CROWN_ROOT + 0.15 * 5.4],
+    radii: [8.6, 0.9, 5.4],
+    lean: 0.35,
+    spacing: 0.3,
+    tone: 1,
+    below: 0.15,
+    bend: 0.55
 }
 const FRONT_FAN: Fan = {
-    centre: [0, -1.9, 23.3],
-    radii: [5.6, 0.8, 4.4],
-    lean: 0.25,
-    spacing: 0.32,
-    tone: 1.18
+    centre: [0, -0.4, CROWN_ROOT + 0.15 * 3.9],
+    radii: [6.2, 0.8, 3.9],
+    lean: 0.2,
+    spacing: 0.36,
+    tone: 1.18,
+    below: 0.15,
+    bend: 0.55
 }
-
 type FanPoint = { q: Vec; angle: number; along: number; reach: number; across: number }
 
 function fanPoint(fan: Fan, p: Vec): FanPoint {
@@ -384,7 +489,14 @@ function fanPoint(fan: Fan, p: Vec): FanPoint {
     const c = Math.cos(fan.lean)
     const s = Math.sin(fan.lean)
     const q: Vec = [x, y * c + z * s, -y * s + z * c]
-    const below = fan.radii[2] * 0.75
+    const below = fan.radii[2] * fan.below
+    // Each feather curves outward and down, more towards its tip: find the straight feather
+    // the point lies on by turning it back towards the upright by that much.
+    const r = length2(q[0], q[2] + below)
+    const turned =
+        Math.atan2(q[0], q[2] + below) - Math.tanh(q[0] / 0.6) * fan.bend * (r / fan.radii[0]) ** 2
+    q[0] = r * Math.sin(turned)
+    q[2] = r * Math.cos(turned) - below
     const angle = Math.atan2(q[0], q[2] + below)
     const along = length2(q[0], q[2] + below)
     const reach = length2(q[0] / fan.radii[0], q[2] / fan.radii[2])
@@ -399,9 +511,10 @@ function featherFan(fan: Fan, p: Vec): number {
     const swell = 0.55 + 0.9 * (1 - 2 * Math.abs(across))
     const tip = (1 - Math.cos(across * Math.PI * 2)) * 0.45
     const radii: Vec = [fan.radii[0] - tip, fan.radii[1] * swell, fan.radii[2] - tip]
-    const leaf = ellipsoid(q, radii) * 0.75
+    const leaf = ellipsoid(q, radii) * 0.6
     const parting = Math.min((Math.abs(across) - 0.43) * fan.spacing * along, (reach - 0.5) * 4)
-    return Math.max(leaf, parting)
+    const root = -(q[2] + fan.radii[2] * fan.below)
+    return Math.max(leaf, parting, root)
 }
 
 function fanFinish(fan: Fan, p: Vec): Finish {
@@ -413,10 +526,11 @@ function fanFinish(fan: Fan, p: Vec): Finish {
 
 // A row of feathers scaled up from its foot.
 function scaledFan(fan: Fan, by: number): Fan {
-    const foot = fan.centre[2] - 0.75 * fan.radii[2]
+    const share = fan.below
+    const foot = fan.centre[2] - share * fan.radii[2]
     return {
         ...fan,
-        centre: [fan.centre[0], fan.centre[1], foot + 0.75 * fan.radii[2] * by],
+        centre: [fan.centre[0], fan.centre[1], foot + share * fan.radii[2] * by],
         radii: scale(fan.radii, by)
     }
 }
@@ -424,16 +538,16 @@ function scaledFan(fan: Fan, by: number): Fan {
 // The figure with its headdress scaled by `headdress`.
 function figureWith(headdress: number): Figure {
     const parts: Part[] = [
+        { distance: mask, finish: maskFinish },
+        HOODED,
         { distance: body, finish: bodyFinish },
-        NECKED,
         ...[BACK_FAN, FRONT_FAN].map((row) => {
             const fan = scaledFan(row, headdress)
             return {
                 distance: (p: Vec) => featherFan(fan, p),
                 finish: (p: Vec) => fanFinish(fan, p)
             }
-        }),
-        CIRCLETED
+        })
     ]
     const nearestPart = (p: Vec): { part: Part; distance: number } => {
         let part = parts[0]
