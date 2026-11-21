@@ -14,6 +14,7 @@ import pilli from '../images/looks/pilli.webp'
 import pilliFlat from '../images/looks/pilli-flat.webp'
 import pilliShine from '../images/looks/pilli-shine.webp'
 import pilliShineFlat from '../images/looks/pilli-shine-flat.webp'
+import pinches from '../images/looks/pinches.webp'
 import shore from '../images/looks/shore.webp'
 import slopeCornerNe from '../images/looks/slope-corner-ne.webp'
 import slopeCornerNw from '../images/looks/slope-corner-nw.webp'
@@ -118,6 +119,7 @@ export const LOOK_URLS: Record<string, string> = {
     'pilli-flat': pilliFlat,
     'pilli-shine': pilliShine,
     'pilli-shine-flat': pilliShineFlat,
+    pinches: pinches,
     shore: shore,
     'slope-corner-ne': slopeCornerNe,
     'slope-corner-nw': slopeCornerNw,

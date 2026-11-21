@@ -18,6 +18,7 @@
         CANAL_LOOK,
         LAKE_LOOK,
         PAVING_LOOK,
+        PINCH_LOOK,
         SHORE_LOOK,
         type SlopeCorner,
         slopeCornerLook,
@@ -29,6 +30,7 @@
         bridgeLook
     } from '$lib/board/looks.js'
     import type { Bitmap } from '$lib/board/light.js'
+    import { renderPinchSheet } from '$lib/board/pinchPatches.js'
     import { renderTemple } from '$lib/board/templeLight.js'
     import { renderBridge } from '$lib/board/bridgeLight.js'
     import { renderToken } from '$lib/board/tokenLight.js'
@@ -106,6 +108,7 @@
         drawn[LAKE_LOOK] = toUrl(renderLake(TURQUOISE), 0.86)
         drawn[CANAL_LOOK] = toUrl(renderCanal(TURQUOISE), 0.86)
         drawn[SHORE_LOOK] = toUrl(renderShore(), 0.86)
+        drawn[PINCH_LOOK] = toUrl(renderPinchSheet(2), 0.9)
         for (const side of SLOPE_SIDES) drawn[slopeLook(side)] = toUrl(renderSlope(side), 0.9)
         for (const out of SLOPE_SIDES) {
             for (const end of SLOPE_SIDES) {

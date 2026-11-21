@@ -175,23 +175,33 @@ export function waterworks(landCells: readonly Cell[], canals: ReadonlySet<Cell>
 function banksOf(island: Island, spot: Spot): Bank[] {
     const banked = (side: SlopeSide) => island.ground(plus(spot, STEP[side]))
     const edges = edgesOf(spot)
-    // Each bank stops short of an inside corner, where the cove takes over.
+    // Each bank stops short of an inside corner, where the cove takes over; at a pinch, where
+    // the land on the two sides touches only at the corner, the banks meet in a mitre instead.
     const cove = BANK_WIDTH + COVE_TOE
+    const pinch = (side: SlopeSide, end: SlopeSide) =>
+        !island.ground(plus(spot, plus(STEP[side], STEP[end])))
     return SIDES.filter(banked).map((side) => {
         const [a, b] = edges[side]
         const inward = { x: -STEP[side].column, y: -STEP[side].row }
         const along = { x: (b.x - a.x) / CELL, y: (b.y - a.y) / CELL }
         const [before, after] = ENDS[side]
-        const startA = offset(a, along, banked(before) ? cove : 0)
-        const endB = offset(b, along, banked(after) ? -cove : 0)
+        // Of the two banks at a mitre, the first drawn runs square into the corner and the
+        // second is mitred over it, so no seam opens along the mitre.
+        const mitred = (end: SlopeSide) =>
+            banked(end) && pinch(side, end) && SIDES.indexOf(side) > SIDES.indexOf(end)
+        const mitreA = mitred(before)
+        const mitreB = mitred(after)
+        const coved = (end: SlopeSide) => banked(end) && !pinch(side, end)
+        const startA = offset(a, along, coved(before) ? cove : 0)
+        const endB = offset(b, along, coved(after) ? -cove : 0)
         return {
             key: `bank-${keyOf(spot)}-${side}`,
             slope: side,
             points: shape([
                 startA,
                 endB,
-                offset(endB, inward, BANK_WIDTH),
-                offset(startA, inward, BANK_WIDTH)
+                offset(offset(endB, inward, BANK_WIDTH), along, mitreB ? -BANK_WIDTH : 0),
+                offset(offset(startA, inward, BANK_WIDTH), along, mitreA ? BANK_WIDTH : 0)
             ])
         }
     })
@@ -217,7 +227,7 @@ function curvesOf(island: Island, spot: Spot, banked = true): Curve[] {
         const across = plus(spot, plus(STEP[up], STEP[beside]))
         const above = plus(spot, STEP[up])
         const aside = plus(spot, STEP[beside])
-        if (banked && island.ground(above) && island.ground(aside)) {
+        if (banked && island.ground(above) && island.ground(aside) && island.ground(across)) {
             return [at(corner, up, beside, 'inside')]
         }
         if (island.water(above) && island.water(aside) && island.ground(across)) {
