@@ -198,6 +198,13 @@
     {@const [, second, third] = placePoints(tokenSize(tokenId))}
     {@const face = -tokenFaceLift(view.tilt)}
     <g transform="translate({centre.x} {centre.y}) scale({radius / TOKEN.radius})" class="surface">
+        <ellipse
+            cx="3"
+            cy="3"
+            rx={TOKEN.radius * 1.25}
+            ry={TOKEN.radius * 1.25 * view.tilt}
+            fill="url(#mx-piece-shadow)"
+        ></ellipse>
         <image
             href={LOOK_URLS[tokenLook(view.flat)]}
             {...tokenBounds(view.tilt)}
@@ -205,14 +212,14 @@
         ></image>
         <text
             class="token-size"
-            y={face - 6 * view.tilt}
+            y={face - 6.6 * view.tilt}
             dy="5.6"
             text-anchor="middle"
             fill={TOKEN_INK}>{tokenSize(tokenId)}</text
         >
         <text
             class="token-points"
-            y={face + 9 * view.tilt}
+            y={face + 7.6 * view.tilt}
             dy="3.5"
             text-anchor="middle"
             fill={TOKEN_INK}>{second} · {third}</text
