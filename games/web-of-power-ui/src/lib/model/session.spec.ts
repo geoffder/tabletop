@@ -179,6 +179,7 @@ describe('Choosing cards', () => {
         session.chooseCard(second)
         expect(session.chosenCards).toHaveLength(2)
         expect(session.chosenCountries).toHaveLength(9)
+        expect(session.canExchangeChosen).toBe(false)
         await settled(session.undo())
         expect(session.chosenCards).toHaveLength(1)
     })

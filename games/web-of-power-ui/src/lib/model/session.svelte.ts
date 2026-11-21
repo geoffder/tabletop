@@ -219,9 +219,12 @@ export class WebOfPowerGameSession extends GameSession<
         await this.applyAction(this.createPlayerAction(EndPlacing, {}))
     }
 
+    // An exchange gives up one card, so a joker's pair can't be exchanged.
+    canExchangeChosen = $derived(this.canExchange && this.chosenCards.length === 1)
+
     async exchange() {
         const [card] = this.chosenCards
-        if (this.updatingVisibleState || !this.canExchange || card === undefined) return
+        if (this.updatingVisibleState || !this.canExchangeChosen || card === undefined) return
         await this.applyAction(this.createPlayerAction(ExchangeCard, { card }))
     }
 

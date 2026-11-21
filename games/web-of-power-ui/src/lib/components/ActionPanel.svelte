@@ -52,7 +52,7 @@
             >
         {:else if session.chosenCards.length > 0}
             <span
-                >{#if session.targets.length > 0}Place in {where}{:else}Nowhere to place with that{/if}{#if session.canExchange}{' or '}<button
+                >{#if session.targets.length > 0}Place in {where}{:else}Nowhere to place with that{/if}{#if session.canExchangeChosen}{' or '}<button
                         type="button"
                         class="inline"
                         onclick={() => session.exchange()}>Exchange</button
