@@ -115,6 +115,14 @@
     const keyOf = (piece: Raised) =>
         piece.kind === 'pilli' ? `pilli-${piece.playerId}` : `${piece.kind}-${piece.cell}`
 
+    // A dugout canoe along x, round its middle on the water, in board units.
+    const CANOE = {
+        shadow: 'M-24 2 Q-15 -6.5 0 -6.5 Q15 -6.5 24 2 Q15 9.5 0 9.5 Q-15 9.5 -24 2 Z',
+        hull: 'M-23 0 Q-14 -7.5 0 -7.5 Q14 -7.5 23 0 Q14 7.5 0 7.5 Q-14 7.5 -23 0 Z',
+        hollow: 'M-18.5 0 Q-11 -5 0 -5 Q11 -5 18.5 0 Q11 5 0 5 Q-11 5 -18.5 0 Z',
+        thwart: 'M-9 -4.8 V4.8 M9 -4.8 V4.8'
+    }
+
     // Neighbouring canal cells overlap a little, or their clipped edges leave a seam.
     const CLIP_OVERLAP = 0.5
 
@@ -594,6 +602,16 @@
                 class="chosen"
                 {@attach animator.mark()}
             ></rect>
+        {/each}
+
+        <!-- Canoes the Pilli Mexica ride from bridge to bridge, under the bridges they pass. -->
+        {#each animator.boats as boat (boat)}
+            <g {@attach animator.boat(boat)} class="surface">
+                <path d={CANOE.shadow} fill="rgb(10 40 45 / 0.35)"></path>
+                <path d={CANOE.hull} fill="#8a5a32" stroke="#5b3a1e" stroke-width="0.8"></path>
+                <path d={CANOE.hollow} fill="#4e3219"></path>
+                <path d={CANOE.thwart} stroke="#a7753f" stroke-width="1.4" fill="none"></path>
+            </g>
         {/each}
 
         {#each raised as piece (keyOf(piece))}

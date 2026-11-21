@@ -10,16 +10,23 @@ import {
     type Bridge,
     type Cell,
     cellAt,
+    CELL_COUNT,
     columnOf,
     type HydratedMexicaGameState,
     isDigCanal,
+    DIRECTIONS,
+    Direction,
+    isLake,
     isLand,
     isMovePilli,
+    neighbour,
+    neighbours,
     rowOf,
     type Temple
 } from '@tabletop/mexica'
 import type { MexicaGameSession, MoveInterrupter } from '$lib/model/session.svelte.js'
-import { type Box, type BoardView, CELL } from '$lib/board/view.js'
+import type { Point } from '@tabletop/common'
+import { type Box, type BoardView, BRIDGE_RISE, CELL } from '$lib/board/view.js'
 import { pilliSpot } from '$lib/board/pilliSpot.js'
 import { COVE_TOE } from '$lib/board/looks.js'
 import { BANK_WIDTH } from '$lib/board/waterworks.js'
@@ -42,6 +49,23 @@ const LIFT_OFF = { duration: 0.22, rise: -30, scale: 1.04 }
 // A Pilli Mexica walks its route a square at a time, a small hop to each, and glides from or
 // into a canal it crosses by boat.
 const WALK = { hop: 0.15, glide: 0.2, height: -7 }
+// A ride by boat from bridge to bridge: a canoe slides out from under the first bridge in
+// `emerge`, the Pilli Mexica hops down into it and is paddled along the canals and the lake,
+// `cell` seconds a square, at least `least`; at a bridge on the way the canoe passes under while
+// the Pilli hops over the deck, `over` above it, and lands in the canoe again; at the last
+// bridge the Pilli hops up onto the deck and the canoe slides back under. Longer than a bridge
+// is wide, it fades as it goes under. The canoe waits `off` of a square short of each end
+// bridge's middle, and the Pilli rides `sink` lower than it stands on the ground.
+const BOAT = {
+    cell: 0.17,
+    least: 0.45,
+    hop: 0.24,
+    show: 0.16,
+    off: 0.62,
+    over: 7,
+    sink: 3,
+    emerge: 0.3
+}
 // A step without an action ends within QUICK: pieces slide straight to where they end, and
 // placed pieces drop in or lift off.
 const QUICK = 0.18
@@ -124,11 +148,14 @@ export class BoardAnimator implements MoveInterrupter {
     // Where each walking Pilli Mexica has got to, for the order the board draws in.
     walking: ReadonlyMap<string, Cell> = $state.raw(new Map())
     floods: readonly Flood[] = $state.raw([])
+    // The canoes Pilli Mexica are riding in this move.
+    boats: readonly string[] = $state.raw([])
 
     private readonly parts = new Map<string, Parts>()
     private readonly marks = new Set<SVGElement>()
     private readonly springNodes = new Map<string, SVGCircleElement>()
     private readonly floodPavings = new Map<string, SVGImageElement>()
+    private readonly boatNodes = new Map<string, SVGGElement>()
     private readonly listener = (step: Step) => this.onGameStateChange(step)
     private timeline: Timeline | undefined
     private landMove: (() => void) | undefined
@@ -186,6 +213,17 @@ export class BoardAnimator implements MoveInterrupter {
         }
     }
 
+    // A canoe, its hull drawn round the origin along x in board units; the animator places it
+    // and turns it on the board.
+    boat(key: string): Attachment<SVGGElement> {
+        return (node) => {
+            this.boatNodes.set(key, node)
+            return () => {
+                if (this.boatNodes.get(key) === node) this.boatNodes.delete(key)
+            }
+        }
+    }
+
     // A disc of water running into a dug canal from one of its springs.
     spring(key: string, kind: SpringKind, index: number): Attachment<SVGCircleElement> {
         const name = `${key}-${kind}-${index}`
@@ -222,6 +260,7 @@ export class BoardAnimator implements MoveInterrupter {
             this.drawn = this.boardOf(this.session.gameState)
             this.walking = new Map()
             this.floods = []
+            this.boats = []
             throw error
         }
     }
@@ -281,6 +320,20 @@ export class BoardAnimator implements MoveInterrupter {
             ...tilesOf(to, dug).map((tile) => this.floodOf(tile.cells, before.canals)),
             ...tilesOf(from, filled).map((tile) => this.floodOf(tile.cells, after.canals))
         ]
+        this.boats = quick
+            ? []
+            : moves.flatMap((move) => {
+                  const walked =
+                      isMovePilli(action) &&
+                      action.playerId === move.playerId &&
+                      !action.metadata?.teleport
+                          ? action.metadata?.path
+                          : undefined
+                  return walked !== undefined &&
+                      voyagesOf(walked, decksOf(before, after)).length > 0
+                      ? [`boat-${move.playerId}`]
+                      : []
+              })
         const drawing = performance.now()
         await tick()
         const timeline = gsap.timeline()
@@ -316,7 +369,7 @@ export class BoardAnimator implements MoveInterrupter {
             this.liftOff(`pilli-${pilli.playerId}`, timeline, touched, lift)
         }
         const view = this.view()
-        const decks = new Set([...before.bridges, ...after.bridges].map((bridge) => bridge.cell))
+        const decks = decksOf(before, after)
         for (const move of moves) {
             const key = `pilli-${move.playerId}`
             if (move.from === undefined) {
@@ -353,6 +406,7 @@ export class BoardAnimator implements MoveInterrupter {
             if (this.timeline === timeline) this.timeline = undefined
             this.walking = new Map()
             this.floods = []
+            this.boats = []
             for (const node of touched) {
                 setPose(node, { x: 0, y: 0, scale: 1 })
                 gsap.set(node, { opacity: 1 })
@@ -522,7 +576,8 @@ export class BoardAnimator implements MoveInterrupter {
     }
 
     // The Pilli Mexica walks its route: a small hop onto each square, a glide onto or off the
-    // water of a canal it crosses by boat. Its group moves between squares and its body hops.
+    // water of a canal it crosses, and a ride by canoe from bridge to bridge. Its group moves
+    // between squares and its body hops.
     private walk(
         key: string,
         playerId: string,
@@ -537,8 +592,27 @@ export class BoardAnimator implements MoveInterrupter {
         const start = pilliSpot(view, path[0], decks)
         const wholePose = poseOf(whole)
         const bodyPose = poseOf(body)
+        const voyages = voyagesOf(path, decks)
         let at = 0
-        for (let index = 1; index < path.length; index++) {
+        let index = 1
+        while (index < path.length) {
+            const voyage = voyages.find((stops) => stops[0] === index - 1)
+            if (voyage !== undefined) {
+                const stops = voyage.map((stop) => path[stop])
+                at = this.ride(
+                    `boat-${playerId}`,
+                    playerId,
+                    stops,
+                    decks,
+                    start,
+                    whole,
+                    body,
+                    timeline,
+                    at
+                )
+                index = voyage[voyage.length - 1] + 1
+                continue
+            }
             const cell = path[index]
             const end = pilliSpot(view, cell, decks)
             const afloat =
@@ -576,7 +650,199 @@ export class BoardAnimator implements MoveInterrupter {
                 at + duration / 2
             )
             at += duration
+            index++
         }
+    }
+
+    // A ride by canoe through `stops`, bridges each a boat ride from the last; returns when it
+    // ends. The canoe follows the water from square to square, and where the way runs round the
+    // island beyond the board's edge, it paddles off the board and back on where the water
+    // joins again. `start` is where the Pilli Mexica stood before its move, which its group's
+    // pose is measured from.
+    private ride(
+        key: string,
+        playerId: string,
+        stops: readonly Cell[],
+        decks: ReadonlySet<Cell>,
+        start: Point,
+        whole: SVGGElement,
+        body: SVGGElement,
+        timeline: Timeline,
+        from: number
+    ): number {
+        const view = this.view()
+        const boat = this.boatNodes.get(key)
+        if (boat === undefined) throw new Error(`The canoe ${key} is drawn before it sails`)
+        const water = this.session.gameState.layout().canals
+        const stretches = stretchesOf(stops, water, decks).map((stretch) => {
+            const points = stretch.cells.map((cell) => view.centre(cell))
+            if (stretch.fromOutside) points.unshift(beyondEdge(view, stretch.cells[0]))
+            if (stretch.toOutside)
+                points.push(beyondEdge(view, stretch.cells[stretch.cells.length - 1]))
+            const course = courseOf(points)
+            const offset = stretch.fromOutside ? 1 : 0
+            const passed = stretch.cells.flatMap((cell, index) =>
+                stops.slice(1, -1).includes(cell) ? [course.at[index + offset]] : []
+            )
+            return { ...stretch, course, offset, passed }
+        })
+        const sink = BOAT.sink * view.tilt
+        const deck = view.lift(BRIDGE_RISE)
+        const wholePose = poseOf(whole)
+        const bodyPose = poseOf(body)
+        const place = (course: Course, distance: number) => {
+            const { point, heading } = course.pointAt(distance)
+            const ground = Math.atan2(heading.y / view.tilt, heading.x)
+            const [cos, sin] = [Math.cos(ground), Math.sin(ground)]
+            boat.setAttribute(
+                'transform',
+                `matrix(${cos} ${sin * view.tilt} ${-sin} ${cos * view.tilt} ${point.x} ${point.y})`
+            )
+            return point
+        }
+        // Where the canoe sets off and stops on each stretch: short of the bridges at either
+        // end, and from or to beyond the board's edge.
+        const ends = stretches.map((stretch, index) => {
+            const length = stretch.course.length
+            const first = index === 0 ? BOAT.off * CELL : 0
+            const last = index === stretches.length - 1 ? length - BOAT.off * CELL : length
+            return last > first ? { first, last } : { first: length / 2, last: length / 2 }
+        })
+        // The canoe slides out from under the first bridge, the Pilli hops down into it.
+        const outset = stretches[0].course
+        const board = outset.pointAt(ends[0].first).point
+        const emerging = { distance: 0 }
+        place(outset, 0)
+        gsap.set(boat, { opacity: 0 })
+        timeline.to(
+            emerging,
+            {
+                distance: ends[0].first,
+                duration: BOAT.emerge,
+                ease: 'power2.out',
+                onUpdate: () => void place(outset, emerging.distance)
+            },
+            from
+        )
+        timeline.to(boat, { opacity: 1, duration: BOAT.emerge * 0.6, ease: 'none' }, from)
+        const aboard = from + BOAT.emerge * 0.55
+        timeline.to(
+            wholePose,
+            { x: board.x - start.x, y: board.y + sink - start.y, duration: BOAT.hop, ease: 'none' },
+            aboard
+        )
+        timeline.to(
+            bodyPose,
+            { y: WALK.height, duration: BOAT.hop / 2, ease: 'power1.out' },
+            aboard
+        )
+        timeline.to(
+            bodyPose,
+            { y: 0, duration: BOAT.hop / 2, ease: 'power1.in' },
+            aboard + BOAT.hop / 2
+        )
+        // Paddled along the water, hopping over each bridge on the way.
+        let at = aboard + BOAT.hop
+        let square = -1
+        stretches.forEach((stretch, index) => {
+            const { first, last } = ends[index]
+            const course = stretch.course
+            if (index > 0) {
+                // Back onto the board where the water joins again.
+                timeline.call(() => void place(course, first), undefined, at)
+                timeline.to([boat, whole], { opacity: 1, duration: BOAT.show, ease: 'none' }, at)
+            }
+            const duration = Math.max(BOAT.least, ((last - first) / CELL) * BOAT.cell)
+            const travel = { distance: first }
+            timeline.to(
+                travel,
+                {
+                    distance: last,
+                    duration,
+                    ease:
+                        stretches.length === 1
+                            ? 'sine.inOut'
+                            : index === 0
+                              ? 'sine.in'
+                              : index === stretches.length - 1
+                                ? 'sine.out'
+                                : 'none',
+                    onUpdate: () => {
+                        const point = place(course, travel.distance)
+                        wholePose.x = point.x - start.x
+                        wholePose.y = point.y + sink - start.y
+                        let over = 0
+                        for (const bridge of stretch.passed) {
+                            const u = (travel.distance - bridge + CELL * 0.8) / (CELL * 1.6)
+                            if (u > 0 && u < 1)
+                                over = Math.sin(Math.PI * u) * (deck + sink + BOAT.over)
+                        }
+                        bodyPose.y = -over
+                        const near = course.squareAt(travel.distance) - stretch.offset
+                        const cell =
+                            stretch.cells[Math.max(0, Math.min(stretch.cells.length - 1, near))]
+                        if (cell !== square) {
+                            square = cell
+                            this.walking = new Map([...this.walking, [playerId, cell]])
+                        }
+                    }
+                },
+                at
+            )
+            at += duration
+            if (stretch.toOutside) {
+                // Off round the island beyond the board's edge.
+                timeline.to(
+                    [boat, whole],
+                    { opacity: 0, duration: BOAT.show, ease: 'none' },
+                    at - BOAT.show
+                )
+            }
+        })
+        // At the last bridge the Pilli hops up onto the deck and the canoe slides back under.
+        const landing = at
+        const inset = stretches[stretches.length - 1].course
+        const going = { distance: ends[ends.length - 1].last }
+        const under = landing + BOAT.hop * 0.4
+        timeline.to(
+            going,
+            {
+                distance: inset.length,
+                duration: BOAT.emerge,
+                ease: 'power2.in',
+                onUpdate: () => void place(inset, going.distance)
+            },
+            under
+        )
+        const end = pilliSpot(view, stops[stops.length - 1], decks)
+        timeline.to(
+            wholePose,
+            { x: end.x - start.x, y: end.y - start.y, duration: BOAT.hop, ease: 'none' },
+            landing
+        )
+        timeline.to(
+            bodyPose,
+            { y: WALK.height - deck, duration: BOAT.hop / 2, ease: 'power1.out' },
+            landing
+        )
+        timeline.to(
+            bodyPose,
+            { y: 0, duration: BOAT.hop / 2, ease: 'power1.in' },
+            landing + BOAT.hop / 2
+        )
+        timeline.to(
+            boat,
+            { opacity: 0, duration: BOAT.emerge * 0.6, ease: 'none' },
+            under + BOAT.emerge * 0.4
+        )
+        timeline.call(
+            () => {
+                this.walking = new Map([...this.walking, [playerId, stops[stops.length - 1]]])
+            },
+            undefined,
+            landing + BOAT.hop / 2
+        )
+        return Math.max(landing + BOAT.hop, under + BOAT.emerge)
     }
 
     // Five action points take the Pilli Mexica anywhere: it lifts off and drops in there.
@@ -701,4 +967,203 @@ export class BoardAnimator implements MoveInterrupter {
             )
         }
     }
+}
+
+function decksOf(before: DrawnBoard, after: DrawnBoard): Set<Cell> {
+    return new Set([...before.bridges, ...after.bridges].map((bridge) => bridge.cell))
+}
+
+// The boat rides in a route: runs of its indices that go bridge to bridge, each run from the
+// bridge the ride starts on to the one it ends on.
+function voyagesOf(path: readonly Cell[], decks: ReadonlySet<Cell>): number[][] {
+    const voyages: number[][] = []
+    for (let index = 1; index < path.length; index++) {
+        if (!decks.has(path[index - 1]) || !decks.has(path[index])) continue
+        const current = voyages[voyages.length - 1]
+        if (current !== undefined && current[current.length - 1] === index - 1) current.push(index)
+        else voyages.push([index - 1, index])
+    }
+    return voyages
+}
+
+// The water a boat crosses through `stops`, bridges each a ride from the last: along canals,
+// under no other bridge, and across the lake. The lake joins round the island beyond the
+// board's edge, so the way may leave the board and come back on elsewhere: it comes in
+// stretches, each marked where it leaves or comes back. Going round costs `ROUND_ISLAND`
+// squares, so a way on the board is taken when there is one.
+type Stretch = { cells: Cell[]; fromOutside: boolean; toOutside: boolean }
+const OUTSIDE = -1
+const ROUND_ISLAND = 12
+const LAKE_CELLS = Array.from({ length: CELL_COUNT }, (_, cell) => cell).filter(isLake)
+
+function stretchesOf(
+    stops: readonly Cell[],
+    canals: ReadonlySet<Cell>,
+    decks: ReadonlySet<Cell>
+): Stretch[] {
+    const way = stops.flatMap((stop, index) =>
+        index === 0 ? [stop] : waterWay(stops[index - 1], stop, canals, decks).slice(1)
+    )
+    const stretches: Stretch[] = [{ cells: [], fromOutside: false, toOutside: false }]
+    for (const cell of way) {
+        const current = stretches[stretches.length - 1]
+        if (cell === OUTSIDE) {
+            current.toOutside = true
+            stretches.push({ cells: [], fromOutside: true, toOutside: false })
+        } else {
+            current.cells.push(cell)
+        }
+    }
+    return stretches.filter((stretch) => stretch.cells.length > 0)
+}
+
+function waterWay(
+    from: Cell,
+    to: Cell,
+    canals: ReadonlySet<Cell>,
+    decks: ReadonlySet<Cell>
+): Cell[] {
+    const afloat = (cell: Cell) =>
+        cell === to || isLake(cell) || (canals.has(cell) && !decks.has(cell))
+    const atEdge = (cell: Cell) => neighbours(cell).length < 4
+    const edges = [...canals, ...LAKE_CELLS].filter((cell) => atEdge(cell) && afloat(cell))
+    const nextTo = (cell: Cell): [Cell, number][] =>
+        cell === OUTSIDE
+            ? edges.map((edge) => [edge, ROUND_ISLAND])
+            : [
+                  ...neighbours(cell)
+                      .filter(afloat)
+                      .map((next): [Cell, number] => [next, 1]),
+                  ...(atEdge(cell) ? [[OUTSIDE, ROUND_ISLAND] as [Cell, number]] : [])
+              ]
+    const cost = new Map<Cell, number>([[from, 0]])
+    const previous = new Map<Cell, Cell>()
+    const open = new Set<Cell>([from])
+    while (open.size > 0) {
+        let cell = OUTSIDE
+        let best = Infinity
+        for (const candidate of open) {
+            const c = cost.get(candidate) ?? Infinity
+            if (c < best) {
+                best = c
+                cell = candidate
+            }
+        }
+        open.delete(cell)
+        if (cell === to) break
+        for (const [next, step] of nextTo(cell)) {
+            if (best + step >= (cost.get(next) ?? Infinity)) continue
+            cost.set(next, best + step)
+            previous.set(next, cell)
+            open.add(next)
+        }
+    }
+    if (!cost.has(to)) return [from, to]
+    const way = [to]
+    while (way[0] !== from) way.unshift(previous.get(way[0]) ?? from)
+    return way
+}
+
+// A point a square beyond the board's edge from `cell` on it.
+function beyondEdge(view: BoardView, cell: Cell): Point {
+    const centre = view.centre(cell)
+    for (const direction of DIRECTIONS) {
+        if (neighbour(cell, direction) !== undefined) continue
+        const across = neighbour(cell, OPPOSITE[direction])
+        if (across === undefined) continue
+        const inward = view.centre(across)
+        return { x: 2 * centre.x - inward.x, y: 2 * centre.y - inward.y }
+    }
+    return centre
+}
+
+const OPPOSITE: Record<Direction, Direction> = {
+    [Direction.North]: Direction.South,
+    [Direction.South]: Direction.North,
+    [Direction.East]: Direction.West,
+    [Direction.West]: Direction.East
+}
+
+type Course = {
+    length: number
+    // How far along the course each of its squares' middles lies.
+    at: number[]
+    pointAt(distance: number): { point: Point; heading: Point }
+    squareAt(distance: number): number
+}
+
+// A course through the middles of squares on screen, its corners rounded so a canoe turns them
+// smoothly: the heading eases from one leg's direction to the next over `ROUNDING` of a square.
+const ROUNDING = 0.35
+
+function courseOf(points: readonly Point[]): Course {
+    const at = [0]
+    for (let index = 1; index < points.length; index++) {
+        const a = points[index - 1]
+        const b = points[index]
+        at.push(at[index - 1] + Math.hypot(b.x - a.x, b.y - a.y))
+    }
+    const length = at[at.length - 1]
+    const legOf = (distance: number) => {
+        let leg = 0
+        while (leg < points.length - 2 && at[leg + 1] < distance) leg++
+        return leg
+    }
+    const direction = (leg: number): Point => {
+        const a = points[leg]
+        const b = points[leg + 1]
+        const size = Math.hypot(b.x - a.x, b.y - a.y) || 1
+        return { x: (b.x - a.x) / size, y: (b.y - a.y) / size }
+    }
+    return {
+        length,
+        at,
+        pointAt(distance) {
+            const leg = legOf(distance)
+            const a = points[leg]
+            const b = points[leg + 1] ?? a
+            const span = at[leg + 1] - at[leg] || 1
+            const t = Math.min(1, Math.max(0, (distance - at[leg]) / span))
+            let point = { x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t }
+            let heading = direction(leg)
+            const round = ROUNDING * CELL
+            // Near the corner ahead, cut it on a curve and turn towards the next leg.
+            if (leg < points.length - 2 && at[leg + 1] - distance < round) {
+                const next = direction(leg + 1)
+                const k = (1 - (at[leg + 1] - distance) / round) / 2
+                point = cornerPoint(points[leg + 1], heading, next, round, k)
+                heading = blendHeading(heading, next, k)
+            } else if (leg > 0 && distance - at[leg] < round) {
+                const before = direction(leg - 1)
+                const k = 0.5 + (distance - at[leg]) / round / 2
+                point = cornerPoint(points[leg], before, heading, round, k)
+                heading = blendHeading(before, heading, k)
+            }
+            return { point, heading }
+        },
+        squareAt(distance) {
+            let nearest = 0
+            for (let index = 1; index < at.length; index++) {
+                if (Math.abs(at[index] - distance) < Math.abs(at[nearest] - distance))
+                    nearest = index
+            }
+            return nearest
+        }
+    }
+}
+
+// A point `k` of the way round the curve cutting the corner at `corner`, from `round` before it
+// on the leg heading `into` to `round` after it on the leg heading `out`.
+function cornerPoint(corner: Point, into: Point, out: Point, round: number, k: number): Point {
+    const a = { x: corner.x - into.x * round, y: corner.y - into.y * round }
+    const b = { x: corner.x + out.x * round, y: corner.y + out.y * round }
+    const u = 1 - k
+    return {
+        x: u * u * a.x + 2 * u * k * corner.x + k * k * b.x,
+        y: u * u * a.y + 2 * u * k * corner.y + k * k * b.y
+    }
+}
+
+function blendHeading(a: Point, b: Point, k: number): Point {
+    return { x: a.x + (b.x - a.x) * k, y: a.y + (b.y - a.y) * k }
 }
