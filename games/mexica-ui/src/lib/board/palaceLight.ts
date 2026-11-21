@@ -43,8 +43,9 @@ const STONE = {
 const COURSING: Coursing = { shortest: 10, longest: 16, row: 7, joint: 0.45, round: 0.9 }
 // A step's tread laid in long slabs.
 const TREADS: Coursing = { shortest: 13, longest: 20, row: 12.5, joint: 0.45, round: 0.9 }
-// A step's riser: one rough stone the width of the stair, so no joint chops the steps up.
-const RISERS: Coursing = { shortest: 200, longest: 200, row: 12.5, joint: 0.45, round: 0.9 }
+// Rough stone with no joints, for the steps' risers and the stair walls: blocks longer than
+// the palace, so no joint chops them up.
+const ROUGH: Coursing = { shortest: 300, longest: 300, row: 300, joint: 0.45, round: 0.9 }
 
 const BRONZE = { light: linear('#d6ab5e'), dark: linear('#6b4b22'), shine: 0.35 }
 const TURQUOISE = { light: linear('#2fb3ad'), dark: linear('#13706e'), grout: linear('#3a3226') }
@@ -105,7 +106,7 @@ function sunRelief(p: Vec): number {
 const WALL = { width: 3.2, above: 0.8, foot: 1.6 }
 const SIDE = CELL / 2 - PALACE.inset
 
-// The walls' stone is laid in courses their full height, round the palace's middle.
+// The walls' stone, round the palace's middle.
 const WALL_BLOCK: Block = {
     x0: -2 * CELL,
     x1: 2 * CELL,
@@ -213,14 +214,14 @@ export function renderPalace(tilt: number, pixels = PALACE_PIXELS): Bitmap {
             return { color, bent }
         }
         if (hit.kind === 'wall') {
-            const { color, bent } = stone(WALL_BLOCK, -2, COURSING)
+            const { color, bent } = stone(WALL_BLOCK, -2, ROUGH)
             return [{ color: scale(color, lit(p, normal, bent, scene)), alpha: 1 }]
         }
         const part = hit.part
         if (part === undefined) return [{ color: [0, 0, 0], alpha: 0 }]
         const stair = part.material === 'stair'
         const riser = stair && normal[2] <= 0.7
-        const coursing = riser ? RISERS : stair ? TREADS : COURSING
+        const coursing = riser ? ROUGH : stair ? TREADS : COURSING
         const { bent, color: cut } = stone(part.block, parts.indexOf(part), coursing)
         // Each step's tread paler and its riser in shade, so the stair reads.
         let color = cut
