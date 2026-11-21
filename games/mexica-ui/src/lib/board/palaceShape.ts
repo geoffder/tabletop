@@ -11,9 +11,12 @@ import { CELL, type Box } from './view.js'
 export const PALACE = {
     inset: 1.5,
     rise: 9,
-    // Where each arm's top ends and its stair begins, from the middle.
-    flat: 36,
-    steps: 5,
+    // Where each arm's top ends and its stair begins, from the middle: just past the raised
+    // square, so the stair fills the arm's space.
+    flat: 21,
+    steps: 9,
+    // Where each arm ends, from the middle.
+    reach: 1.5 * CELL - 0.3,
     centre: { half: 17, rise: 2, top: 13, above: 1.5 },
     emblem: { radius: 11, depth: 0.9, dome: 0.8, relief: 0.5 },
     // How round the edges of its stone and of its steps are worn.
@@ -24,18 +27,17 @@ export type PalaceMaterial = 'stone' | 'stair'
 export type PalacePart = { block: Block; round: number; material: PalaceMaterial }
 
 const SIDE = CELL / 2 - PALACE.inset
-const REACH = 1.5 * CELL - PALACE.inset
-const TREAD = (REACH - PALACE.flat) / PALACE.steps
-
 // The top of the stair `along` from the middle, on any arm.
 function stairTop(along: number): number {
-    if (along <= PALACE.flat) return PALACE.rise
-    const step = Math.min(PALACE.steps - 1, Math.floor((along - PALACE.flat) / TREAD))
-    return (PALACE.rise * (PALACE.steps - step)) / (PALACE.steps + 1)
+    const { flat, rise, reach, steps } = PALACE
+    if (along <= flat) return rise
+    const step = Math.min(steps - 1, Math.floor((along - flat) / ((reach - flat) / steps)))
+    return (rise * (steps - step)) / (steps + 1)
 }
 
 export function palaceParts(): PalacePart[] {
-    const { flat, steps, rise, centre, rounds } = PALACE
+    const { flat, steps, rise, centre, rounds, reach } = PALACE
+    const tread = (reach - flat) / steps
     const part = (block: Block, material: PalaceMaterial, round = rounds.stone) => ({
         block,
         material,
@@ -53,11 +55,11 @@ export function palaceParts(): PalacePart[] {
     const stairs = Array.from({ length: steps }, (_, step) =>
         turned(
             flat - 0.3,
-            flat + (step + 1) * TREAD,
+            flat + (step + 1) * tread,
             -SIDE,
             SIDE,
             0,
-            stairTop(flat + step * TREAD + 0.1)
+            stairTop(flat + step * tread + 0.1)
         )
     )
         .flat()
