@@ -1,4 +1,8 @@
 // Written by scripts/render-looks.mjs: the file of every look, by name.
+import bridgeEw from '../images/looks/bridge-ew.webp'
+import bridgeEwFlat from '../images/looks/bridge-ew-flat.webp'
+import bridgeNs from '../images/looks/bridge-ns.webp'
+import bridgeNsFlat from '../images/looks/bridge-ns-flat.webp'
 import canal from '../images/looks/canal.webp'
 import lake from '../images/looks/lake.webp'
 import paving from '../images/looks/paving.webp'
@@ -93,6 +97,10 @@ import temple4 from '../images/looks/temple-4.webp'
 import temple4Flat from '../images/looks/temple-4-flat.webp'
 
 export const LOOK_URLS: Record<string, string> = {
+    'bridge-ew': bridgeEw,
+    'bridge-ew-flat': bridgeEwFlat,
+    'bridge-ns': bridgeNs,
+    'bridge-ns-flat': bridgeNsFlat,
     canal: canal,
     lake: lake,
     paving: paving,

@@ -1,6 +1,6 @@
 <script lang="ts">
     import {
-        type Axis,
+        Axis,
         type Cell,
         cellAt,
         cellName,
@@ -18,6 +18,7 @@
     import { LOOK_URLS } from '$lib/board/lookUrls.js'
     import { BANK_WIDTH, SIDES, waterworks } from '$lib/board/waterworks.js'
     import {
+        bridgeLook,
         CANAL_LOOK,
         LAKE_LOOK,
         PAVING_LOOK,
@@ -31,7 +32,8 @@
     import { templeMark } from '$lib/board/templeMarks.js'
     import TempleMarks from './TempleMarks.svelte'
     import { PLAN } from '$lib/board/plan.js'
-    import { bridgePaths, octagon } from '$lib/board/shapes.js'
+    import { octagon } from '$lib/board/shapes.js'
+    import { BRIDGE, bridgeBounds } from '$lib/board/bridgeShape.js'
     import { LOOK_OUTLINES } from '$lib/board/lookOutlines.js'
     import { pilliBounds, pilliLook, pilliShineLook, shineOver } from '$lib/board/pilliShape.js'
 
@@ -300,11 +302,22 @@
         {#each raised as piece (`${piece.kind}-${piece.cell}`)}
             {@const centre = view.centre(piece.cell)}
             {#if piece.kind === 'bridge'}
-                {@const paths = bridgePaths(view, centre, view.screenAxis(piece.axis))}
-                {#if paths.far}<path d={paths.far} class="bridge-far"></path>{/if}
-                <path d={paths.top} class="bridge-top"></path>
-                {#if paths.near}<path d={paths.near} class="bridge-near"></path>{/if}
-                {#if paths.body}<path d={paths.body} class="bridge"></path>{/if}
+                {@const axis = view.screenAxis(piece.axis)}
+                {@const across = axis === Axis.EastWest}
+                <g transform="translate({centre.x} {centre.y})" class="piece">
+                    <ellipse
+                        cx="2"
+                        cy="2"
+                        rx={across ? BRIDGE.reach : BRIDGE.half + 3}
+                        ry={(across ? BRIDGE.half + 3 : BRIDGE.reach) * view.tilt}
+                        fill="url(#mx-piece-shadow)"
+                    ></ellipse>
+                    <image
+                        href={LOOK_URLS[bridgeLook(axis, view.flat)]}
+                        {...bridgeBounds(axis, view.tilt)}
+                        preserveAspectRatio="none"
+                    ></image>
+                </g>
             {:else if piece.kind === 'temple'}
                 {@const mark = templeMark(piece.level, view.tilt)}
                 <g transform="translate({centre.x} {centre.y})" class="piece">
@@ -505,30 +518,6 @@
         fill: rgb(0 0 0 / 0.12);
         stroke: rgb(255 255 255 / 0.35);
         stroke-width: 1;
-    }
-
-    .bridge {
-        fill: var(--mx-bridge);
-        stroke: var(--mx-bridge-ink);
-        stroke-width: 0.8;
-    }
-
-    .bridge-far {
-        fill: var(--mx-bridge-shade);
-        stroke: var(--mx-bridge-ink);
-        stroke-width: 0.8;
-    }
-
-    .bridge-near {
-        fill: var(--mx-bridge-light);
-        stroke: var(--mx-bridge-ink);
-        stroke-width: 0.8;
-    }
-
-    .bridge-top {
-        fill: var(--mx-bridge-top);
-        stroke: var(--mx-bridge-ink);
-        stroke-width: 0.8;
     }
 
     .mark-band {
