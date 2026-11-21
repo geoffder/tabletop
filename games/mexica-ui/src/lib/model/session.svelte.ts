@@ -30,6 +30,7 @@ import {
     TakeToken
 } from '@tabletop/mexica'
 import {
+    keptCanal,
     setMexicaSelection,
     MexicaStageOrder,
     type MexicaSelection,
@@ -129,7 +130,10 @@ export class MexicaGameSession extends GameSession<MexicaGameState, HydratedMexi
         for (const interrupter of this.moveInterrupters) interrupter.interrupt()
     }
 
-    override beforeNewState({ kind }: PresentedTransition): void {
+    override beforeNewState({ kind, actions }: PresentedTransition): void {
+        const dug = actions.some((action) => action.id === this.keepsCanalAfter)
+        if (kind === 'own-action' && dug) this.select(keptCanal())
+        this.keepsCanalAfter = undefined
         if (kind === 'view-switch') {
             for (const interrupter of this.moveInterrupters) interrupter.abandon()
         }
@@ -353,7 +357,12 @@ export class MexicaGameSession extends GameSession<MexicaGameState, HydratedMexi
             return
         }
         if (!this.targets.has(cell)) {
-            this.letGo()
+            // Tapping the canal's first square again with no single tile left lets go of it alone.
+            if (tool === 'canal' && cell === this.chosenCell) {
+                this.select(setMexicaSelection(this.ownSelection, 'cell', undefined))
+            } else {
+                this.letGo()
+            }
             return
         }
         if (typeof tool === 'number') {
@@ -390,8 +399,16 @@ export class MexicaGameSession extends GameSession<MexicaGameState, HydratedMexi
         await this.digCanal(first === cell ? [cell] : [first, cell])
     }
 
+    // The canal tool stays picked after a dig while another can be dug, as players often dig
+    // several; it goes on a tap off the marks, another tool or the canal button.
+    private keepsCanalAfter: string | undefined
+
     async digCanal(cells: Cell[]) {
-        await this.applyAction(this.createPlayerAction(DigCanal, { cells }))
+        if (this.updatingVisibleState) return
+        const dig = this.createPlayerAction(DigCanal, { cells })
+        const another = this.apAvailable >= 2 && this.gameState.canalTilesLeft() >= 2
+        this.keepsCanalAfter = another ? dig.id : undefined
+        await this.applyAction(dig)
     }
 
     private async chooseBridgeCell(cell: Cell) {

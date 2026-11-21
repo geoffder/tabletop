@@ -48,3 +48,14 @@ export function setMexicaSelection<TStage extends keyof MexicaSelectionValues>(
               'manual'
           )
 }
+
+// The canal tool picked again after a dig: Undo passes it by and takes back the dig.
+export function keptCanal(): MexicaSelection {
+    return setStagedSelectionValue<MexicaSelectionValues, 'tool'>(
+        {},
+        MexicaStageOrder,
+        'tool',
+        'canal',
+        'auto'
+    )
+}

@@ -144,6 +144,9 @@
         return new Set(session.moves.keys())
     })
 
+    // The canal's first square, which a second tap digs alone or lets go of.
+    const retaps = $derived(session.tool === 'canal' ? session.chosenCell : undefined)
+
     const chosen = $derived(
         [session.chosenCell, session.chosenDestination].filter((cell) => cell !== undefined)
     )
@@ -709,7 +712,7 @@
         <!-- Hit areas over every cell, nearest last. -->
         {#each landCells as cell (cell)}
             {@const rect = view.cellBox(cell)}
-            {@const active = choosable.has(cell)}
+            {@const active = choosable.has(cell) || retaps === cell}
             <rect
                 {...rect}
                 class="hit"
