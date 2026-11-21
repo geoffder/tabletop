@@ -21,6 +21,9 @@ const LABEL_SIZE = 12
 const LABEL_GAP = 8
 const LABEL_REACH = LABEL_SIZE * 0.9
 const EDGE_MARGIN = 10
+// The lake reaches this far past the printed board's edge all round, so where the island's land
+// runs to the edge its shore meets water, not the table.
+export const LAKE_MARGIN = 14
 
 export type Box = { x: number; y: number; width: number; height: number }
 
@@ -171,7 +174,8 @@ export class BoardView {
         // Beside the board a label is aligned to its edge, at the gap; above or below it is
         // centred on its column.
         const beyond = (plan: Point, outward: Point): Pick<Label, 'at' | 'anchor'> => {
-            const at = this.at(plan.x, plan.y)
+            const margin = LAKE_MARGIN / CELL
+            const at = this.at(plan.x + outward.x * margin, plan.y + outward.y * margin)
             const { dx, dy } = screenWay(plan, outward)
             const reach = LABEL_GAP + (dx === 0 ? LABEL_REACH / 2 : 0)
             return {
@@ -219,13 +223,19 @@ export class BoardView {
             const left = label.anchor === 'end' ? width : label.anchor === 'middle' ? width / 2 : 0
             return { left: label.at.x - left, right: label.at.x - left + width, y: label.at.y }
         })
-        const left = Math.min(0, ...extents.map((extent) => extent.left)) - EDGE_MARGIN
-        const right = Math.max(this.width, ...extents.map((extent) => extent.right)) + EDGE_MARGIN
+        const margin = LAKE_MARGIN / CELL
+        const lake = this.planBox(-margin, -margin, BOARD_WIDTH + margin, BOARD_HEIGHT + margin)
+        const left = Math.min(lake.x, ...extents.map((extent) => extent.left)) - EDGE_MARGIN
+        const right =
+            Math.max(lake.x + lake.width, ...extents.map((extent) => extent.right)) + EDGE_MARGIN
         const top =
-            Math.min(-this.headroom, ...extents.map((extent) => extent.y - LABEL_REACH / 2)) -
-            EDGE_MARGIN
+            Math.min(
+                -this.headroom,
+                lake.y,
+                ...extents.map((extent) => extent.y - LABEL_REACH / 2)
+            ) - EDGE_MARGIN
         const bottom =
-            Math.max(this.depth, ...extents.map((extent) => extent.y + LABEL_REACH / 2)) +
+            Math.max(lake.y + lake.height, ...extents.map((extent) => extent.y + LABEL_REACH / 2)) +
             EDGE_MARGIN
         return { x: left, y: top, width: right - left, height: bottom - top }
     }

@@ -1,7 +1,7 @@
 // The island's paving and the lake round it, seen from straight above in plan units. Only
 // scripts/render-looks.mjs runs this, through the /looks page; rerun it after changing either.
 import { cellAt, columnOf, isLand, isPalace, isStart, PALACE_CENTRE, rowOf } from '@tabletop/mexica'
-import { CELL } from './view.js'
+import { CELL, LAKE_MARGIN } from './view.js'
 import { COVE_TOE, SLOPE_WIDTH, type SlopeCorner, type SlopeSide } from './looks.js'
 import {
     spillBox,
@@ -11,7 +11,7 @@ import {
     spillSlide,
     toPlan
 } from './spillShape.js'
-import { PLAN } from './plan.js'
+import { PLAN, WATERS } from './plan.js'
 import {
     type Bitmap,
     clamp,
@@ -71,7 +71,7 @@ export function renderPaving(style: StoneStyle, pixels = PAVING_PIXELS): Bitmap 
         }
         return values
     }
-    return paint(PLAN, pixels, (x, y) => {
+    return paint(WATERS, pixels, (x, y) => {
         const cell = landAt(x, y) ?? nearestLand(x, y, coastReach(x, y))
         if (cell === undefined) return { color: [0, 0, 0], alpha: 0 }
         const [tone, slopeX, slopeY, inset] = draws(cell)
@@ -123,7 +123,18 @@ const COAST = { least: 1.5, most: 7.5, corner: 7 }
 const coastNoise = fractal(noise2(97), 3)
 
 function coastReach(x: number, y: number): number {
-    return COAST.least + (COAST.most - COAST.least) * coastNoise(x * 0.04, y * 0.04)
+    return (
+        (COAST.least + (COAST.most - COAST.least) * coastNoise(x * 0.04, y * 0.04)) * edgeFit(x, y)
+    )
+}
+
+// Past the printed board's edge the lake is only LAKE_MARGIN wide, so the coast and its rocks are
+// narrowed towards the edge to end short of the lake's rim; inside, they reach as far as they like.
+const RIM_CLEARANCE = 3
+function edgeFit(x: number, y: number): number {
+    const inside = Math.min(x, y, PLAN.width - x, PLAN.height - y)
+    const room = LAKE_MARGIN - RIM_CLEARANCE + Math.max(0, inside)
+    return Math.min(1, room / (COAST.most + SHORE.widest))
 }
 
 function lakeBeside(cell: number, column: number, row: number): boolean {
@@ -232,7 +243,7 @@ function water(style: WaterStyle): (x: number, y: number, shallows: number) => R
 
 export function renderLake(style: WaterStyle, pixels = LAKE_PIXELS): Bitmap {
     const at = water(style)
-    return paint(PLAN, pixels, (x, y) => ({
+    return paint(WATERS, pixels, (x, y) => ({
         color: at(
             x,
             y,
@@ -433,7 +444,10 @@ export function shoreDepth(x: number, y: number): number {
 export const SHORE_ZONE = COAST.most + SHORE.widest * 1.5 + 1
 
 function shoreWidth(x: number, y: number): number {
-    return SHORE.narrowest + (SHORE.widest - SHORE.narrowest) * shoreReach(x * 0.035, y * 0.035)
+    return (
+        (SHORE.narrowest + (SHORE.widest - SHORE.narrowest) * shoreReach(x * 0.035, y * 0.035)) *
+        edgeFit(x, y)
+    )
 }
 
 // How far a point lies out from the island's wandering edge, not the grid's.
@@ -498,7 +512,7 @@ export function renderShore(pixels = SHORE_PIXELS): Bitmap {
             tone: 0.5 + 0.5 * Math.sin(angle * 9)
         }
     }
-    return paint(PLAN, pixels, (x, y) => {
+    return paint(WATERS, pixels, (x, y) => {
         const off = offshore(x, y)
         if (off < -1.5 || off > SHORE.widest * 1.5) return { color: [0, 0, 0], alpha: 0 }
         const band = width(x, y)

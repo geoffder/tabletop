@@ -35,7 +35,7 @@
     import { DESIGN, templeBounds } from '$lib/board/templeShape.js'
     import { templeMark } from '$lib/board/templeMarks.js'
     import TempleMarks from './TempleMarks.svelte'
-    import { PLAN } from '$lib/board/plan.js'
+    import { PLAN, WATERS } from '$lib/board/plan.js'
     import {
         TOKEN,
         TOKEN_INK,
@@ -338,18 +338,22 @@
         </defs>
 
         <g transform={view.planTransform}>
-            <image href={LOOK_URLS[LAKE_LOOK]} {...PLAN} preserveAspectRatio="none" class="surface"
+            <image
+                href={LOOK_URLS[LAKE_LOOK]}
+                {...WATERS}
+                preserveAspectRatio="none"
+                class="surface"
             ></image>
             <g clip-path="url(#mx-land-clip)">
                 <image
                     href={LOOK_URLS[SHORE_LOOK]}
-                    {...PLAN}
+                    {...WATERS}
                     preserveAspectRatio="none"
                     class="surface"
                 ></image>
                 <image
                     href={LOOK_URLS[PAVING_LOOK]}
-                    {...PLAN}
+                    {...WATERS}
                     preserveAspectRatio="none"
                     class="surface"
                 ></image>
@@ -408,7 +412,7 @@
             {#each animator.floods as flood (flood.key)}
                 <image
                     href={LOOK_URLS[PAVING_LOOK]}
-                    {...PLAN}
+                    {...WATERS}
                     preserveAspectRatio="none"
                     mask="url(#mx-dig-{flood.key})"
                     class="surface"
