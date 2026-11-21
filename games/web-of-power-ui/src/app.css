@@ -57,6 +57,8 @@
     --wop-target: #e08a00;
     /* Choice marks: cyan over a dark band, so they read on every country. */
     --wop-mark: #5ef0ff;
+    /* What may be chosen, as the euro titles mark it: an old gold. */
+    --wop-gold: #d4a12a;
     /* The map, in the printed board's colours washed a quarter toward parchment, so the
        pieces stand out on countries of their own colour. */
     --wop-sea: #7aa8c6;
@@ -81,4 +83,12 @@
     --wop-lothringen-italien-edge: #d6cf9d;
     --wop-england-schwaben-edge: #ca8f5a;
     --wop-frankreich-edge: #ac7baa;
+    /* A country lit as a place the chosen cards can go: its colour deepened, the pale colours
+       most, red, green and purple held near their printed colour so pieces keep their contrast. */
+    --wop-lit-ink: #140c06;
+    --wop-franken-aragon-lit: #c8344c;
+    --wop-bayern-burgund-lit: #4f9a47;
+    --wop-lothringen-italien-lit: #e8d867;
+    --wop-england-schwaben-lit: #df8a3e;
+    --wop-frankreich-lit: #b062ac;
 }

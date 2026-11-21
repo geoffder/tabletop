@@ -1,4 +1,5 @@
 <script lang="ts">
+    import { fade } from 'svelte/transition'
     import {
         ALLIANCES,
         COUNTRY_NAMES,
@@ -23,7 +24,7 @@
     import { cloisterDrawing } from '$lib/board/pieces.js'
     import { wornTag } from '$lib/board/tags.js'
     import { roadInk, seaRouteInk } from '$lib/board/roadInk.js'
-    import { MAP_LABELS, MOUNTAINS } from '$lib/board/mapDetails.js'
+    import { ISLANDS, MAP_LABELS, MOUNTAINS } from '$lib/board/mapDetails.js'
     import { HOUSE_SPRITE } from '$lib/board/pieceSprites.js'
     import { EMBLEMS } from '$lib/board/armsData.js'
     import { ARMS_R, advisorSpots } from '$lib/board/advisorSpots.js'
@@ -65,7 +66,14 @@
 
     const session = getGameSession()
 
-    const viewBox = `${MAP_VIEW.x} ${MAP_VIEW.y} ${MAP_VIEW.width} ${MAP_VIEW.height}`
+    // The countries the chosen cards can put a piece in now, lit on the map.
+    const litCountries = $derived(new Set(session.targets.map((target) => target.country)))
+
+    // Room round the map for the houses on spaces near its edges, with their shadows and choice
+    // rings (Whitland's reaches 37 above the map, La Oliva's and Poblet's 32 left of it, Zirc's 21
+    // right), which the board's frame would otherwise cut off.
+    const ROOM = { top: 40, left: 34, right: 24, bottom: 6 }
+    const viewBox = `${MAP_VIEW.x - ROOM.left} ${MAP_VIEW.y - ROOM.top} ${MAP_VIEW.width + ROOM.left + ROOM.right} ${MAP_VIEW.height + ROOM.top + ROOM.bottom}`
     const countries = Object.values(Country)
 
     const cloisterAt = $derived(
@@ -131,9 +139,6 @@
         (a, b) => SPACE_POINTS[a.abbey].y - SPACE_POINTS[b.abbey].y
     )
 
-    // The northern tip of Corsica, at the board's lower edge.
-    const CORSICA =
-        'M1006 1080C1011 1079 1014 1085 1012 1091C1016 1097 1018 1104 1019 1112L975 1112C981 1104 992 1103 1000 1099C1004 1094 1002 1085 1006 1080Z'
     // A mountain, as the board draws them: two peaks sketched in ink.
     const MOUNTAIN = 'M-11 1 L-6 -6 L-2 -1 L3 -8 L10 1'
 
@@ -149,12 +154,21 @@
     const pieceColor = (playerId: string) => session.colors.getPlayerBgColorValue(playerId)
 </script>
 
+<!-- A place the chosen cards can take: a dashed ink ring over a pale halo, pulsing gently as
+     Magna Grecia's targets do, so it stands out on every colour. -->
+{#snippet targetRing(cx: number, cy: number, r: number)}
+    <g class="target" transition:fade={{ duration: 180 }}>
+        <circle {cx} {cy} {r} class="target-halo"></circle>
+        <circle {cx} {cy} {r} class="target-ring"></circle>
+    </g>
+{/snippet}
+
 <div class="tap-off" role="presentation" onclick={onTap}>
     <svg
         class="wop-board"
         {viewBox}
-        width={MAP_VIEW.width}
-        height={MAP_VIEW.height}
+        width={MAP_VIEW.width + ROOM.left + ROOM.right}
+        height={MAP_VIEW.height + ROOM.top + ROOM.bottom}
         role="group"
         aria-label="Map of Europe"
     >
@@ -165,6 +179,10 @@
                 <stop offset="62%" stop-color="#f1e2bd"></stop>
                 <stop offset="100%" stop-color="#d9bf8a"></stop>
             </radialGradient>
+            {#each countries as country (country)}
+                <clipPath id="{uid}-in-{country}"><path d={COUNTRY_PATHS[country]}></path></clipPath
+                >
+            {/each}
         </defs>
         <rect
             x={MAP_VIEW.x}
@@ -175,8 +193,7 @@
         ></rect>
         <path d={seaRoutes} class="sea-route"></path>
         <path d={LAND_PATH} class="land"></path>
-        <path d={CORSICA} class="land island"></path>
-        <ellipse cx="1049" cy="1088" rx="3.2" ry="5.5" class="land island"></ellipse>
+        <path d={ISLANDS} class="land"></path>
         <!-- Under the countries, each grown a little in its edge colour: closes the slivers
              where traced outlines don't quite meet. -->
         {#each countries as country (country)}
@@ -204,6 +221,26 @@
             height={MAP_VIEW.height}
             class="coast"
         ></image>
+        <!-- Where the chosen cards can go: each such country's colour deepened inside a dark ink
+             outline, a pale line just within it so it stands off every colour. -->
+        {#each countries as country (country)}
+            {#if litCountries.has(country)}
+                <!-- Lit and let go quickly, so a choice of card answers at once. -->
+                <g
+                    clip-path="url(#{uid}-in-{country})"
+                    class="lit"
+                    transition:fade={{ duration: 180 }}
+                >
+                    <path
+                        d={COUNTRY_PATHS[country]}
+                        class="lit-tint"
+                        style:fill="var(--wop-{cardColorOf(country)}-lit)"
+                    ></path>
+                    <path d={COUNTRY_PATHS[country]} class="lit-halo"></path>
+                    <path d={COUNTRY_PATHS[country]} class="lit-edge"></path>
+                </g>
+            {/if}
+        {/each}
 
         <g class="mountains">
             {#each MOUNTAINS as at, index (index)}
@@ -257,8 +294,7 @@
                     </g>
                 {/each}
                 {#if session.advisorTargets.has(country)}
-                    <circle r={ARMS_R + 6} class="target-band"></circle>
-                    <circle r={ARMS_R + 6} class="target-mark"></circle>
+                    {@render targetRing(0, 0, ARMS_R + 5)}
                     <circle
                         r={ARMS_R + 6}
                         class="hit"
@@ -291,8 +327,8 @@
                 {@const at = SPACE_POINTS[space.abbey]}
                 {@const ring = HOUSE_SPRITE.ring}
                 <g transform="translate({at.x + ring.x} {at.y + ring.y})">
-                    <circle r={ring.r} class="target-band"></circle>
-                    <circle r={ring.r} class="target-mark"></circle>
+                    <!-- Round the drawing's middle, 17 above its foot. -->
+                    {@render targetRing(-ring.x, -17 - ring.y, 35)}
                     <circle
                         r={ring.r}
                         class="hit"
@@ -334,11 +370,6 @@
 
     .coast {
         pointer-events: none;
-    }
-
-    .island {
-        stroke: var(--wop-border);
-        stroke-width: 1.6;
     }
 
     .mountains {
@@ -441,18 +472,60 @@
         stroke-width: 1;
     }
 
-    .target-band {
-        fill: none;
-        stroke: rgb(0 0 0 / 0.8);
-        stroke-width: 7;
+    .target {
         pointer-events: none;
     }
 
-    .target-mark {
+    .target-halo {
         fill: none;
-        stroke: var(--wop-mark);
-        stroke-width: 3.5;
+        stroke: #fff4d0;
+        stroke-width: 7;
+        stroke-opacity: 0.85;
+    }
+
+    .target-ring {
+        fill: none;
+        stroke: var(--wop-lit-ink);
+        stroke-width: 3;
+        stroke-dasharray: 7 5;
+    }
+
+    @media (prefers-reduced-motion: no-preference) {
+        .target-halo,
+        .target-ring {
+            animation: target-pulse 1.6s ease-in-out infinite;
+        }
+    }
+
+    @keyframes target-pulse {
+        50% {
+            stroke-opacity: 0.4;
+        }
+    }
+
+    .lit {
         pointer-events: none;
+    }
+
+    /* Light enough that a player's pieces stand off their own colour (red houses in Franken). */
+    .lit-tint {
+        opacity: 0.4;
+    }
+
+    /* Drawn twice as wide as they show: the country's outline clips them to its inside. */
+    .lit-halo {
+        fill: none;
+        stroke: #fff4d0;
+        stroke-width: 11;
+        stroke-linejoin: round;
+        opacity: 0.85;
+    }
+
+    .lit-edge {
+        fill: none;
+        stroke: var(--wop-lit-ink);
+        stroke-width: 7;
+        stroke-linejoin: round;
     }
 
     .hit {

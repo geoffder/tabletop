@@ -7,6 +7,9 @@ import { ActionSource, defaultGameConfig, GameEngine, PlayerStatus } from '@tabl
 import { startingPositionFile } from '@tabletop/common/testing'
 import {
     ActionType,
+    CardColor,
+    Country,
+    SPACES,
     Definition,
     HydratedWebOfPowerGameState,
     MachineState,
@@ -140,3 +143,31 @@ write('late-game', 'Late game', late)
 console.log(
     `Late game: ${late.state.cloisters.length} cloisters, ${late.state.advisors.length} advisors`
 )
+
+// Five players, Eve (red) to play with a Franken/Aragon card, her houses already standing in red
+// Franken and Aragon and places still open there: for judging red pieces on lit red countries.
+const RED = new Set([Country.Franken, Country.Aragon])
+const countryOf = new Map(SPACES.map((space) => [space.abbey, space.country]))
+let red
+for (let seed = 1; seed < 400 && !red; seed++) {
+    try {
+        red = playUntil(start(5), seed, (state) => {
+            if (state.activePlayerIds[0] !== 'player-5' || state.cloisters.length < 22) return false
+            const hydrated = new HydratedWebOfPowerGameState(state)
+            const hand = hydrated.getPlayerState('player-5').knownHand()
+            const inRed = state.cloisters.filter(
+                (cloister) =>
+                    cloister.playerId === 'player-5' && RED.has(countryOf.get(cloister.abbey))
+            ).length
+            const open = hydrated
+                .targets('player-5', false)
+                .filter((target) => RED.has(target.country)).length
+            return hand.includes(CardColor.FrankenAragon) && inRed >= 3 && open >= 3
+        })
+    } catch {
+        red = undefined
+    }
+}
+if (!red) throw Error('No red position found')
+write('red-country', 'Red country', red)
+console.log(`Red country: ${red.state.cloisters.length} cloisters`)

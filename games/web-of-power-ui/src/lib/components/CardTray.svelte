@@ -34,6 +34,10 @@
                         <Card
                             {card}
                             chosen={session.chosenIndices.includes(index)}
+                            choosable={session.placeableIndices.has(index)}
+                            dimmed={session.canChooseCards &&
+                                !session.canExchange &&
+                                !session.placeableIndices.has(index)}
                             onclick={session.canChooseCards
                                 ? () => session.chooseCard(index)
                                 : undefined}
@@ -48,7 +52,7 @@
                 <Card
                     {card}
                     onclick={session.canDrawFaceUp ? () => session.drawFaceUp(card) : undefined}
-                    chosen={session.canDrawFaceUp}
+                    choosable={session.canDrawFaceUp}
                 />
             {/each}
         </div>
@@ -58,7 +62,7 @@
                     label="Deck, {deckCount} cards"
                     dimmed={deckCount === 0}
                     onclick={session.canDrawFromDeck ? () => session.drawFromDeck() : undefined}
-                    chosen={session.canDrawFromDeck}
+                    choosable={session.canDrawFromDeck}
                 />
                 <span class="count">{deckCount}</span>
                 <span class="caption" aria-hidden="true">Deck</span>

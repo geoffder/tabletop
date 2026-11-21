@@ -89,6 +89,24 @@ export class WebOfPowerGameSession extends GameSession<
         return indices
     })
 
+    // The cards of the hand that could pay for a piece somewhere now: one naming a country with a
+    // place open, or one of a pair, as a joker, while any place is open.
+    placeableIndices: ReadonlySet<number> = $derived.by(() => {
+        const playerId = this.myPlayer?.id
+        if (!this.canPlace || playerId === undefined) return new Set<number>()
+        const open = this.gameState.targets(playerId, this.faster)
+        if (open.length === 0) return new Set<number>()
+        const countries = new Set(open.map((target) => target.country))
+        const indices = new Set<number>()
+        this.hand.forEach((card, index) => {
+            const pair = this.hand.filter((held) => held === card).length >= 2
+            if (pair || CARD_COUNTRIES[card].some((country) => countries.has(country))) {
+                indices.add(index)
+            }
+        })
+        return indices
+    })
+
     // Where the chosen cards could put a piece now.
     targets: PieceTarget[] = $derived.by(() => {
         const playerId = this.myPlayer?.id

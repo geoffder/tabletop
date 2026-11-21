@@ -85,3 +85,8 @@ export const MAP_LABELS: { text: string; x: number; y: number; angle: number; se
     { text: 'Corsica', x: 938, y: 1097, angle: 0, sea: true },
     { text: 'Elba', x: 1070, y: 1083, angle: 0, sea: true }
 ]
+
+// The islands off Italy: the northern tip of Corsica at the board's lower edge, and Elba. Land with
+// no country; scripts/render-coast.mjs gives them the mainland's coast rim and glow.
+export const ISLANDS =
+    'M1006 1080C1011 1079 1014 1085 1012 1091C1016 1097 1018 1104 1019 1112L975 1112C981 1104 992 1103 1000 1099C1004 1094 1002 1085 1006 1080Z M1045.8 1088A3.2 5.5 0 1 0 1052.2 1088A3.2 5.5 0 1 0 1045.8 1088Z'

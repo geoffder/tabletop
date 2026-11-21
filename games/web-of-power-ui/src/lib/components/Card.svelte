@@ -5,6 +5,7 @@
     let {
         card,
         chosen = false,
+        choosable = false,
         dimmed = false,
         pile = false,
         label,
@@ -13,6 +14,8 @@
         // Undefined draws the card's back.
         card?: CardColor
         chosen?: boolean
+        // Could be chosen now: a gold edge, lifting a little under the pointer.
+        choosable?: boolean
         dimmed?: boolean
         // The top of a face-up pile: it lies askew and a little faded.
         pile?: boolean
@@ -59,6 +62,7 @@
         class="card"
         class:back={!card}
         class:chosen
+        class:choosable
         class:dimmed
         class:pile
         style:background={card ? `var(--wop-${card})` : undefined}
@@ -120,12 +124,28 @@
         cursor: pointer;
     }
 
-    .card.chosen {
-        transform: translateY(-5px);
+    /* Cards to choose from wear a gold edge, as the euro titles mark them, and rise a little under
+       the pointer; the chosen one stands well out of the hand, inked round, with a deeper shadow. */
+    .card.choosable {
         box-shadow:
-            0 0 0 2px #000c,
-            0 0 0 4.5px var(--wop-mark),
-            0 3px 6px rgb(40 30 20 / 0.35);
+            inset 0 0 0 1px rgb(40 30 20 / 0.4),
+            0 0 0 2px var(--wop-gold),
+            0 1px 3px rgb(40 30 20 / 0.3);
+    }
+
+    @media (hover: hover) {
+        button.card:not(.chosen):hover {
+            transform: translateY(-4px);
+        }
+    }
+
+    .card.chosen {
+        transform: translateY(-11px);
+        box-shadow:
+            inset 0 0 0 1px rgb(40 30 20 / 0.4),
+            0 0 0 2px var(--wop-card-ink),
+            0 0 0 4px var(--wop-gold),
+            0 9px 14px rgb(40 30 20 / 0.42);
     }
 
     .ring {

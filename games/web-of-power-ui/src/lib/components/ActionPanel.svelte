@@ -99,7 +99,7 @@
         color: var(--wop-ink);
         background: var(--wop-panel-inset);
         box-shadow:
-            inset 0 0 0 1.5px var(--wop-toggle-on),
+            inset 0 0 0 2px var(--wop-gold),
             0 1px 2px rgb(60 40 20 / 0.25);
     }
 

@@ -19,7 +19,9 @@ const SCALE = 1
 const mapData = await readFile(join(ROOT, 'src', 'lib', 'board', 'mapData.ts'), 'utf8')
 const view = mapData.match(/MAP_VIEW = \{ x: (\d+), y: (\d+), width: (\d+), height: (\d+) \}/)
 const [x, y, width, height] = view.slice(1).map(Number)
-const land = mapData.match(/LAND_PATH =\s*'([^']+)'/)[1]
+const details = await readFile(join(ROOT, 'src', 'lib', 'board', 'mapDetails.ts'), 'utf8')
+// The mainland and the islands, whose coasts all take the rim and glow.
+const land = `${mapData.match(/LAND_PATH =\s*'([^']+)'/)[1]} ${details.match(/ISLANDS =\s*'([^']+)'/)[1]}`
 // Each country's outline, and its edge colour from app.css (the --wop-*-edge variable naming it).
 const css = await readFile(join(ROOT, 'src', 'app.css'), 'utf8')
 const edges = [...css.matchAll(/--wop-([a-z-]+)-edge: (#[0-9a-f]{6});/g)].map(
