@@ -30,14 +30,14 @@ export const LAKE_PIXELS = 1
 
 export type StoneStyle = { light: string; dark: string; mortar: string; palace: string }
 
-// Limestone is the board's paving; the warmer stones are kept to compare against the temples.
-export const STONES = {
-    limestone: { light: '#ece5d2', dark: '#cfc4a8', mortar: '#a69a80', palace: '#a9a59b' },
-    warm25: { light: '#ece0c6', dark: '#cfbe9c', mortar: '#a49476', palace: '#aca597' },
-    warm45: { light: '#ebdcbd', dark: '#cfba92', mortar: '#a28e6e', palace: '#aea594' },
-    warm65: { light: '#ebd9b4', dark: '#cfb689', mortar: '#a08967', palace: '#b0a591' },
-    sandstone: { light: '#ead2a4', dark: '#cfae78', mortar: '#9c8059', palace: '#b4a58c' }
-} satisfies Record<string, StoneStyle>
+// The board's paving: a pale weathered grey stone, cool enough that the yellow temples and the
+// gold tokens stand out on it.
+export const PAVING: StoneStyle = {
+    light: '#dedbd2',
+    dark: '#bdb8aa',
+    mortar: '#938d7e',
+    palace: '#a3a09a'
+}
 
 export type WaterStyle = { deep: string; open: string; shallow: string }
 

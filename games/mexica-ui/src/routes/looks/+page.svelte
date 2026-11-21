@@ -11,7 +11,7 @@
         renderSlope,
         renderSlopeCorner,
         renderSlopeCove,
-        STONES,
+        PAVING,
         TURQUOISE
     } from '$lib/board/surfaceTexture.js'
     import {
@@ -100,7 +100,7 @@
     onMount(() => {
         const start = performance.now()
         const drawn: Record<string, string> = {}
-        drawn[PAVING_LOOK] = toUrl(renderPaving(STONES.limestone), 0.86)
+        drawn[PAVING_LOOK] = toUrl(renderPaving(PAVING), 0.86)
         drawn[LAKE_LOOK] = toUrl(renderLake(TURQUOISE), 0.86)
         drawn[CANAL_LOOK] = toUrl(renderCanal(TURQUOISE), 0.86)
         drawn[SHORE_LOOK] = toUrl(renderShore(), 0.86)
