@@ -3,6 +3,7 @@
     import { getGameSession } from '$lib/model/sessionContext.svelte.js'
     import { historyEntries, type HistoryEntry } from '$lib/history/historyEntries.js'
     import HistoryEntryLine from './HistoryEntryLine.svelte'
+    import ScoringBreakdown from './ScoringBreakdown.svelte'
 
     const session = getGameSession()
 
@@ -50,6 +51,9 @@
                 <HistoryEntryLine {entry} />
             </span>
         </button>
+        {#if entry.kind === 'interim' || entry.kind === 'final'}
+            <ScoringBreakdown {entry} />
+        {/if}
     {:else}
         <div class="p-3 text-center italic text-(--wop-ink-quiet)">No moves yet</div>
     {/each}

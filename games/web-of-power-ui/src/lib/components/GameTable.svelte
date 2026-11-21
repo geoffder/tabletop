@@ -24,7 +24,8 @@
     import { WebOfPowerGameSession } from '$lib/model/session.svelte.js'
     import { getGameSession, setGameSession } from '$lib/model/sessionContext.svelte.js'
     import { CardAnimator } from '$lib/animators/cardAnimator.svelte.js'
-    import { setCardAnimator } from '$lib/animators/cardAnimatorContext.js'
+    import { setCardAnimator, setScoringAnimator } from '$lib/animators/cardAnimatorContext.js'
+    import { ScoringAnimator } from '$lib/animators/scoringAnimator.svelte.js'
     import Card from '$lib/components/Card.svelte'
     import AlmendraFont from '$lib/fonts/Almendra-Latin.woff2'
     import AlmendraItalicFont from '$lib/fonts/Almendra-Italic-Latin.woff2'
@@ -39,6 +40,9 @@
     // Moves cards between hands, the face-up row, the deck and the discard pile as moves play.
     const cards = new CardAnimator(getGameSession())
     setCardAnimator(cards)
+    // Plays each scoring entry by entry, on the board and the player cards.
+    const scoring = new ScoringAnimator(getGameSession())
+    setScoringAnimator(scoring)
 
     // The shared wrapper exposes full screen only as its dialog becoming modal.
     let expanded = $state(false)
@@ -77,7 +81,7 @@
     fontStyle="italic"
 />
 
-<div class="wop-table" {@attach cards.attach}>
+<div class="wop-table" {@attach cards.attach} {@attach scoring.attach}>
     <!-- Cards in the air, over everything on the table. -->
     <div class="fliers" aria-hidden="true">
         {#each cards.fliers as flier (flier.id)}

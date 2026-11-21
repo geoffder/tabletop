@@ -6,7 +6,11 @@ import type {
     TransitionKind,
     TransitionStep
 } from '@tabletop/frontend-components'
-import type { CardColor, HydratedWebOfPowerGameState } from '@tabletop/web-of-power'
+import {
+    isScoreInterim,
+    type CardColor,
+    type HydratedWebOfPowerGameState
+} from '@tabletop/web-of-power'
 import type { MoveInterrupter, WebOfPowerGameSession } from '$lib/model/session.svelte.js'
 
 // A page load, a sync with the server or a switch of view shows the cards as they are, unmoved.
@@ -363,7 +367,11 @@ export class CardAnimator implements MoveInterrupter {
         await tick()
 
         const timeline = gsap.timeline()
-        animationContext.actionTimeline.add(timeline, 0)
+        // The interim scoring reshuffles once its points are counted: after the scoring's beats.
+        const owner = isScoreInterim(action)
+            ? animationContext.finalTimeline
+            : animationContext.actionTimeline
+        owner.add(timeline, 0)
         this.timeline = timeline
         const touched: HTMLElement[] = []
         const slide = (node: HTMLElement, from: DOMRect, to: DOMRect, turn = 0) => {
@@ -448,6 +456,23 @@ export class CardAnimator implements MoveInterrupter {
                 flier.move.to.kind === 'hand' && flier.move.to.playerId === me
                     ? fan(after.hand.length)(flier.move.to.index ?? after.hand.length - 1)
                     : 0
+            // A card reaching a pile goes into it as it lands, the pile showing its new count.
+            if (flier.move.to.kind === 'deck' || flier.move.to.kind === 'discard') {
+                timeline.call(
+                    () => {
+                        node.style.visibility = 'hidden'
+                        if (this.session.gameState === shown) {
+                            this.table = {
+                                ...this.table,
+                                discard: after.discard,
+                                deckCount: after.deckCount
+                            }
+                        }
+                    },
+                    undefined,
+                    at + duration
+                )
+            }
             timeline.fromTo(
                 node,
                 { x: 0, y: 0, scale: startScale, rotation: 0 },

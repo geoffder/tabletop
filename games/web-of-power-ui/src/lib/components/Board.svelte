@@ -23,6 +23,7 @@
     } from '$lib/board/mapData.js'
     import { cloisterDrawing } from '$lib/board/pieces.js'
     import { wornTag } from '$lib/board/tags.js'
+    import { getScoringAnimator } from '$lib/animators/cardAnimatorContext.js'
     import { roadInk, seaRouteInk } from '$lib/board/roadInk.js'
     import { ISLANDS, MAP_LABELS, MOUNTAINS } from '$lib/board/mapDetails.js'
     import { HOUSE_SPRITE } from '$lib/board/pieceSprites.js'
@@ -76,6 +77,11 @@
     const TOP_ROOM = 18
     const viewBox = `${MAP_VIEW.x} ${MAP_VIEW.y - TOP_ROOM} ${MAP_VIEW.width} ${MAP_VIEW.height + TOP_ROOM}`
     const countries = Object.values(Country)
+
+    // A scoring's beats, played entry by entry over the board; each award a chip large enough to
+    // read on a phone.
+    const scoring = getScoringAnimator()
+    const CHIP = { width: 78, height: 50, step: 86, font: 36 }
 
     // Places and lifts pieces as moves play; the board draws the pieces it is moving.
     const pieces = new PieceAnimator(session)
@@ -330,6 +336,70 @@
             {/if}
         {/each}
 
+        <!-- A scoring's beats, each hidden until the scoring animator plays it: its countries lit,
+             its alliance tag ringed, its chain's roads drawn in its player's colour, and its awards
+             as chips in the players' colours. -->
+        {#each scoring?.beats ?? [] as beat (beat.key)}
+            {#if beat.countries.length > 0 || beat.alliance !== undefined}
+                <g class="beat-light" opacity="0" {@attach scoring?.part(`light:${beat.key}`)}>
+                    {#each beat.countries as country (country)}
+                        <g clip-path="url(#{uid}-in-{country})">
+                            <path
+                                d={COUNTRY_PATHS[country]}
+                                class="lit-tint"
+                                style:fill="var(--wop-{cardColorOf(country)}-lit)"
+                            ></path>
+                            <path d={COUNTRY_PATHS[country]} class="lit-halo"></path>
+                            <path d={COUNTRY_PATHS[country]} class="lit-edge"></path>
+                        </g>
+                    {/each}
+                    {#if beat.alliance !== undefined}
+                        {@const box = ALLIANCE_BOXES[beat.alliance]}
+                        <circle cx={box.x} cy={box.y} r="24" class="target-halo"></circle>
+                        <circle cx={box.x} cy={box.y} r="24" class="beat-ring"></circle>
+                    {/if}
+                </g>
+            {/if}
+            {#each beat.roads as road, index (road.key)}
+                <path
+                    d={ROAD_PATHS[road.key]}
+                    pathLength="1"
+                    class="beat-road"
+                    style:stroke={pieceColor(beat.awards[0].playerId)}
+                    opacity="0"
+                    {@attach scoring?.part(`road:${beat.key}:${index}`)}
+                ></path>
+            {/each}
+            {@const width = beat.awards.length * CHIP.step - (CHIP.step - CHIP.width)}
+            <g transform="translate({beat.chipsAt.x} {beat.chipsAt.y})">
+                <g opacity="0" {@attach scoring?.part(`chips:${beat.key}`)}>
+                    {#each beat.awards as award, index (award.playerId)}
+                        <g
+                            transform="translate({index * CHIP.step -
+                                width / 2 +
+                                CHIP.width / 2} 0)"
+                        >
+                            <rect
+                                x={-CHIP.width / 2}
+                                y={-CHIP.height / 2}
+                                width={CHIP.width}
+                                height={CHIP.height}
+                                rx={CHIP.height / 2}
+                                class="chip"
+                                style:fill={pieceColor(award.playerId)}
+                            ></rect>
+                            <text
+                                y={CHIP.font * 0.35}
+                                class="chip-text"
+                                style:fill={session.colors.getPlayerTextColorValue(award.playerId)}
+                                >+{award.points}</text
+                            >
+                        </g>
+                    {/each}
+                </g>
+            </g>
+        {/each}
+
         <!-- Choice rings above every piece, so a nearer house never covers one. -->
         {#each SPACES as space (space.abbey)}
             {#if session.cloisterTargets.has(space.abbey)}
@@ -499,10 +569,13 @@
         stroke-dasharray: 7 5;
     }
 
+    /* The pulse waits until a choice's own motion has settled, and steps in small changes of
+       opacity rather than every frame: WebKit redraws the whole board for each, which cost a
+       third of the frames while a card was chosen (38 against 57 fps). */
     @media (prefers-reduced-motion: no-preference) {
         .target-halo,
         .target-ring {
-            animation: target-pulse 1.6s ease-in-out infinite;
+            animation: target-pulse 1.6s steps(16, jump-none) 0.5s infinite;
         }
     }
 
@@ -512,7 +585,39 @@
         }
     }
 
-    .lit {
+    .lit,
+    .beat-light {
+        pointer-events: none;
+    }
+
+    .beat-ring {
+        fill: none;
+        stroke: var(--wop-lit-ink);
+        stroke-width: 3;
+    }
+
+    /* A scoring chain drawn along its roads in its player's colour. */
+    .beat-road {
+        fill: none;
+        stroke-width: 9;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+        stroke-dasharray: 1 1;
+        stroke-dashoffset: 1;
+        stroke-opacity: 0.85;
+        pointer-events: none;
+    }
+
+    .chip {
+        stroke: var(--wop-lit-ink);
+        stroke-width: 3;
+    }
+
+    .chip-text {
+        font-family: Almendra, Georgia, serif;
+        font-size: 36px;
+        font-weight: 700;
+        text-anchor: middle;
         pointer-events: none;
     }
 

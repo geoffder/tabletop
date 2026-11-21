@@ -2,12 +2,13 @@
     import type { HydratedWebOfPowerPlayerState } from '@tabletop/web-of-power'
     import { getGameSession } from '$lib/model/sessionContext.svelte.js'
     import Piece from './Piece.svelte'
-    import { getCardAnimator } from '$lib/animators/cardAnimatorContext.js'
+    import { getCardAnimator, getScoringAnimator } from '$lib/animators/cardAnimatorContext.js'
 
     let { playerState }: { playerState: HydratedWebOfPowerPlayerState } = $props()
 
     const session = getGameSession()
     const cards = getCardAnimator()
+    const scoring = getScoringAnimator()
 
     const playerId = $derived(playerState.playerId)
     const isActive = $derived(session.gameState.activePlayerIds.includes(playerId))
@@ -33,7 +34,9 @@
         </span>
     </div>
     <div class="body">
-        <span class="score"><b>{playerState.score}</b> points</span>
+        <span class="score"
+            ><b>{scoring?.scores?.get(playerId) ?? playerState.score}</b> points</span
+        >
         <span class="tally" title="Cloisters left">
             <svg viewBox="-19 -47 47 49" width="19" height="20" aria-hidden="true">
                 <Piece kind="house" {fill} />

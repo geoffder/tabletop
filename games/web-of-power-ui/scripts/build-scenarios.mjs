@@ -171,3 +171,29 @@ for (let seed = 1; seed < 400 && !red; seed++) {
 if (!red) throw Error('No red position found')
 write('red-country', 'Red country', red)
 console.log(`Red country: ${red.state.cloisters.length} cloisters`)
+
+// One card left in the deck: whoever draws it brings on the interim scoring (cloisters only). And
+// the final round, after the deck has run out the second time: each plays or passes once more, and
+// then the final scoring.
+for (const [slug, name, passes, remaining] of [
+    ['interim-scoring', 'Interim scoring next', 0, 1],
+    ['final-round', 'Final round', 2, 0]
+]) {
+    let found
+    for (let seed = 1; seed < 200 && !found; seed++) {
+        try {
+            found = playUntil(
+                start(4),
+                seed,
+                (state) => state.deckExhaustions === passes && state.deck.remaining === remaining
+            )
+        } catch {
+            found = undefined
+        }
+    }
+    if (!found) throw Error(`No position for ${name}`)
+    write(slug, name, found)
+    console.log(
+        `${name}: ${found.state.cloisters.length} cloisters, ${found.state.advisors.length} advisors`
+    )
+}

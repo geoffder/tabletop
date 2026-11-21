@@ -4,8 +4,10 @@
     import { historyEntries } from '$lib/history/historyEntries.js'
     import HistoryEntryLine from './HistoryEntryLine.svelte'
     import { holdTallest } from './holdTallest.js'
+    import { getScoringAnimator } from '$lib/animators/cardAnimatorContext.js'
 
     const session = getGameSession()
+    const scoring = getScoringAnimator()
 
     const lastEntry = $derived(historyEntries(session.actions).at(-1))
     const placedThisTurn = $derived(session.gameState.placements.length)
@@ -26,7 +28,11 @@
 <!-- One row: the last move while you wait, the prompt on your turn. -->
 <div class="fit">
     <div class="panel" {@attach holdTallest}>
-        {#if !acting}
+        {#if scoring?.heading}
+            <span
+                ><b>{scoring.heading}</b>{#if scoring.label}: {scoring.label}{/if}</span
+            >
+        {:else if !acting}
             {#if lastEntry}
                 <HistoryEntryLine entry={lastEntry} brief />
             {:else}
