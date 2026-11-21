@@ -10,6 +10,10 @@ meant to change). `src/lib/model/scenarioFiles.spec.ts` checks every file.
 Four players in the first period, Alice to move. Three players can found straight away, each on
 their own turn, in a different setting:
 
+The prompt offers the founding without forcing it: the Pilli Mexica's moves stay marked and the
+pieces can still be picked. The matching token on the display is ringed like a choice; choosing
+it picks up the founding, as **Found it** does, and choosing it again lets go.
+
 - **Alice** stands at A4 in a district of 7 in the island's top left, across the board from the
   Emperor's display. Choose **Found it**, then D3: the 7 lifts off the display and fades, the
   tokens after it slide over to close the gap, and it drops onto D3 behind the tall green temple

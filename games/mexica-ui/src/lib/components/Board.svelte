@@ -196,6 +196,15 @@
         )
     )
     const SLOT = DISPLAY.slot * CELL
+    // An octagon round a token on the display, on the ground, flat sides square to the board.
+    const foundingRing = $derived.by(() => {
+        const r = (TOKEN.radius + 4) / Math.cos(Math.PI / 8)
+        const points = Array.from({ length: 8 }, (_, k) => {
+            const angle = Math.PI / 8 + (k * Math.PI) / 4
+            return `${r * Math.cos(angle)} ${r * Math.sin(angle) * view.tilt}`
+        })
+        return `M${points.join('L')}Z`
+    })
     function slotCentre(index: number) {
         return view.at(
             DISPLAY.left + DISPLAY.slot * ((index % DISPLAY.columns) + 0.5),
@@ -733,6 +742,32 @@
             ></rect>
             {#each display as tokenId, index (tokenId)}
                 {@const at = slotCentre(index)}
+                {#if tokenId === session.foundingToken}
+                    <!-- The token the district can take: a choice like a square's, which picks
+                         up the founding, or lets go of it. -->
+                    <g
+                        transform="translate({at.x} {at.y})"
+                        role="button"
+                        tabindex="0"
+                        aria-label="Found the district with this token"
+                        class="founding"
+                        onclick={() => session.pickTool('found')}
+                        onkeydown={(event) => {
+                            if (event.key === 'Enter' || event.key === ' ') {
+                                event.preventDefault()
+                                session.pickTool('found')
+                            }
+                        }}
+                    >
+                        <path d={foundingRing} class="mark-band" {@attach animator.mark()}></path>
+                        <path
+                            d={foundingRing}
+                            class={session.tool === 'found' ? 'chosen' : 'mark'}
+                            {@attach animator.mark()}
+                        ></path>
+                        <path d={foundingRing} class="founding-hit"></path>
+                    </g>
+                {/if}
                 <g transform="translate({at.x} {at.y})">
                     <g {@attach animator.piece(`display-${tokenId}`, 'body')}>
                         {@render calpulli({ x: 0, y: 0 }, tokenId, TOKEN.radius)}
@@ -878,6 +913,16 @@
         stroke: var(--mx-mark);
         stroke-width: 1.6;
         pointer-events: none;
+    }
+
+    .founding {
+        cursor: pointer;
+        outline: none;
+    }
+
+    .founding-hit {
+        fill: transparent;
+        pointer-events: all;
     }
 
     .chosen {

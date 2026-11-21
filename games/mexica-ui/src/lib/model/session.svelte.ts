@@ -174,6 +174,13 @@ export class MexicaGameSession extends GameSession<MexicaGameState, HydratedMexi
     // What stands where in the state shown, gathered once for every rule query it answers.
     private layout: Layout = $derived(this.gameState.layout())
 
+    // The token on the Emperor's display that the Pilli Mexica's district can take now.
+    foundingToken: number | undefined = $derived(
+        this.canFound && this.me !== undefined
+            ? this.gameState.foundingToken(this.me, this.layout)
+            : undefined
+    )
+
     // Where the Pilli Mexica can go now, and for how much.
     moves: ReadonlyMap<Cell, Move> = $derived.by(() => {
         const playerId = this.me

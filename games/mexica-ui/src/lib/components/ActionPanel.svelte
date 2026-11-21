@@ -11,12 +11,9 @@
     const acting = $derived(
         !session.isViewingHistory && (session.canChooseStart || session.isActing)
     )
-    const foundingSize = $derived.by(() => {
-        const me = session.myPlayer?.id
-        if (!session.canFound || me === undefined) return undefined
-        const token = session.gameState.foundingToken(me)
-        return token === undefined ? undefined : tokenSize(token)
-    })
+    const foundingSize = $derived(
+        session.foundingToken === undefined ? undefined : tokenSize(session.foundingToken)
+    )
     const tool = $derived(session.tool)
     const singles = $derived(session.gameState.singleCanalsLeft())
     const AXIS_NAMES: Record<Axis, string> = {
@@ -73,11 +70,10 @@
         <span>Build a {tool}-level temple: choose a space</span>
     {:else if foundingSize !== undefined}
         <span
-            >Your district has {foundingSize} spaces:
+            >Your district of {foundingSize} can be founded:
             <button type="button" class="inline" onclick={() => session.pickTool('found')}
                 >Found it</button
-            >
-            or {@render endTurn()}</span
+            >, or move, pick a piece or {@render endTurn()}</span
         >
     {:else}
         <span
