@@ -221,7 +221,7 @@ export const ALLIANCE_BOXES: Record<number, { x: number; y: number }> = {
     9: { x: 915, y: 319 },
     10: { x: 903, y: 459 },
     11: { x: 1365, y: 387 },
-    12: { x: 1128, y: 702 },
+    12: { x: 1093, y: 652 },
     13: { x: 922, y: 688 },
     14: { x: 838, y: 855 },
     15: { x: 1420, y: 983 }

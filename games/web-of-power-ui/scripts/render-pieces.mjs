@@ -344,9 +344,9 @@ const pieces = [
         sdf: house,
         view: HOUSE_VIEW,
         grain: houseGrain,
-        bounds: [-24, -52, 36, 14]
+        bounds: [-24, -52, 42, 18]
     }),
-    render({ name: 'peg', sdf: peg, view: from(24.8), grain: pegGrain, bounds: [-13, -29, 18, 10] })
+    render({ name: 'peg', sdf: peg, view: from(24.8), grain: pegGrain, bounds: [-13, -29, 30, 13] })
 ]
 
 const browser = await chromium.launch()

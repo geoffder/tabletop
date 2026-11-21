@@ -99,6 +99,12 @@
         gap: 4px;
     }
 
+    /* Each piece's ground shadow is part of its light image and reaches past the piece; let it
+       fall onto the card rather than be cut off at the icon's edge. */
+    .tally svg {
+        overflow: visible;
+    }
+
     .mini-card {
         width: 11px;
         height: 15px;
