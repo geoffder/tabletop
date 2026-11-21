@@ -1,4 +1,8 @@
-import { GameSession, undoableStagedSelection } from '@tabletop/frontend-components'
+import {
+    GameSession,
+    undoableStagedSelection,
+    type PresentedTransition
+} from '@tabletop/frontend-components'
 import {
     ActionType,
     CARD_COUNTRIES,
@@ -22,6 +26,14 @@ import {
     WebOfPowerStageOrder,
     type WebOfPowerSelection
 } from './stagedSelection.js'
+
+// Lets the session stop the motion an animator is playing.
+export type MoveInterrupter = {
+    // Lands the move at once; the rest of its replay still plays.
+    interrupt(): void
+    // Lands it and drops the rest of its replay: another state is being shown.
+    abandon(): void
+}
 
 type SessionOptions = ConstructorParameters<
     typeof GameSession<WebOfPowerProjectedState, HydratedWebOfPowerGameState>
@@ -50,6 +62,16 @@ export class WebOfPowerGameSession extends GameSession<
                 (selection) => this.select(selection)
             )
         )
+    }
+
+    readonly moveInterrupters = new Set<MoveInterrupter>()
+
+    get presentingState(): HydratedWebOfPowerGameState | undefined {
+        return this.incomingGameState
+    }
+
+    override beforeNewState({ kind }: PresentedTransition): void {
+        if (kind === 'view-switch') for (const animator of this.moveInterrupters) animator.abandon()
     }
 
     faster: boolean = $derived(fasterVariantFromConfig(this.game.config))
@@ -110,6 +132,8 @@ export class WebOfPowerGameSession extends GameSession<
     // Where the chosen cards could put a piece now.
     targets: PieceTarget[] = $derived.by(() => {
         const playerId = this.myPlayer?.id
+        // While a move plays, its places fade away under the piece going down.
+        if (this.updatingVisibleState) return []
         if (!this.canPlace || playerId === undefined || this.chosenCards.length === 0) return []
         const cards = this.chosenCards
         return this.gameState

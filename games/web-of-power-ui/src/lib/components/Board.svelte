@@ -30,6 +30,7 @@
     import { ARMS_R, advisorSpots } from '$lib/board/advisorSpots.js'
     import coast from '$lib/images/coast.webp'
     import Piece from './Piece.svelte'
+    import { PieceAnimator, advisorKey } from '$lib/animators/pieceAnimator.svelte.js'
 
     // Each empty space's cloister, inked by hand: every one a little different.
     // Every space's cloister, joined into one path per pen (the drawings never change), each
@@ -76,8 +77,11 @@
     const viewBox = `${MAP_VIEW.x - ROOM.left} ${MAP_VIEW.y - ROOM.top} ${MAP_VIEW.width + ROOM.left + ROOM.right} ${MAP_VIEW.height + ROOM.top + ROOM.bottom}`
     const countries = Object.values(Country)
 
+    // Places and lifts pieces as moves play; the board draws the pieces it is moving.
+    const pieces = new PieceAnimator(session)
+
     const cloisterAt = $derived(
-        new Map(session.gameState.cloisters.map((cloister) => [cloister.abbey, cloister.playerId]))
+        new Map(pieces.cloisters.map((cloister) => [cloister.abbey, cloister.playerId]))
     )
 
     // Every country's advisors, in the order they arrived.
@@ -85,7 +89,7 @@
         new Map(
             countries.map((country) => [
                 country,
-                session.gameState.advisors.filter((advisor) => advisor.country === country)
+                pieces.advisors.filter((advisor) => advisor.country === country)
             ])
         )
     )
@@ -145,7 +149,7 @@
     // Each advisor's spot on its seal, worked out ahead of time (board/advisorSpots.ts); drawn
     // from the back so nearer pegs stand in front.
     function standing<T>(country: Country, advisors: readonly T[]) {
-        const ring = advisorSpots(country, advisors.length)
+        const ring = advisorSpots(country, pieces.ringSizes.get(country) ?? advisors.length)
         return advisors
             .map((advisor, index) => ({ advisor, index, spot: ring[index] }))
             .sort((a, b) => a.spot.y - b.spot.y)
@@ -171,6 +175,7 @@
         height={MAP_VIEW.height + ROOM.top + ROOM.bottom}
         role="group"
         aria-label="Map of Europe"
+        {@attach pieces.attach}
     >
         <defs>
             <!-- Parchment for the alliance tags, darker towards its worn edges. -->
@@ -290,7 +295,9 @@
                 >
                 {#each standing(country, advisors) as { advisor, index, spot } (index)}
                     <g transform="translate({spot.x} {spot.y})">
-                        <Piece kind="peg" fill={pieceColor(advisor.playerId)} />
+                        <g {@attach pieces.peg(advisorKey(country, index))}>
+                            <Piece kind="peg" fill={pieceColor(advisor.playerId)} />
+                        </g>
                     </g>
                 {/each}
                 {#if session.advisorTargets.has(country)}
@@ -316,7 +323,9 @@
             {#if owner}
                 {@const at = SPACE_POINTS[space.abbey]}
                 <g transform="translate({at.x} {at.y})">
-                    <Piece kind="house" fill={pieceColor(owner)} />
+                    <g {@attach pieces.house(space.abbey)}>
+                        <Piece kind="house" fill={pieceColor(owner)} />
+                    </g>
                 </g>
             {/if}
         {/each}
