@@ -210,5 +210,9 @@
     {
         "gameId": "18royalgorge",
         "packageId": "18royalgorge"
+    },
+    {
+        "gameId": "web-of-power",
+        "packageId": "web-of-power"
     }
 ]
