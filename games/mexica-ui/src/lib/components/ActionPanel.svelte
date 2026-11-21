@@ -65,7 +65,7 @@
         <span
             >{session.chosenCell === undefined
                 ? 'Move a bridge: choose the bridge'
-                : 'Move the bridge: choose a canal'}</span
+                : 'Then choose the destination'}</span
         >
     {:else if tool === 'found'}
         <span>Found the district: choose a space for the token</span>
