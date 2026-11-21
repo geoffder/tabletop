@@ -323,30 +323,34 @@
             {@const move = session.moves.get(cell)}
             {@const raised = centre.y - view.lift(palaceRise(cell))}
             {#if !move?.teleport}
-                <ellipse
-                    cx={centre.x}
-                    cy={raised}
-                    rx={CELL * 0.16}
-                    ry={CELL * 0.16 * view.tilt}
-                    class="mark-band"
-                ></ellipse>
-                <ellipse
-                    cx={centre.x}
-                    cy={raised}
-                    rx={CELL * 0.16}
-                    ry={CELL * 0.16 * view.tilt}
-                    class="mark"
-                ></ellipse>
+                {@const box = view.cellBox(cell)}
+                {@const tile = {
+                    x: box.x + 4,
+                    y: box.y + 4 * view.tilt + raised - centre.y,
+                    width: box.width - 8,
+                    height: box.height - 8 * view.tilt
+                }}
+                <rect {...tile} rx="2" class="mark-band"></rect>
+                <rect {...tile} rx="2" class="mark"></rect>
             {/if}
         {/each}
         {#each chosen as cell (cell)}
-            {@const rect = view.cellBox(cell)}
+            {@const box = view.cellBox(cell)}
+            {@const lift = view.lift(palaceRise(cell))}
             <rect
-                x={rect.x + 2}
-                y={rect.y + 2}
-                width={rect.width - 4}
-                height={rect.height - 4}
-                rx="3"
+                x={box.x + 3}
+                y={box.y + 3 * view.tilt - lift}
+                width={box.width - 6}
+                height={box.height - 6 * view.tilt}
+                rx="2"
+                class="mark-band"
+            ></rect>
+            <rect
+                x={box.x + 3}
+                y={box.y + 3 * view.tilt - lift}
+                width={box.width - 6}
+                height={box.height - 6 * view.tilt}
+                rx="2"
                 class="chosen"
             ></rect>
         {/each}
@@ -558,6 +562,8 @@
         stroke-width: 1;
     }
 
+    /* A choice: its square washed in cyan and outlined over a dark band; the chosen square more
+       strongly. */
     .mark-band {
         fill: none;
         stroke: rgb(0 0 0 / 0.8);
@@ -566,16 +572,16 @@
     }
 
     .mark {
-        fill: none;
+        fill: rgb(94 240 255 / 0.22);
         stroke: var(--mx-mark);
-        stroke-width: 2;
+        stroke-width: 1.6;
         pointer-events: none;
     }
 
     .chosen {
-        fill: none;
+        fill: rgb(94 240 255 / 0.42);
         stroke: var(--mx-mark);
-        stroke-width: 2.5;
+        stroke-width: 2.6;
         pointer-events: none;
     }
 
