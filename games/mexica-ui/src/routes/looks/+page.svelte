@@ -1,7 +1,7 @@
 <script lang="ts">
     import { onMount } from 'svelte'
     import { Color } from '@tabletop/common'
-    import type { Level } from '@tabletop/mexica'
+    import { Axis, type Level } from '@tabletop/mexica'
     import {
         renderCanal,
         renderLake,
@@ -25,10 +25,12 @@
         slopeLook,
         type SlopeSide,
         spillLook,
-        templeLook
+        templeLook,
+        bridgeLook
     } from '$lib/board/looks.js'
     import type { Bitmap } from '$lib/board/light.js'
     import { renderTemple } from '$lib/board/templeLight.js'
+    import { renderBridge } from '$lib/board/bridgeLight.js'
     import { SPILL_DEPTHS, type SpillKind } from '$lib/board/spillShape.js'
     import { DESIGN, type TempleDesign, templeBounds } from '$lib/board/templeShape.js'
     import { ownerMark } from '$lib/board/templeMarks.js'
@@ -123,6 +125,11 @@
         for (const level of LEVELS) {
             for (const tilt of [TILT, FLAT]) {
                 drawn[templeLook(level, tilt === FLAT)] = toUrl(renderTemple(level, tilt), 0.9)
+            }
+        }
+        for (const axis of [Axis.EastWest, Axis.NorthSouth]) {
+            for (const tilt of [TILT, FLAT]) {
+                drawn[bridgeLook(axis, tilt === FLAT)] = toUrl(renderBridge(axis, tilt), 0.9)
             }
         }
         const traced: Record<string, string> = {}
