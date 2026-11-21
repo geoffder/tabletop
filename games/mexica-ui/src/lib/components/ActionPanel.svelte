@@ -55,7 +55,7 @@
     {:else if tool === 'canal' && singles > 0}
         <span>Choose two neighbouring spaces, or one twice for a single ({singles}&nbsp;left)</span>
     {:else if tool === 'canal'}
-        <span>Choose two neighbouring spaces</span>
+        <span>Choose 2 neighbouring spaces to dig</span>
     {:else if tool === 'bridge'}
         <span>Build a bridge: choose a canal</span>
     {:else if tool === 'moveBridge'}

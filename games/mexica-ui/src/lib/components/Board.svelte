@@ -186,7 +186,7 @@
 
     // The Emperor's commands, in the lake at the bottom right as on the printed board.
     const display = $derived(drawn.display)
-    const DISPLAY = { left: 14.9, top: 10.8, slot: 1.42, columns: 4, rows: 2 }
+    const DISPLAY = { left: 15.3, top: 10.8, slot: 1.42, columns: 4, rows: 2 }
     const displayBox = $derived(
         view.planBox(
             DISPLAY.left,
