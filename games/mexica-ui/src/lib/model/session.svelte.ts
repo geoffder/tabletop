@@ -148,7 +148,9 @@ export class MexicaGameSession extends GameSession<MexicaGameState, HydratedMexi
             : LEVELS.filter(
                   (level) =>
                       this.apAvailable >= level &&
-                      this.gameState.templesLeft(this.me ?? '', level) > 0
+                      LAND_CELLS.some((cell) =>
+                          this.gameState.canBuildTemple(this.me ?? '', cell, level)
+                      )
               )
     )
 
@@ -156,7 +158,12 @@ export class MexicaGameSession extends GameSession<MexicaGameState, HydratedMexi
         this.isActing && this.apAvailable >= 1 && this.gameState.canalTilesLeft() > 0
     )
     canBuildBridge: boolean = $derived(
-        this.isActing && this.apAvailable >= 1 && this.gameState.bridgesLeft() > 0
+        this.isActing &&
+            this.apAvailable >= 1 &&
+            this.gameState.bridgesLeft() > 0 &&
+            [...this.gameState.layout().canals].some((cell) =>
+                AXES.some((axis) => this.gameState.canBuildBridge(cell, axis))
+            )
     )
     canMoveBridge: boolean = $derived(
         this.isActing && this.apAvailable >= 1 && this.gameState.bridgesLeft() === 0
