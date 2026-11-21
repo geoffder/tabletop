@@ -25,7 +25,7 @@ const CONTROLS_ROOM = 34
 
 export type Box = { x: number; y: number; width: number; height: number }
 
-export type Label = { key: string; text: string; at: Point }
+export type Label = { key: string; text: string; at: Point; anchor: 'start' | 'middle' | 'end' }
 
 export type QuarterTurns = 0 | 1 | 2 | 3
 
@@ -58,7 +58,9 @@ export class BoardView {
 
     constructor(
         readonly tilt: number,
-        readonly quarterTurns: QuarterTurns
+        readonly quarterTurns: QuarterTurns,
+        // With the coordinates round it; without, the board takes their room.
+        readonly labelled = true
     ) {
         this.rise = Math.sqrt(1 - tilt * tilt)
         this.flat = tilt === FLAT
@@ -68,7 +70,7 @@ export class BoardView {
         this.planTransform = this.makePlanTransform()
         this.nearer = this.stepToward((point) => point.y)
         this.rightward = this.stepToward((point) => point.x)
-        this.labels = this.makeLabels()
+        this.labels = labelled ? this.makeLabels() : []
         this.frame = this.makeFrame()
         this.viewBox = `${this.frame.x} ${this.frame.y} ${this.frame.width} ${this.frame.height}`
     }
@@ -167,11 +169,16 @@ export class BoardView {
                 const { dx, dy } = screenWay(plan, outward)
                 return dy > 0 || dx < 0
             }) ?? sides[0]
-        const beyond = (plan: Point, outward: Point): Point => {
+        // Beside the board a label is aligned to its edge, at the gap; above or below it is
+        // centred on its column.
+        const beyond = (plan: Point, outward: Point): Pick<Label, 'at' | 'anchor'> => {
             const at = this.at(plan.x, plan.y)
             const { dx, dy } = screenWay(plan, outward)
-            const reach = LABEL_GAP + (dx === 0 ? LABEL_REACH / 2 : LABEL_REACH)
-            return { x: at.x + dx * reach, y: at.y + dy * reach }
+            const reach = LABEL_GAP + (dx === 0 ? LABEL_REACH / 2 : 0)
+            return {
+                at: { x: at.x + dx * reach, y: at.y + dy * reach },
+                anchor: dx < 0 ? 'end' : dx > 0 ? 'start' : 'middle'
+            }
         }
         const [columnEdge, columnOut] = nearer([
             [
@@ -196,24 +203,30 @@ export class BoardView {
         const letters = Array.from({ length: BOARD_WIDTH }, (_, column) => ({
             key: `column-${column}`,
             text: String.fromCharCode(65 + column),
-            at: beyond({ x: column + 0.5, y: columnEdge.y }, columnOut)
+            ...beyond({ x: column + 0.5, y: columnEdge.y }, columnOut)
         }))
         const numbers = Array.from({ length: BOARD_HEIGHT }, (_, row) => ({
             key: `row-${row}`,
             text: String(row + 1),
-            at: beyond({ x: rowEdge.x, y: row + 0.5 }, rowOut)
+            ...beyond({ x: rowEdge.x, y: row + 0.5 }, rowOut)
         }))
         return [...letters, ...numbers]
     }
 
     private makeFrame(): Box {
-        const xs = this.labels.map((label) => label.at.x)
-        const ys = this.labels.map((label) => label.at.y)
-        const left = Math.min(0, ...xs.map((x) => x - LABEL_REACH)) - EDGE_MARGIN
-        const right = Math.max(this.width, ...xs.map((x) => x + LABEL_REACH)) + EDGE_MARGIN
-        const top = Math.min(-this.headroom, ...ys.map((y) => y - LABEL_REACH / 2)) - EDGE_MARGIN
+        // How far each label reaches across, from where it is anchored.
+        const extents = this.labels.map((label) => {
+            const width = label.text.length * LABEL_SIZE * 0.62
+            const left = label.anchor === 'end' ? width : label.anchor === 'middle' ? width / 2 : 0
+            return { left: label.at.x - left, right: label.at.x - left + width, y: label.at.y }
+        })
+        const left = Math.min(0, ...extents.map((extent) => extent.left)) - EDGE_MARGIN
+        const right = Math.max(this.width, ...extents.map((extent) => extent.right)) + EDGE_MARGIN
+        const top =
+            Math.min(-this.headroom, ...extents.map((extent) => extent.y - LABEL_REACH / 2)) -
+            EDGE_MARGIN
         const bottom =
-            Math.max(this.depth, ...ys.map((y) => y + LABEL_REACH / 2)) +
+            Math.max(this.depth, ...extents.map((extent) => extent.y + LABEL_REACH / 2)) +
             EDGE_MARGIN +
             CONTROLS_ROOM
         return { x: left, y: top, width: right - left, height: bottom - top }
@@ -222,11 +235,11 @@ export class BoardView {
 
 const VIEWS = new Map<string, BoardView>()
 
-export function boardView(flat: boolean, quarterTurns: QuarterTurns): BoardView {
-    const key = `${flat}-${quarterTurns}`
+export function boardView(flat: boolean, quarterTurns: QuarterTurns, labelled = true): BoardView {
+    const key = `${flat}-${quarterTurns}-${labelled}`
     let view = VIEWS.get(key)
     if (view === undefined) {
-        view = new BoardView(flat ? FLAT : TILT, quarterTurns)
+        view = new BoardView(flat ? FLAT : TILT, quarterTurns, labelled)
         VIEWS.set(key, view)
     }
     return view
