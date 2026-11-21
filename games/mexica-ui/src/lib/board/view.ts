@@ -150,28 +150,58 @@ export class BoardView {
         return `translate(${origin.x} ${origin.y}) matrix(${a} ${b} ${c} ${d} 0 0)`
     }
 
-    // Letters along the printed board's top edge and numbers along its left, turning with it.
+    // Letters along the columns and numbers along the rows, each on whichever of its two edges
+    // faces the bottom or the left of the screen, so neither has to clear the pieces standing
+    // in the far row.
     private makeLabels(): Label[] {
-        const beyond = (plan: Point, outward: Point): Point => {
+        const screenWay = (plan: Point, outward: Point) => {
             const at = this.at(plan.x, plan.y)
             const away = this.at(plan.x + outward.x, plan.y + outward.y)
-            const dx = Math.sign(Math.round(away.x - at.x))
-            const dy = Math.sign(Math.round(away.y - at.y))
-            const reach =
-                dy < 0
-                    ? this.headroom + LABEL_GAP + LABEL_REACH / 2
-                    : LABEL_GAP + (dx === 0 ? LABEL_REACH / 2 : LABEL_REACH)
+            return {
+                dx: Math.sign(Math.round(away.x - at.x)),
+                dy: Math.sign(Math.round(away.y - at.y))
+            }
+        }
+        const nearer = (sides: [Point, Point][]) =>
+            sides.find(([plan, outward]) => {
+                const { dx, dy } = screenWay(plan, outward)
+                return dy > 0 || dx < 0
+            }) ?? sides[0]
+        const beyond = (plan: Point, outward: Point): Point => {
+            const at = this.at(plan.x, plan.y)
+            const { dx, dy } = screenWay(plan, outward)
+            const reach = LABEL_GAP + (dx === 0 ? LABEL_REACH / 2 : LABEL_REACH)
             return { x: at.x + dx * reach, y: at.y + dy * reach }
         }
+        const [columnEdge, columnOut] = nearer([
+            [
+                { x: 0, y: BOARD_HEIGHT },
+                { x: 0, y: 1 }
+            ],
+            [
+                { x: 0, y: 0 },
+                { x: 0, y: -1 }
+            ]
+        ])
+        const [rowEdge, rowOut] = nearer([
+            [
+                { x: 0, y: 0 },
+                { x: -1, y: 0 }
+            ],
+            [
+                { x: BOARD_WIDTH, y: 0 },
+                { x: 1, y: 0 }
+            ]
+        ])
         const letters = Array.from({ length: BOARD_WIDTH }, (_, column) => ({
             key: `column-${column}`,
             text: String.fromCharCode(65 + column),
-            at: beyond({ x: column + 0.5, y: 0 }, { x: 0, y: -1 })
+            at: beyond({ x: column + 0.5, y: columnEdge.y }, columnOut)
         }))
         const numbers = Array.from({ length: BOARD_HEIGHT }, (_, row) => ({
             key: `row-${row}`,
             text: String(row + 1),
-            at: beyond({ x: 0, y: row + 0.5 }, { x: -1, y: 0 })
+            at: beyond({ x: rowEdge.x, y: row + 0.5 }, rowOut)
         }))
         return [...letters, ...numbers]
     }
