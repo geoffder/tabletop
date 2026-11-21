@@ -68,7 +68,7 @@
             </div>
             <span class="divider"></span>
         {/if}
-        <div class="group" aria-label="Face-up cards" {@attach place('display')}>
+        <div class="group market" aria-label="Market" {@attach place('display')}>
             {#each display as card, index (index)}
                 <div class="slot" {@attach place(`display:${index}`)}>
                     <Card
@@ -78,6 +78,7 @@
                     />
                 </div>
             {/each}
+            <span class="caption" aria-hidden="true">Market</span>
         </div>
         <div class="piles">
             <div class="stack" class:pile={deckCount > 1} {@attach place('deck')}>
@@ -157,6 +158,16 @@
         display: flex;
         align-items: flex-end;
         gap: 6px;
+    }
+
+    /* The market's caption lines up with the piles', which sit in a recess 6px deep. */
+    .market {
+        position: relative;
+        --wop-caption-drop: 6px;
+    }
+
+    .market .caption {
+        margin-top: calc(-1 * var(--wop-caption-drop));
     }
 
     /* The hand fans from a point just below the cards, each overlapping the one to its left; the
@@ -334,6 +345,10 @@
         .piles {
             gap: 8px;
             padding: 5px 9px 5px 6px;
+        }
+
+        .market {
+            --wop-caption-drop: 5px;
         }
 
         .caption {

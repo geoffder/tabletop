@@ -43,13 +43,14 @@
                 <span>{session.isViewingHistory ? 'The game begins' : 'Waiting for turn'}</span>
             {/if}
         {:else if session.isDrawing}
+            <!-- The market and the deck are tapped themselves. -->
             <span
-                >Draw {session.cardsToDraw === 1 ? 'a card' : `${session.cardsToDraw} cards`}: a
-                face-up card or the {#if session.canDrawFromDeck}<button
-                        type="button"
-                        class="inline"
-                        onclick={() => session.drawFromDeck()}>deck</button
-                    >{:else}deck{/if}</span
+                >{#if !session.canDrawFaceUp}Draw from the deck{:else if !session.canDrawFromDeck}Draw
+                    {session.cardsToDraw === 1
+                        ? 'a market card'
+                        : `${session.cardsToDraw} market cards`}{:else if session.cardsToDraw === 1}Draw
+                    a market card, or from the deck{:else}Draw {session.cardsToDraw} cards: market cards,
+                    or from the deck{/if}</span
             >
         {:else if session.chosenCards.length > 0}
             <span
