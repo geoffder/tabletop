@@ -7,6 +7,7 @@ import type {
     TransitionStep
 } from '@tabletop/frontend-components'
 import {
+    areAdjacent,
     type Bridge,
     type Cell,
     cellAt,
@@ -974,11 +975,13 @@ function decksOf(before: DrawnBoard, after: DrawnBoard): Set<Cell> {
 }
 
 // The boat rides in a route: runs of its indices that go bridge to bridge, each run from the
-// bridge the ride starts on to the one it ends on.
+// bridge the ride starts on to the one it ends on. From a bridge to the one beside it the Pilli
+// Mexica just hops across.
 function voyagesOf(path: readonly Cell[], decks: ReadonlySet<Cell>): number[][] {
     const voyages: number[][] = []
     for (let index = 1; index < path.length; index++) {
         if (!decks.has(path[index - 1]) || !decks.has(path[index])) continue
+        if (areAdjacent(path[index - 1], path[index])) continue
         const current = voyages[voyages.length - 1]
         if (current !== undefined && current[current.length - 1] === index - 1) current.push(index)
         else voyages.push([index - 1, index])
