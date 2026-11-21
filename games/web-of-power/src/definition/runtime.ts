@@ -13,6 +13,7 @@ import { WebOfPowerStateHandlers } from './stateHandlers.js'
 import { WebOfPowerColors } from './colors.js'
 import { WebOfPowerScoring } from './scoring.js'
 import { WebOfPowerExploration } from './exploration.js'
+import { WebOfPowerProgression } from './progression.js'
 
 export const WebOfPowerRuntime = {
     randomnessVersion: 1,
@@ -25,6 +26,7 @@ export const WebOfPowerRuntime = {
     playerColors: WebOfPowerColors,
     stateLogger: new DefaultStateLogger(),
     scoring: new WebOfPowerScoring(),
+    progression: new WebOfPowerProgression(),
     visibility: {
         state: Visibility.createProjector(WebOfPowerGameState),
         actions: Visibility.createActionProjector(WebOfPowerActionSchemas)
