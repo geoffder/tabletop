@@ -1,4 +1,6 @@
 <script lang="ts">
+    import { BoardAnimator } from '$lib/animators/boardAnimator.svelte.js'
+    import { pilliSpot } from '$lib/board/pilliSpot.js'
     import { palaceBounds, palaceLook, palaceRise } from '$lib/board/palaceShape.js'
     import {
         Axis,
@@ -58,41 +60,52 @@
         | { kind: 'bridge'; cell: Cell; axis: Axis }
         | { kind: 'bridgeFront'; cell: Cell }
 
-    // Everything standing on the board, far rows first so nearer pieces stand in front.
+    const animator = new BoardAnimator(session, () => view)
+    const drawn = $derived(animator.drawn)
+    const decks = $derived(new Set(drawn.bridges.map((bridge) => bridge.cell)))
+
+    // Everything standing on the board, far rows first so nearer pieces stand in front. A
+    // walking Pilli Mexica is drawn in the order of the square it is crossing into.
     const raised: Raised[] = $derived.by(() => {
         const pieces: Raised[] = [
-            ...game.bridges.map((bridge) => ({
+            ...drawn.bridges.map((bridge) => ({
                 kind: 'bridge' as const,
                 cell: bridge.cell,
                 axis: bridge.axis
             })),
-            ...game.temples.map((temple) => ({
+            ...drawn.temples.map((temple) => ({
                 kind: 'temple' as const,
                 cell: temple.cell,
                 level: temple.level,
                 playerId: temple.playerId
             })),
-            ...game.players
-                .filter((player) => player.pilli !== undefined)
-                .map((player) => ({
-                    kind: 'pilli' as const,
-                    cell: player.pilli ?? 0,
-                    playerId: player.playerId,
-                    onBridge: layout.bridges.has(player.pilli ?? -1)
-                }))
+            ...drawn.pillis.map((pilli) => ({
+                kind: 'pilli' as const,
+                cell: pilli.cell,
+                playerId: pilli.playerId,
+                onBridge: decks.has(pilli.cell)
+            }))
         ]
         // A bridge running across the screen has its near curb and rail drawn after any Pilli
         // Mexica standing on it.
-        for (const bridge of game.bridges) {
+        for (const bridge of drawn.bridges) {
             if (view.screenAxis(bridge.axis) === Axis.EastWest) {
                 pieces.push({ kind: 'bridgeFront', cell: bridge.cell })
             }
         }
         const order = { bridge: 0, temple: 1, pilli: 2, bridgeFront: 3 }
+        const drawnAt = (piece: Raised) =>
+            piece.kind === 'pilli'
+                ? (animator.walking.get(piece.playerId) ?? piece.cell)
+                : piece.cell
         return pieces.sort(
-            (a, b) => view.centre(a.cell).y - view.centre(b.cell).y || order[a.kind] - order[b.kind]
+            (a, b) =>
+                view.centre(drawnAt(a)).y - view.centre(drawnAt(b)).y ||
+                order[a.kind] - order[b.kind]
         )
     })
+    const keyOf = (piece: Raised) =>
+        piece.kind === 'pilli' ? `pilli-${piece.playerId}` : `${piece.kind}-${piece.cell}`
 
     // Neighbouring canal cells overlap a little, or their clipped edges leave a seam.
     const CLIP_OVERLAP = 0.5
@@ -198,6 +211,7 @@
         height={view.frame.height}
         role="group"
         aria-label="The island of Tenochtitlan"
+        {@attach animator.attach}
     >
         <defs>
             <clipPath id="mx-canal-clip">
@@ -330,18 +344,24 @@
                     width: box.width - 8,
                     height: box.height - 8 * view.tilt
                 }}
-                <rect {...tile} rx="2" class="mark-band"></rect>
-                <rect {...tile} rx="2" class="mark"></rect>
+                <rect {...tile} rx="2" class="mark-band" {@attach animator.mark()}></rect>
+                <rect {...tile} rx="2" class="mark" {@attach animator.mark()}></rect>
                 {#if session.moveCosts && move !== undefined && session.tool === undefined}
                     <!-- What the move costs, in a badge at the square's far right corner. -->
-                    <circle cx={tile.x + tile.width - 1} cy={tile.y + 1} r="6.5" class="cost-badge"
+                    <circle
+                        cx={tile.x + tile.width - 1}
+                        cy={tile.y + 1}
+                        r="6.5"
+                        class="cost-badge"
+                        {@attach animator.mark()}
                     ></circle>
                     <text
                         x={tile.x + tile.width - 1}
                         y={tile.y + 1}
                         dy="3.4"
                         text-anchor="middle"
-                        class="cost-number">{move.cost}</text
+                        class="cost-number"
+                        {@attach animator.mark()}>{move.cost}</text
                     >
                 {/if}
             {/if}
@@ -356,6 +376,7 @@
                 height={box.height - 6 * view.tilt}
                 rx="2"
                 class="mark-band"
+                {@attach animator.mark()}
             ></rect>
             <rect
                 x={box.x + 3}
@@ -364,89 +385,104 @@
                 height={box.height - 6 * view.tilt}
                 rx="2"
                 class="chosen"
+                {@attach animator.mark()}
             ></rect>
         {/each}
 
-        {#each raised as piece (`${piece.kind}-${piece.cell}`)}
+        {#each raised as piece (keyOf(piece))}
             {@const centre = view.centre(piece.cell)}
             {#if piece.kind === 'bridge'}
                 {@const axis = view.screenAxis(piece.axis)}
                 {@const across = axis === Axis.EastWest}
                 <g transform="translate({centre.x} {centre.y})" class="piece">
-                    <ellipse
-                        cx="2"
-                        cy="2"
-                        rx={across ? BRIDGE.reach : BRIDGE.half + 3}
-                        ry={(across ? BRIDGE.half + 3 : BRIDGE.reach) * view.tilt}
-                        fill="url(#mx-piece-shadow)"
-                    ></ellipse>
-                    <image
-                        href={LOOK_URLS[bridgeLook(axis, view.flat, across ? 'back' : 'whole')]}
-                        {...bridgeBounds(axis, view.tilt)}
-                        preserveAspectRatio="none"
-                    ></image>
+                    <g {@attach animator.piece(`bridge-${piece.cell}`, 'shadow')}>
+                        <ellipse
+                            cx="2"
+                            cy="2"
+                            rx={across ? BRIDGE.reach : BRIDGE.half + 3}
+                            ry={(across ? BRIDGE.half + 3 : BRIDGE.reach) * view.tilt}
+                            fill="url(#mx-piece-shadow)"
+                        ></ellipse>
+                    </g>
+                    <g {@attach animator.piece(`bridge-${piece.cell}`, 'body')}>
+                        <image
+                            href={LOOK_URLS[bridgeLook(axis, view.flat, across ? 'back' : 'whole')]}
+                            {...bridgeBounds(axis, view.tilt)}
+                            preserveAspectRatio="none"
+                        ></image>
+                    </g>
                 </g>
             {:else if piece.kind === 'bridgeFront'}
                 <g transform="translate({centre.x} {centre.y})" class="piece">
-                    <image
-                        href={LOOK_URLS[bridgeLook(Axis.EastWest, view.flat, 'front')]}
-                        {...bridgeBounds(Axis.EastWest, view.tilt)}
-                        preserveAspectRatio="none"
-                    ></image>
+                    <g {@attach animator.piece(`bridge-${piece.cell}`, 'front')}>
+                        <image
+                            href={LOOK_URLS[bridgeLook(Axis.EastWest, view.flat, 'front')]}
+                            {...bridgeBounds(Axis.EastWest, view.tilt)}
+                            preserveAspectRatio="none"
+                        ></image>
+                    </g>
                 </g>
             {:else if piece.kind === 'temple'}
                 {@const mark = templeMark(piece.level, view.tilt)}
                 <g transform="translate({centre.x} {centre.y})" class="piece">
-                    <ellipse
-                        cx="2"
-                        cy="2"
-                        rx={CELL * 0.5}
-                        ry={CELL * 0.5 * view.tilt}
-                        fill="url(#mx-piece-shadow)"
-                    ></ellipse>
-                    <image
-                        href={LOOK_URLS[templeLook(piece.level, view.flat)]}
-                        {...templeBounds(piece.level, view.tilt)}
-                        preserveAspectRatio="none"
-                    ></image>
-                    <TempleMarks
-                        {mark}
-                        stair={DESIGN.stair}
-                        fill={piece.playerId === undefined ? undefined : playerFill(piece.playerId)}
-                    />
+                    <g {@attach animator.piece(`temple-${piece.cell}`, 'shadow')}>
+                        <ellipse
+                            cx="2"
+                            cy="2"
+                            rx={CELL * 0.5}
+                            ry={CELL * 0.5 * view.tilt}
+                            fill="url(#mx-piece-shadow)"
+                        ></ellipse>
+                    </g>
+                    <g {@attach animator.piece(`temple-${piece.cell}`, 'body')}>
+                        <image
+                            href={LOOK_URLS[templeLook(piece.level, view.flat)]}
+                            {...templeBounds(piece.level, view.tilt)}
+                            preserveAspectRatio="none"
+                        ></image>
+                        <TempleMarks
+                            {mark}
+                            stair={DESIGN.stair}
+                            fill={piece.playerId === undefined
+                                ? undefined
+                                : playerFill(piece.playerId)}
+                        />
+                    </g>
                 </g>
             {:else}
-                {@const lift = view.lift(piece.onBridge ? BRIDGE_RISE : palaceRise(piece.cell))}
+                {@const spot = pilliSpot(view, piece.cell, decks)}
                 {@const look = pilliLook(view.flat)}
-                <g
-                    transform="translate({centre.x} {centre.y +
-                        (piece.onBridge ? 0 : CELL * 0.1 * view.tilt) -
-                        lift})"
-                    class="piece"
-                >
-                    <ellipse
-                        cx="1"
-                        cy="1"
-                        rx={CELL * 0.22}
-                        ry={CELL * 0.22 * view.tilt}
-                        fill="url(#mx-piece-shadow)"
-                    ></ellipse>
-                    <path
-                        d={LOOK_OUTLINES[look]}
-                        fill={pilliPaint(playerFill(piece.playerId))}
-                        fill-rule="evenodd"
-                    ></path>
-                    <image
-                        href={LOOK_URLS[look]}
-                        {...pilliBounds(view.tilt)}
-                        preserveAspectRatio="none"
-                    ></image>
-                    <image
-                        href={LOOK_URLS[pilliShineLook(view.flat)]}
-                        {...pilliBounds(view.tilt)}
-                        preserveAspectRatio="none"
-                        opacity={shineOver(playerFill(piece.playerId))}
-                    ></image>
+                {@const key = `pilli-${piece.playerId}`}
+                <g transform="translate({spot.x} {spot.y})" class="piece">
+                    <g {@attach animator.piece(key, 'whole')}>
+                        <g {@attach animator.piece(key, 'shadow')}>
+                            <ellipse
+                                cx="1"
+                                cy="1"
+                                rx={CELL * 0.22}
+                                ry={CELL * 0.22 * view.tilt}
+                                fill="url(#mx-piece-shadow)"
+                            ></ellipse>
+                        </g>
+                        <g {@attach animator.piece(key, 'body')}>
+                            <path
+                                d={LOOK_OUTLINES[look]}
+                                fill={pilliPaint(playerFill(piece.playerId))}
+                                fill-rule="evenodd"
+                            ></path>
+                            <image
+                                href={LOOK_URLS[look]}
+                                {...pilliBounds(view.tilt)}
+                                preserveAspectRatio="none"
+                            ></image>
+                            <image
+                                href={LOOK_URLS[pilliShineLook(view.flat)]}
+                                {...pilliBounds(view.tilt)}
+                                preserveAspectRatio="none"
+                                opacity={shineOver(playerFill(piece.playerId))}
+                            ></image>
+                        </g>
+                    </g>
                 </g>
             {/if}
         {/each}
@@ -520,8 +556,13 @@
         {#if hovered !== undefined && session.moves.get(hovered)}
             {@const move = session.moves.get(hovered)}
             {@const centre = view.centre(hovered)}
-            <text class="cost" x={centre.x} y={centre.y - CELL * 0.42} dy="4.2" text-anchor="middle"
-                >{move?.cost} AP</text
+            <text
+                class="cost"
+                {@attach animator.mark()}
+                x={centre.x}
+                y={centre.y - CELL * 0.42}
+                dy="4.2"
+                text-anchor="middle">{move?.cost} AP</text
             >
         {/if}
     </svg>

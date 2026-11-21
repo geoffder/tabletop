@@ -1,5 +1,6 @@
 import {
     GameSession,
+    type PresentedTransition,
     type TitlePreferences,
     undoableStagedSelection
 } from '@tabletop/frontend-components'
@@ -36,6 +37,14 @@ import {
 import { boardView, type BoardView, quarterTurnsOf } from '$lib/board/view.js'
 import { PIGMENTS } from './palette.js'
 
+// A motion under way on the board, which a change of view must stop.
+export type MoveInterrupter = {
+    // Lands the move at once; the rest of its replay still plays.
+    interrupt(): void
+    // Lands it and drops the rest of its replay: another state is being shown.
+    abandon(): void
+}
+
 type SessionOptions = ConstructorParameters<
     typeof GameSession<MexicaGameState, HydratedMexicaGameState>
 >[0]
@@ -52,6 +61,8 @@ export class MexicaGameSession extends GameSession<MexicaGameState, HydratedMexi
             ? this.selection
             : {}
     )
+
+    readonly moveInterrupters = new Set<MoveInterrupter>()
 
     constructor(options: SessionOptions) {
         super(options)
@@ -90,19 +101,38 @@ export class MexicaGameSession extends GameSession<MexicaGameState, HydratedMexi
     }
 
     toggleCoordinates() {
+        this.interruptMoves()
         this.preferences.set({ showCoordinates: !this.showCoordinates })
     }
 
     toggleFlatBoard() {
+        this.interruptMoves()
         this.preferences.set({ flatBoard: !this.flatBoard })
     }
 
     toggleRotatedBoard() {
+        this.interruptMoves()
         this.preferences.set({ rotatedBoard: !this.rotatedBoard })
     }
 
     toggleFarSide() {
+        this.interruptMoves()
         this.preferences.set({ farSide: !this.farSide })
+    }
+
+    private interruptMoves() {
+        for (const interrupter of this.moveInterrupters) interrupter.interrupt()
+    }
+
+    override beforeNewState({ kind }: PresentedTransition): void {
+        if (kind === 'view-switch') {
+            for (const interrupter of this.moveInterrupters) interrupter.abandon()
+        }
+    }
+
+    // The state a presentation is leading to, while it plays.
+    get presentingState(): HydratedMexicaGameState | undefined {
+        return this.incomingGameState
     }
 
     toggleMoveCosts() {
