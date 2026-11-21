@@ -245,7 +245,7 @@
             </pattern>
             {#each animator.floods as flood (flood.key)}
                 <clipPath id="mx-flood-{flood.key}">
-                    <rect {...flood.box} {@attach animator.floodEdge(flood.key)}></rect>
+                    <path clip-rule="evenodd" {@attach animator.floodEdge(flood.key)}></path>
                 </clipPath>
             {/each}
             <clipPath id="mx-land-clip">
@@ -299,14 +299,7 @@
                 clip-path="url(#mx-canal-clip)"
                 class="surface"
             ></image>
-            <!-- The earth at the bottom of a canal being dug, under its sloping banks, which the
-                 water wells up through. -->
-            {#each animator.floods as flood (flood.key)}
-                <g class="surface" {@attach animator.floodFloor(flood.key)}>
-                    <path fill="url(#mx-canal-earth)" fill-rule="evenodd"></path>
-                    <path fill="url(#mx-canal-grit)" fill-rule="evenodd"></path>
-                </g>
-            {/each}
+
             {#each works.banks as bank (bank.key)}
                 <polygon points={bank.points} fill="url(#mx-slope-{bank.slope})" class="surface"
                 ></polygon>
@@ -342,7 +335,15 @@
                     class="surface"
                 ></image>
             {/each}
-            <!-- The paving over a square the water is flooding, or coming back over it. -->
+            <!-- The earth at the bottom of a canal being dug, over its banks until their bricks are
+                 laid, and which the water wells up through. -->
+            {#each animator.floods as flood (flood.key)}
+                <g class="surface" {@attach animator.floodFloor(flood.key)}>
+                    <path fill="url(#mx-canal-earth)" fill-rule="evenodd"></path>
+                    <path fill="url(#mx-canal-grit)" fill-rule="evenodd"></path>
+                </g>
+            {/each}
+            <!-- The paving over a canal being dug, which the pit opens up. -->
             {#each animator.floods as flood (flood.key)}
                 <image
                     href={LOOK_URLS[PAVING_LOOK]}
