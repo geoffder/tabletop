@@ -50,6 +50,8 @@
                     onclick={() => session.chooseAxis(axis)}>{AXIS_NAMES[axis]}</button
                 >{/each}</span
         >
+    {:else if tool === 'canal' && session.chosenCell !== undefined && !session.canDigChosenAlone}
+        <span>Tap a neighbour for a double canal</span>
     {:else if tool === 'canal' && session.chosenCell !== undefined}
         <span
             >Tap a neighbour for a double canal, or <button

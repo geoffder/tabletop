@@ -284,6 +284,13 @@ export class MexicaGameSession extends GameSession<MexicaGameState, HydratedMexi
         return !this.isViewingHistory && this.isMyTurn && this.validActionTypes.includes(type)
     }
 
+    // Whether the chosen square can take a single canal, which it cannot once the single tiles
+    // are all on the board.
+    get canDigChosenAlone(): boolean {
+        const chosen = this.chosenCell
+        return this.tool === 'canal' && chosen !== undefined && this.targets.has(chosen)
+    }
+
     private canalTargets(state: HydratedMexicaGameState, playerId: string): Set<Cell> {
         const layout = state.layout()
         const diggable = LAND_CELLS.filter((cell) => state.canDigAt(cell, layout))

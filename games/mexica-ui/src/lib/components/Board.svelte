@@ -117,7 +117,7 @@
     const CLIP_OVERLAP = 0.5
 
     // Banks, quays, jetties and the island's shore for the canals dug so far.
-    const works = $derived(waterworks(LAND_CELLS, layout.canals))
+    const works = $derived(waterworks(LAND_CELLS, drawn.canals))
     const BANK = BANK_WIDTH
 
     const playerFill = (playerId?: string) =>
@@ -221,7 +221,7 @@
     >
         <defs>
             <clipPath id="mx-canal-clip">
-                {#each [...layout.canals] as cell (cell)}
+                {#each [...drawn.canals] as cell (cell)}
                     <rect
                         x={columnOf(cell) * CELL - CLIP_OVERLAP}
                         y={rowOf(cell) * CELL - CLIP_OVERLAP}
@@ -230,6 +230,11 @@
                     ></rect>
                 {/each}
             </clipPath>
+            {#each animator.floods as flood (flood.cell)}
+                <clipPath id="mx-flood-{flood.cell}">
+                    <rect {...flood.box} {@attach animator.floodEdge(flood.cell)}></rect>
+                </clipPath>
+            {/each}
             <clipPath id="mx-land-clip">
                 {#each works.zones as zone (zone.key)}
                     <polygon points={zone.points}></polygon>
@@ -313,6 +318,16 @@
                     href={LOOK_URLS[spill.look]}
                     {...spill.box}
                     preserveAspectRatio="none"
+                    class="surface"
+                ></image>
+            {/each}
+            <!-- The paving over a square the water is flooding, or coming back over it. -->
+            {#each animator.floods as flood (flood.cell)}
+                <image
+                    href={LOOK_URLS[PAVING_LOOK]}
+                    {...PLAN}
+                    preserveAspectRatio="none"
+                    clip-path="url(#mx-flood-{flood.cell})"
                     class="surface"
                 ></image>
             {/each}
