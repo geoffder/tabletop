@@ -6,7 +6,8 @@ export const MexicaPreferences = Type.Object(
         showCoordinates: Type.Boolean(),
         flatBoard: Type.Boolean(),
         rotatedBoard: Type.Boolean(),
-        farSide: Type.Boolean()
+        farSide: Type.Boolean(),
+        moveCosts: Type.Boolean()
     },
     { additionalProperties: false }
 )
@@ -18,7 +19,8 @@ export const MexicaPreferenceDefinition = {
             showCoordinates: true,
             flatBoard: false,
             rotatedBoard: false,
-            farSide: false
+            farSide: false,
+            moveCosts: false
         },
         version: 1
     }

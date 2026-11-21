@@ -82,9 +82,7 @@
         >
     {:else}
         <span
-            >{#if session.apAvailable === 0}No action points left{:else}<span class="long"
-                    >Tap where to go (anywhere for 5), or pick something to build</span
-                ><span class="short">Tap to move, or pick a piece</span>{/if}
+            >{#if session.apAvailable === 0}No action points left{:else}Tap to move, or pick a piece{/if}
             {@render endTurn()}</span
         >
     {/if}
@@ -124,19 +122,7 @@
         }
     }
 
-    .short {
-        display: none;
-    }
-
     @media (max-width: 639px) {
-        .long {
-            display: none;
-        }
-
-        .short {
-            display: inline;
-        }
-
         .panel {
             font-size: 15px;
             padding: 4px 8px;
