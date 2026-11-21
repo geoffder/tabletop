@@ -21,7 +21,7 @@ import {
     type Vec
 } from './light.js'
 import { PILLI_PIXELS, pilliBounds } from './pilliShape.js'
-import { PILLI_SIZE } from './view.js'
+import { PILLI_SIZE, PILLI_WIDTH } from './view.js'
 import {
     castRays,
     normalAt,
@@ -60,12 +60,15 @@ type Figure = { scene: Scene; finish: (p: Vec) => Finish }
 // The figure's light over its paint, a second layer of light for dark paint, and its outline.
 export type PilliLook = { bitmap: Bitmap; shine: Bitmap; outline: string }
 
+// From the board's units back to the figure as drawn, slimmed to PILLI_WIDTH across.
+const unscaled = (p: Vec): Vec => [p[0] / PILLI_WIDTH, p[1] / PILLI_WIDTH, p[2] / PILLI_SIZE]
+
 export function renderPilli(tilt: number, pixels = PILLI_PIXELS): PilliLook {
     const box = pilliBounds(tilt)
     const full = FIGURE
     const figure: Figure = {
-        scene: (p) => full.scene(scale(p, 1 / PILLI_SIZE)) * PILLI_SIZE,
-        finish: (p) => full.finish(scale(p, 1 / PILLI_SIZE))
+        scene: (p) => full.scene(unscaled(p)) * Math.min(PILLI_WIDTH, PILLI_SIZE),
+        finish: (p) => full.finish(unscaled(p))
     }
     const toward: Vec = [0, Math.sqrt(1 - tilt * tilt), tilt]
     const { bitmaps, hits } = castRays(
@@ -106,7 +109,7 @@ function bend(p: Vec, scene: Scene): number {
     return sum / (e * e)
 }
 
-// `below` is the paving reflected in the satin paint, which shows on dark paint only.
+// `below` is the paving in the paint's faint sheen, which shows on dark paint only.
 function shineOf(p: Vec, normal: Vec, scene: Scene, tone: number, below: number): Sample {
     const edge = smoothstep(DRY_BRUSH.from, DRY_BRUSH.to, bend(p, scene))
     const up = 0.5 + 0.5 * clamp(normal[2])
@@ -118,14 +121,16 @@ function shineOf(p: Vec, normal: Vec, scene: Scene, tone: number, below: number)
 }
 
 // Lit as ZÈRTZ lights its pieces: a key light from above, to the left and a little in front,
-// so the side towards the viewer shows its form; little light besides; the edges turned from
-// the viewer reflecting the room above, as satin paint does. The paving below shows in it too,
-// but only on dark paint, where it gives the foot its edge; it clouded lighter paint.
+// so the side towards the viewer shows its form; little light besides. The paint is matte, as
+// the stone round it is: the edges turned from the viewer keep only a faint sheen of the room
+// above, and of the paving below on dark paint, where it gives the foot its edge. The gold is
+// dulled to match.
 const KEY: Vec = normalize([-0.62, 0.24, 0.75])
 const AMBIENT = 0.22
-const ROOM = 0.32
-const PAVING = 0.5
+const ROOM = 0.064
+const PAVING = 0.1
 const SATIN = 0.45
+const GOLD_SHINE = 0.16
 
 function fresnel(cosine: number): number {
     return 0.04 + 0.96 * (1 - clamp(cosine)) ** 5
@@ -149,7 +154,7 @@ function shade(p: Vec, figure: Figure, toward: Vec): Sample[] {
         const half = normalize(add(KEY, toward))
         const facing = clamp(dot(normal, half))
         const metal = mix(GOLD.dark, GOLD.light, clamp(sun * 0.7 + facing ** 4 * 0.5))
-        const shine = 0.8 * facing ** 24
+        const shine = GOLD_SHINE * facing ** 24
         return opaque(add(scale(metal, 0.3 + 0.8 * light), [shine, shine * 0.9, shine * 0.6]))
     }
     if (finish.kind === 'turquoise') {
@@ -158,7 +163,7 @@ function shade(p: Vec, figure: Figure, toward: Vec): Sample[] {
         const stone = mix(TURQUOISE.dark, TURQUOISE.light, 0.5 + 0.5 * sun)
         return opaque(add(scale(stone, 0.35 + 0.75 * light), [polish, polish, polish]))
     }
-    // As a factor on the paint's sRGB colour; more than full light, and the satin's
+    // As a factor on the paint's sRGB colour; more than full light, and the sheen's
     // reflections, lighten it.
     const factor = ((light / FULL_LIGHT) * finish.tone) ** (1 / 2.2)
     const white = clamp(Math.max(0, factor - 1) * 0.6 + srgb(glance * SATIN))

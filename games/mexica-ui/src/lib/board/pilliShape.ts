@@ -1,6 +1,6 @@
 import { linear } from './light.js'
 import { riseOf } from './templeShape.js'
-import { type Box, PILLI_SIZE } from './view.js'
+import { type Box, PILLI_SIZE, PILLI_WIDTH } from './view.js'
 
 // A Pilli Mexica as a painted wooden figure, feet at the origin: x to the right, y towards the
 // viewer, z up, in board units at full size: a noble in a robe flaring like a pawn's to a ring at
@@ -12,12 +12,12 @@ export const PILLI_SHINE = 0.3
 
 export const PILLI_PIXELS = 3
 
-// What the figure takes up at full size: half its width and depth, and its height.
+// What the figure takes up as drawn: half its width and depth, and its height.
 const EXTENT = { half: 9.6, depth: 9.5, height: 31.5 }
 
 export function pilliBounds(tilt: number): Box {
-    const half = EXTENT.half * PILLI_SIZE
-    const depth = EXTENT.depth * PILLI_SIZE
+    const half = EXTENT.half * PILLI_WIDTH
+    const depth = EXTENT.depth * PILLI_WIDTH
     const height = EXTENT.height * PILLI_SIZE
     const margin = 1
     const top = -depth * tilt - height * riseOf(tilt)

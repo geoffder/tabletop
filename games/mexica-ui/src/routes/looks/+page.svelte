@@ -127,9 +127,17 @@
                 drawn[templeLook(level, tilt === FLAT)] = toUrl(renderTemple(level, tilt), 0.9)
             }
         }
-        for (const axis of [Axis.EastWest, Axis.NorthSouth]) {
-            for (const tilt of [TILT, FLAT]) {
-                drawn[bridgeLook(axis, tilt === FLAT)] = toUrl(renderBridge(axis, tilt), 0.9)
+        for (const tilt of [TILT, FLAT]) {
+            const flat = tilt === FLAT
+            drawn[bridgeLook(Axis.NorthSouth, flat)] = toUrl(
+                renderBridge(Axis.NorthSouth, tilt),
+                0.9
+            )
+            for (const layer of ['back', 'front'] as const) {
+                drawn[bridgeLook(Axis.EastWest, flat, layer)] = toUrl(
+                    renderBridge(Axis.EastWest, tilt, layer),
+                    0.9
+                )
             }
         }
         const traced: Record<string, string> = {}
