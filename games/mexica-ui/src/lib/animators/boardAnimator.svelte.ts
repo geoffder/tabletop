@@ -44,8 +44,9 @@ const WALK = { hop: 0.15, glide: 0.2, height: -7 }
 // placed pieces drop in or lift off.
 const QUICK = 0.18
 const MARK_FADE = 0.15
-// A canal dug is built in from its sides: the paving gives way to brick from the edges to the
-// middle, and then the water rises through the brick from below, like ground water.
+// A canal dug is built in from its sides: the paving gives way from the edges to the middle,
+// leaving the brick banks sloping down to bare earth, and then the water wells up through the
+// earth from below, like ground water.
 const FLOOD = { build: 0.32, rise: 0.5 }
 // The paving over a flooding square reaches this far into the land beside it, over the kerb the
 // canal brings there.
@@ -85,7 +86,7 @@ export class BoardAnimator implements MoveInterrupter {
     private readonly parts = new Map<string, Parts>()
     private readonly marks = new Set<SVGElement>()
     private readonly floodEdges = new Map<string, SVGRectElement>()
-    private readonly floodFloors = new Map<string, SVGPathElement>()
+    private readonly floodFloors = new Map<string, SVGGElement>()
     private readonly listener = (step: Step) => this.onGameStateChange(step)
     private timeline: Timeline | undefined
     private landMove: (() => void) | undefined
@@ -143,8 +144,9 @@ export class BoardAnimator implements MoveInterrupter {
         }
     }
 
-    // The brick floor of a square being built, which the water rises over.
-    floodFloor(key: string): Attachment<SVGPathElement> {
+    // The earth at the bottom of a canal being dug, which the water rises over: a group of
+    // paths sharing one outline.
+    floodFloor(key: string): Attachment<SVGGElement> {
         return (node) => {
             this.floodFloors.set(key, node)
             return () => {
@@ -323,9 +325,9 @@ export class BoardAnimator implements MoveInterrupter {
         animationContext.afterAnimations(land)
     }
 
-    // The paving draws in from every side to the tile's middle, leaving brick, and then the
-    // water wells up through the middle of the floor and spreads out to the banks. Filled in
-    // again, the brick closes over the water and the paving spreads back over the brick.
+    // The paving draws in from every side to the tile's middle, leaving the banks and the earth
+    // below them, and then the water wells up through the middle of the earth and spreads out to
+    // the banks. Filled in again, the earth closes over the water and the paving spreads back.
     private flood(flood: Flood, dug: boolean, timeline: Timeline, digging: boolean) {
         const edge = this.floodEdges.get(flood.key)
         const floor = this.floodFloors.get(flood.key)
@@ -368,9 +370,10 @@ export class BoardAnimator implements MoveInterrupter {
         )
     }
 
-    // The water in a canal's brick floor as it wells up: a pool from the floor's middle whose
-    // `reach` grows from nothing to the whole floor, cut out of the floor's path as it is set.
-    private welling(node: SVGPathElement, floor: Box): { reach: number } {
+    // The water in a canal's floor as it wells up: a pool from the floor's middle whose `reach`
+    // grows from nothing to the whole floor, cut out of the floor's paths as it is set.
+    private welling(group: SVGGElement, floor: Box): { reach: number } {
+        const paths = [...group.querySelectorAll('path')]
         const { x, y, width, height } = floor
         const outline = `M${x} ${y}H${x + width}V${y + height}H${x}Z`
         const cx = x + width / 2
@@ -378,7 +381,7 @@ export class BoardAnimator implements MoveInterrupter {
         let reach = 0
         const write = () => {
             if (reach <= 0) {
-                node.setAttribute('d', outline)
+                for (const path of paths) path.setAttribute('d', outline)
                 return
             }
             const hx = (width / 2 + 2) * reach
@@ -388,7 +391,7 @@ export class BoardAnimator implements MoveInterrupter {
                 `M${cx - hx + r} ${cy - hy}H${cx + hx - r}A${r} ${r} 0 0 1 ${cx + hx} ${cy - hy + r}` +
                 `V${cy + hy - r}A${r} ${r} 0 0 1 ${cx + hx - r} ${cy + hy}H${cx - hx + r}` +
                 `A${r} ${r} 0 0 1 ${cx - hx} ${cy + hy - r}V${cy - hy + r}A${r} ${r} 0 0 1 ${cx - hx + r} ${cy - hy}Z`
-            node.setAttribute('d', outline + pool)
+            for (const path of paths) path.setAttribute('d', outline + pool)
         }
         write()
         return {
