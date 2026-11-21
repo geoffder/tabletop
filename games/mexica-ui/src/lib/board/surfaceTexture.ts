@@ -1,6 +1,7 @@
 // The island's paving and the lake round it, seen from straight above in plan units. Only
 // scripts/render-looks.mjs runs this, through the /looks page; rerun it after changing either.
 import { cellAt, columnOf, isLand, isPalace, isStart, PALACE_CENTRE, rowOf } from '@tabletop/mexica'
+import type { Point } from '@tabletop/common'
 import { CELL, LAKE_MARGIN } from './view.js'
 import { COVE_TOE, SLOPE_WIDTH, type SlopeCorner, type SlopeSide } from './looks.js'
 import {
@@ -53,7 +54,7 @@ function landAt(x: number, y: number): number | undefined {
     return cell !== undefined && isLand(cell) ? cell : undefined
 }
 
-export function renderPaving(style: StoneStyle, pixels = PAVING_PIXELS): Bitmap {
+export function renderPaving(style: StoneStyle, pixels = PAVING_PIXELS, box = WATERS): Bitmap {
     const [light, dark, mortar, palace] = [style.light, style.dark, style.mortar, style.palace].map(
         linear
     )
@@ -71,7 +72,7 @@ export function renderPaving(style: StoneStyle, pixels = PAVING_PIXELS): Bitmap 
         }
         return values
     }
-    return paint(WATERS, pixels, (x, y) => {
+    return paint(box, pixels, (x, y) => {
         const cell = landAt(x, y) ?? nearestLand(x, y, coastReach(x, y))
         if (cell === undefined) return { color: [0, 0, 0], alpha: 0 }
         const [tone, slopeX, slopeY, inset] = draws(cell)
@@ -124,8 +125,35 @@ const coastNoise = fractal(noise2(97), 3)
 
 function coastReach(x: number, y: number): number {
     return (
-        (COAST.least + (COAST.most - COAST.least) * coastNoise(x * 0.04, y * 0.04)) * edgeFit(x, y)
+        (COAST.least + (COAST.most - COAST.least) * coastNoise(x * 0.04, y * 0.04)) *
+        edgeFit(x, y) *
+        pinchFit(x, y)
     )
+}
+
+// While a pinch's patch is drawn, its corner: the island's outer stones are drawn back to the
+// grid there, so the two squares' paving meets only at the corner with the shore's rocks packed
+// in round it, and reach out as usual from PINCH_FIT.outer on.
+let pinched: Point | undefined
+const PINCH_FIT = { inner: 1, outer: 16 }
+function pinchFit(x: number, y: number): number {
+    if (pinched === undefined) return 1
+    return smoothstep(PINCH_FIT.inner, PINCH_FIT.outer, Math.hypot(x - pinched.x, y - pinched.y))
+}
+
+const PINCH_ROCK = { radius: 4.2, tone: 0.45 }
+function pinchRock(at: Point): Rock {
+    return { x: at.x, y: at.y, ...PINCH_ROCK }
+}
+
+// Runs `draw` with the coast drawn back from a pinch's corner: see pinches.ts.
+export function withPinch<T>(at: Point, draw: () => T): T {
+    pinched = at
+    try {
+        return draw()
+    } finally {
+        pinched = undefined
+    }
 }
 
 // Past the printed board's edge the lake is only LAKE_MARGIN wide, so the coast and its rocks are
@@ -241,9 +269,9 @@ function water(style: WaterStyle): (x: number, y: number, shallows: number) => R
     }
 }
 
-export function renderLake(style: WaterStyle, pixels = LAKE_PIXELS): Bitmap {
+export function renderLake(style: WaterStyle, pixels = LAKE_PIXELS, box = WATERS): Bitmap {
     const at = water(style)
-    return paint(WATERS, pixels, (x, y) => ({
+    return paint(box, pixels, (x, y) => ({
         color: at(
             x,
             y,
@@ -455,7 +483,7 @@ function offshore(x: number, y: number): number {
     return distanceToLand(x, y) - coastReach(x, y)
 }
 
-export function renderShore(pixels = SHORE_PIXELS): Bitmap {
+export function renderShore(pixels = SHORE_PIXELS, box = WATERS): Bitmap {
     const [light, dark, earth, reed, reedDark] = [
         ROCK.light,
         ROCK.dark,
@@ -512,7 +540,7 @@ export function renderShore(pixels = SHORE_PIXELS): Bitmap {
             tone: 0.5 + 0.5 * Math.sin(angle * 9)
         }
     }
-    return paint(WATERS, pixels, (x, y) => {
+    return paint(box, pixels, (x, y) => {
         const off = offshore(x, y)
         if (off < -1.5 || off > SHORE.widest * 1.5) return { color: [0, 0, 0], alpha: 0 }
         const band = width(x, y)
@@ -520,19 +548,22 @@ export function renderShore(pixels = SHORE_PIXELS): Bitmap {
         const row = Math.floor(y / SHORE.spacing)
         let top: { height: number; nx: number; ny: number; rim: number; tone: number } | undefined
         const lump = (lumps(x * 0.45, y * 0.45) - 0.5) * 0.55
-        for (let dr = -1; dr <= 1; dr++) {
-            for (let dc = -1; dc <= 1; dc++) {
-                const rock = rockIn(column + dc, row + dr)
-                if (rock === undefined) continue
-                const radius = rock.radius * (1 + lump)
-                const dx = (x - rock.x) / radius
-                const dy = (y - rock.y) / radius
-                const r2 = dx * dx + dy * dy
-                if (r2 >= 1) continue
-                const height = (1 - r2) ** 0.6 * radius
-                if (top === undefined || height > top.height) {
-                    top = { height, nx: dx, ny: dy, rim: Math.sqrt(r2), tone: rock.tone }
-                }
+        // At a pinch, one more rock sits on the corner itself, so no lake shows between the two
+        // squares' kerbs there.
+        const candidates = [-1, 0, 1].flatMap((dr) =>
+            [-1, 0, 1].map((dc) => rockIn(column + dc, row + dr))
+        )
+        if (pinched !== undefined) candidates.push(pinchRock(pinched))
+        for (const rock of candidates) {
+            if (rock === undefined) continue
+            const radius = rock.radius * (1 + lump)
+            const dx = (x - rock.x) / radius
+            const dy = (y - rock.y) / radius
+            const r2 = dx * dx + dy * dy
+            if (r2 >= 1) continue
+            const height = (1 - r2) ** 0.6 * radius
+            if (top === undefined || height > top.height) {
+                top = { height, nx: dx, ny: dy, rim: Math.sqrt(r2), tone: rock.tone }
             }
         }
         // The paving stands above the bank and shades its inner edge.

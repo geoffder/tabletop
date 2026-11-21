@@ -26,6 +26,7 @@
         CANAL_LOOK,
         LAKE_LOOK,
         PAVING_LOOK,
+        PINCH_LOOK,
         SHORE_LOOK,
         slopeCornerLook,
         slopeCoveLook,
@@ -36,6 +37,7 @@
     import { templeMark } from '$lib/board/templeMarks.js'
     import TempleMarks from './TempleMarks.svelte'
     import { PLAN, WATERS } from '$lib/board/plan.js'
+    import { PINCH_SHEET, pinchBox, pinchesOf, pinchFrame } from '$lib/board/pinches.js'
     import {
         TOKEN,
         TOKEN_INK,
@@ -118,6 +120,7 @@
 
     // Banks, quays, jetties and the island's shore for the canals dug so far.
     const works = $derived(waterworks(LAND_CELLS, drawn.canals))
+    const pinches = $derived(pinchesOf(drawn.canals))
     const BANK = BANK_WIDTH
 
     const playerFill = (playerId?: string) =>
@@ -358,6 +361,20 @@
                     class="surface"
                 ></image>
             </g>
+            <!-- Where two districts touch only at a corner of the coast, the coast drawn back
+                 from it, so the lake comes in between them. -->
+            {#each pinches as corner (corner.key)}
+                {@const frame = pinchFrame(corner)}
+                <svg
+                    {...pinchBox(corner)}
+                    viewBox="{frame.x} {frame.y} {frame.width} {frame.height}"
+                    preserveAspectRatio="none"
+                    class="surface"
+                >
+                    <image href={LOOK_URLS[PINCH_LOOK]} {...PINCH_SHEET} preserveAspectRatio="none"
+                    ></image>
+                </svg>
+            {/each}
             <image
                 href={LOOK_URLS[CANAL_LOOK]}
                 {...PLAN}

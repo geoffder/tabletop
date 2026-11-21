@@ -2,6 +2,8 @@ export const PAVING_LOOK = 'paving'
 export const LAKE_LOOK = 'lake'
 export const CANAL_LOOK = 'canal'
 export const SHORE_LOOK = 'shore'
+// The sheet of patches for the coast at a pinch: see pinches.ts.
+export const PINCH_LOOK = 'pinches'
 
 export function bridgeLook(screenAxis: string, flat: boolean, layer = 'whole'): string {
     return `bridge-${screenAxis}${layer === 'whole' ? '' : `-${layer}`}${flat ? '-flat' : ''}`
