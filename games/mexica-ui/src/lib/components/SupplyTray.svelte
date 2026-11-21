@@ -1,7 +1,7 @@
 <script lang="ts">
     import { BASE_AP, LEVELS, type Level } from '@tabletop/mexica'
     import { getGameSession } from '$lib/model/sessionContext.svelte.js'
-    import TempleIcon from './TempleIcon.svelte'
+    import PieceIcon from './PieceIcon.svelte'
 
     const session = getGameSession()
 
@@ -33,7 +33,7 @@
                     title={`${level}-level temple (${level} AP)`}
                     onclick={() => session.pickTool(level)}
                 >
-                    <TempleIcon {level} {fill} />
+                    <PieceIcon piece={level} {fill} size={34} />
                     <span class="count">{left(level)}</span>
                 </button>
             {/each}
@@ -45,7 +45,7 @@
                 title="Canal (1 AP)"
                 onclick={() => session.pickTool('canal')}
             >
-                <span class="canal-icon"></span>
+                <PieceIcon piece="canal" {fill} size={34} />
                 <span class="count">{game.singleCanalsLeft() + game.doubleCanalsLeft()}</span>
             </button>
             {#if game.bridgesLeft() > 0}
@@ -57,7 +57,7 @@
                     title="Bridge (1 AP)"
                     onclick={() => session.pickTool('bridge')}
                 >
-                    <span class="bridge-icon"></span>
+                    <PieceIcon piece="bridge" {fill} size={34} />
                     <span class="count">{game.bridgesLeft()}</span>
                 </button>
             {:else}
@@ -69,7 +69,7 @@
                     title="Move a bridge (1 AP)"
                     onclick={() => session.pickTool('moveBridge')}
                 >
-                    <span class="bridge-icon"></span>
+                    <PieceIcon piece="bridge" {fill} size={34} />
                     <span class="count">↷</span>
                 </button>
             {/if}
@@ -80,7 +80,7 @@
                 title="Take an action token (1 AP now, 1 AP later)"
                 onclick={() => session.takeToken()}
             >
-                <span class="token-icon"></span>
+                <PieceIcon piece="token" {fill} size={34} />
                 <span class="count">{game.tokenSupply()}</span>
             </button>
         </div>
@@ -89,96 +89,108 @@
 
 <style>
     .tray {
+        /* Seven tools fit across a 320 px phone. */
+        --tile: clamp(34px, calc((100vw - 88px) / 7 - 4px), 58px);
+        --icon: calc(var(--tile) * 0.72);
         display: flex;
-        flex-wrap: wrap;
+        flex-direction: column;
         align-items: center;
-        justify-content: center;
-        gap: 6px 14px;
-        padding: 0 10px 8px;
+        gap: 8px;
+        padding: 2px 8px 10px;
         color: var(--mx-ink);
     }
 
     .tray.hidden {
         visibility: hidden;
-        min-height: 33px;
+        min-height: calc(var(--tile) + 34px);
     }
 
     .ap {
         display: flex;
         align-items: center;
-        gap: 4px;
+        gap: 6px;
+        min-height: 20px;
     }
 
+    /* Painted wooden discs, lit from the top left. */
     .pip {
-        width: 12px;
-        height: 12px;
+        width: 18px;
+        height: 18px;
         border-radius: 50%;
-        background: var(--mx-ap);
-        box-shadow: inset 0 0 0 1px rgb(0 0 0 / 0.35);
+        background: radial-gradient(
+            circle at 35% 30%,
+            color-mix(in srgb, var(--mx-ap), #fff 35%),
+            var(--mx-ap) 55%,
+            color-mix(in srgb, var(--mx-ap), #000 30%)
+        );
+        box-shadow: 0 1px 2px rgb(40 20 10 / 0.35);
     }
 
     .pip.spent {
         background: transparent;
-        box-shadow: inset 0 0 0 1.5px rgb(0 0 0 / 0.25);
+        box-shadow: inset 0 0 0 1.5px rgb(40 30 20 / 0.28);
     }
 
     .tokens {
         margin-left: 4px;
-        font-weight: 700;
-        font-size: 14px;
+        font-weight: 800;
+        font-size: 16px;
     }
 
     .tools {
         display: flex;
-        gap: 6px;
+        gap: 5px;
     }
 
+    /* Square tiles, the count in a badge at the corner. */
     .tool {
+        width: var(--tile);
+        height: var(--tile);
+        position: relative;
         display: inline-flex;
         align-items: center;
-        gap: 3px;
-        padding: 2px 6px;
-        border-radius: 8px;
-        background: var(--mx-panel-inset);
-        box-shadow: inset 0 0 0 1px var(--mx-panel-edge);
+        justify-content: center;
+        border-radius: 10px;
+        background: linear-gradient(
+            180deg,
+            color-mix(in srgb, var(--mx-panel), #fff 60%),
+            color-mix(in srgb, var(--mx-panel), #6b5c44 10%)
+        );
+        box-shadow:
+            inset 0 0 0 1px var(--mx-panel-edge),
+            0 1px 3px rgb(48 36 22 / 0.22);
+    }
+
+    .tool :global(svg) {
+        width: var(--icon);
+        height: var(--icon);
     }
 
     .tool.picked {
-        box-shadow: inset 0 0 0 2px var(--mx-target);
+        box-shadow:
+            inset 0 0 0 2.5px var(--mx-target),
+            0 1px 3px rgb(48 36 22 / 0.22);
     }
 
     .tool:disabled {
-        opacity: 0.4;
+        opacity: 0.38;
     }
 
     .count {
+        font-weight: 800;
+        font-variant-numeric: tabular-nums;
+        position: absolute;
+        right: -4px;
+        bottom: -4px;
+        min-width: 20px;
+        height: 20px;
+        padding: 0 4px;
+        border-radius: 10px;
         font-size: 13px;
-        font-weight: 700;
-        min-width: 1.1em;
-    }
-
-    .canal-icon {
-        width: 22px;
-        height: 11px;
-        border-radius: 2px;
-        background: var(--mx-canal);
-        box-shadow: inset 0 0 0 1px var(--mx-canal-ink);
-    }
-
-    .bridge-icon {
-        width: 22px;
-        height: 11px;
-        border-radius: 8px 8px 2px 2px;
-        background: var(--mx-bridge);
-        box-shadow: inset 0 0 0 1px var(--mx-bridge-ink);
-    }
-
-    .token-icon {
-        width: 13px;
-        height: 13px;
-        border-radius: 50%;
-        background: var(--mx-ap);
-        box-shadow: inset 0 0 0 1px rgb(0 0 0 / 0.35);
+        line-height: 20px;
+        color: #fff8ec;
+        background: #3a3026;
+        box-shadow: 0 0 0 1.5px var(--mx-panel);
     }
 
     @media (hover: hover) {
