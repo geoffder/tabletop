@@ -31,6 +31,8 @@
     import type { Bitmap } from '$lib/board/light.js'
     import { renderTemple } from '$lib/board/templeLight.js'
     import { renderBridge } from '$lib/board/bridgeLight.js'
+    import { renderToken } from '$lib/board/tokenLight.js'
+    import { tokenLook } from '$lib/board/tokenShape.js'
     import { SPILL_DEPTHS, type SpillKind } from '$lib/board/spillShape.js'
     import { DESIGN, type TempleDesign, templeBounds } from '$lib/board/templeShape.js'
     import { ownerMark } from '$lib/board/templeMarks.js'
@@ -139,6 +141,9 @@
                     0.9
                 )
             }
+        }
+        for (const tilt of [TILT, FLAT]) {
+            drawn[tokenLook(tilt === FLAT)] = toUrl(renderToken(tilt), 0.9)
         }
         const traced: Record<string, string> = {}
         for (const tilt of [TILT, FLAT]) {

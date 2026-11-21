@@ -97,6 +97,8 @@ import temple3 from '../images/looks/temple-3.webp'
 import temple3Flat from '../images/looks/temple-3-flat.webp'
 import temple4 from '../images/looks/temple-4.webp'
 import temple4Flat from '../images/looks/temple-4-flat.webp'
+import token from '../images/looks/token.webp'
+import tokenFlat from '../images/looks/token-flat.webp'
 
 export const LOOK_URLS: Record<string, string> = {
     'bridge-ew-back': bridgeEwBack,
@@ -196,5 +198,7 @@ export const LOOK_URLS: Record<string, string> = {
     'temple-3': temple3,
     'temple-3-flat': temple3Flat,
     'temple-4': temple4,
-    'temple-4-flat': temple4Flat
+    'temple-4-flat': temple4Flat,
+    token: token,
+    'token-flat': tokenFlat
 }
