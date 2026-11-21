@@ -1,5 +1,6 @@
 // Details printed on the board that play no part in the game: mountains, and the names of seas,
-// ranges and islands. Placed by /workspace/tmp/web-of-power/map/details.py.
+// ranges and islands. Placed by /workspace/tmp/web-of-power/map/details.py; the labels since moved
+// off roads, borders and coasts by /workspace/tmp/web-of-power/labels/place.js.
 
 // Where each mountain mark stands, the foot of its two peaks.
 export const MOUNTAINS: { x: number; y: number }[] = [
@@ -78,9 +79,9 @@ export const MAP_LABELS: { text: string; x: number; y: number; angle: number; se
     { text: 'Biscay', x: 140, y: 792, angle: 0, sea: true },
     { text: 'Massif', x: 600, y: 838, angle: 0, sea: false },
     { text: 'Central', x: 600, y: 872, angle: 0, sea: false },
-    { text: 'Pyrenees', x: 300, y: 966, angle: 43, sea: false },
+    { text: 'Pyrenees', x: 286, y: 1004, angle: 43, sea: false },
     { text: 'Alps', x: 1010, y: 792, angle: -12, sea: false },
-    { text: 'Adriatic Sea', x: 1352, y: 1046, angle: 32, sea: true },
+    { text: 'Adriatic Sea', x: 1330, y: 986, angle: 32, sea: true },
     { text: 'Corsica', x: 938, y: 1097, angle: 0, sea: true },
-    { text: 'Elba', x: 1084, y: 1095, angle: 0, sea: true }
+    { text: 'Elba', x: 1070, y: 1083, angle: 0, sea: true }
 ]

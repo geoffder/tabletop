@@ -20,17 +20,48 @@
         SEA_ROUTES,
         SPACE_POINTS
     } from '$lib/board/mapData.js'
-    import { advisorRing, cloisterSketch } from '$lib/board/pieces.js'
+    import { cloisterDrawing } from '$lib/board/pieces.js'
+    import { wornTag } from '$lib/board/tags.js'
+    import { roadInk, seaRouteInk } from '$lib/board/roadInk.js'
     import { MAP_LABELS, MOUNTAINS } from '$lib/board/mapDetails.js'
     import { HOUSE_SPRITE } from '$lib/board/pieceSprites.js'
     import { EMBLEMS } from '$lib/board/armsData.js'
-    import { ARMS_FEATURES } from '$lib/board/armsFeatures.js'
+    import { ARMS_R, advisorSpots } from '$lib/board/advisorSpots.js'
     import coast from '$lib/images/coast.webp'
     import Piece from './Piece.svelte'
 
-    // An empty space's sketch is as wide as a house's gable end, 34: as large as the closest
-    // spaces (Poblet and Veruela) allow with room between them.
-    const sketch = cloisterSketch(34)
+    // Each empty space's cloister, inked by hand: every one a little different.
+    // Every space's cloister, joined into one path per pen (the drawings never change), each
+    // placed at its space.
+    const cloisterLayers = (() => {
+        const drawn = SPACES.map((space, index) =>
+            cloisterDrawing(index + 1, SPACE_POINTS[space.abbey])
+        )
+        return {
+            outline: drawn.map((drawing) => drawing.outline).join(' '),
+            detail: drawn.map((drawing) => drawing.detail).join(' ')
+        }
+    })()
+
+    // Each road inked by hand: rough, gone over twice, smudged.
+    const roadInks = ROADS.map(([a, b], index) => roadInk(ROAD_PATHS[`${a}|${b}`], index + 1))
+    // One path per layer for all the roads (four elements, not four per road); overlapping
+    // smudges inside one path don't darken each other where roads meet.
+    const roadLayers = {
+        smudgeWide: roadInks.map((road) => road.smudge[0]).join(' '),
+        smudgeNarrow: roadInks.map((road) => road.smudge[1]).join(' '),
+        ink: roadInks.map((road) => road.ink[0]).join(' '),
+        second: roadInks.map((road) => road.ink[1]).join(' ')
+    }
+
+    // The sea routes, inked dash-dot by hand, all in one path.
+    const seaRoutes = Object.values(SEA_ROUTES)
+        .map((route, index) => seaRouteInk(route, index + 1))
+        .join(' ')
+
+    // Each alliance tag a scrap of worn parchment, torn its own way.
+    const tags = ALLIANCES.map((_, index) => wornTag(index + 1))
+    const uid = $props.id()
 
     const session = getGameSession()
 
@@ -78,14 +109,21 @@
         session.letGo()
     }
 
-    // Each coat of arms' radius: as large as the houses round the seals allow (Schwaben's rim
-    // runs under its neighbours' houses, its middle clear for the advisors). The seals were
-    // moved to fit by /workspace/tmp/web-of-power/map/arms_fit.py.
-    const ARMS_R = 52
-
-    // Names sit above their coats of arms, England's to the right of it as on the board.
-    const LABELS: Partial<Record<Country, { x: number; y: number; anchor: string }>> = {
-        [Country.England]: { x: ARMS_R + 10, y: 10, anchor: 'start' }
+    // Where each country's name stands, about its coat of arms (the text's anchor on its baseline):
+    // placed by /workspace/tmp/web-of-power/labels/place.js to cross as few roads, borders, houses
+    // and other labels as it can, near the seal. England's sits below and right of its seal, by
+    // Waverley; Schwaben's south-west of its seal, alliance box 13 moved east along its border to
+    // make room (user's choice).
+    const LABELS: Record<Country, { x: number; y: number; anchor: string }> = {
+        [Country.England]: { x: -26, y: 86, anchor: 'start' },
+        [Country.Lothringen]: { x: 2, y: -62, anchor: 'middle' },
+        [Country.Franken]: { x: 0, y: -62, anchor: 'middle' },
+        [Country.Bayern]: { x: 0, y: -62, anchor: 'middle' },
+        [Country.Schwaben]: { x: -48, y: 98, anchor: 'middle' },
+        [Country.Burgund]: { x: 28, y: -62, anchor: 'middle' },
+        [Country.Frankreich]: { x: 54, y: -62, anchor: 'middle' },
+        [Country.Aragon]: { x: -22, y: -64, anchor: 'middle' },
+        [Country.Italien]: { x: 0, y: -70, anchor: 'middle' }
     }
 
     // Nearer spaces are drawn last, so a house stands in front of the one behind it.
@@ -99,36 +137,10 @@
     // A mountain, as the board draws them: two peaks sketched in ink.
     const MOUNTAIN = 'M-11 1 L-6 -6 L-2 -1 L3 -8 L10 1'
 
-    // Each emblem's key features in the seal's units (the emblem is drawn at 0.9 of its radius).
-    const FEATURES = new Map(
-        countries.map((country) => {
-            const scale = (ARMS_R * 0.9) / 50
-            const features = ARMS_FEATURES[country].map(({ x, y, r, weight }) => ({
-                x: x * scale,
-                y: y * scale,
-                r: r * scale,
-                weight
-            }))
-            return [country, features]
-        })
-    )
-
-    // Each advisor's spot on its seal, worked out once for each country and count; drawn from the
-    // back so nearer pegs stand in front.
-    const RINGS = new Map<string, { x: number; y: number }[]>()
+    // Each advisor's spot on its seal, worked out ahead of time (board/advisorSpots.ts); drawn
+    // from the back so nearer pegs stand in front.
     function standing<T>(country: Country, advisors: readonly T[]) {
-        const key = `${country}:${advisors.length}`
-        let spots = RINGS.get(key)
-        if (!spots) {
-            spots = advisorRing(
-                advisors.length,
-                7919 * (countries.indexOf(country) + 1),
-                FEATURES.get(country),
-                ARMS_R
-            )
-            RINGS.set(key, spots)
-        }
-        const ring = spots
+        const ring = advisorSpots(country, advisors.length)
         return advisors
             .map((advisor, index) => ({ advisor, index, spot: ring[index] }))
             .sort((a, b) => a.spot.y - b.spot.y)
@@ -146,6 +158,14 @@
         role="group"
         aria-label="Map of Europe"
     >
+        <defs>
+            <!-- Parchment for the alliance tags, darker towards its worn edges. -->
+            <radialGradient id="{uid}-parchment" cx="45%" cy="40%" r="75%">
+                <stop offset="0%" stop-color="#fbf3dc"></stop>
+                <stop offset="62%" stop-color="#f1e2bd"></stop>
+                <stop offset="100%" stop-color="#d9bf8a"></stop>
+            </radialGradient>
+        </defs>
         <rect
             x={MAP_VIEW.x}
             y={MAP_VIEW.y}
@@ -153,12 +173,20 @@
             height={MAP_VIEW.height}
             class="sea"
         ></rect>
-        {#each Object.values(SEA_ROUTES) as route, index (index)}
-            <path d={route} class="sea-route"></path>
-        {/each}
+        <path d={seaRoutes} class="sea-route"></path>
         <path d={LAND_PATH} class="land"></path>
         <path d={CORSICA} class="land island"></path>
         <ellipse cx="1049" cy="1088" rx="3.2" ry="5.5" class="land island"></ellipse>
+        <!-- Under the countries, each grown a little in its edge colour: closes the slivers
+             where traced outlines don't quite meet. -->
+        {#each countries as country (country)}
+            <path
+                d={COUNTRY_PATHS[country]}
+                class="country-under"
+                style:fill="var(--wop-{cardColorOf(country)}-edge)"
+                style:stroke="var(--wop-{cardColorOf(country)}-edge)"
+            ></path>
+        {/each}
         {#each countries as country (country)}
             <path
                 id="wop-country-{country}"
@@ -176,9 +204,6 @@
             height={MAP_VIEW.height}
             class="coast"
         ></image>
-        {#each countries as country (country)}
-            <use href="#wop-country-{country}" class="border"></use>
-        {/each}
 
         <g class="mountains">
             {#each MOUNTAINS as at, index (index)}
@@ -194,16 +219,19 @@
             >
         {/each}
 
-        {#each ROADS as [a, b] (`${a}|${b}`)}
-            <path d={ROAD_PATHS[`${a}|${b}`]} class="road"></path>
-        {/each}
+        <!-- The roads' smudges first, so no smudge greys another road's ink where they meet. -->
+        <path d={roadLayers.smudgeWide} class="smudge-wide"></path>
+        <path d={roadLayers.smudgeNarrow} class="smudge-narrow"></path>
+        <path d={roadLayers.ink} class="road"></path>
+        <path d={roadLayers.second} class="road second"></path>
 
         {#each ALLIANCES as [a, b], index (index)}
             {@const box = ALLIANCE_BOXES[index + 1]}
             <g transform="translate({box.x} {box.y})" class="alliance">
                 <title>Alliance {index + 1}: {COUNTRY_NAMES[a]} and {COUNTRY_NAMES[b]}</title>
-                <rect x="-15" y="-15" width="30" height="30" rx="3"></rect>
-                <text y="6.3">{index + 1}</text>
+                <path d={tags[index]} transform="translate(1.3 1.7)" class="tag-shadow"></path>
+                <path d={tags[index]} fill="url(#{uid}-parchment)" class="tag"></path>
+                <text y="6.5">{index + 1}</text>
             </g>
         {/each}
 
@@ -211,7 +239,7 @@
         {#each countries as country (country)}
             {@const at = ARMS[country]}
             {@const advisors = advisorsIn.get(country) ?? []}
-            {@const label = LABELS[country] ?? { x: 0, y: -ARMS_R - 10, anchor: 'middle' }}
+            {@const label = LABELS[country]}
             <g transform="translate({at.x} {at.y})">
                 <circle r={ARMS_R} class="arms"></circle>
                 <!-- The country's emblem, as on its cards, filling the seal behind the advisors. -->
@@ -244,17 +272,17 @@
             </g>
         {/each}
 
+        <!-- Every space's cloister, drawn on the board; a house stands on its own. -->
+        <path d={cloisterLayers.outline} class="cloister-ink"></path>
+        <path d={cloisterLayers.detail} class="cloister-ink fine"></path>
         {#each spacesFromBack as space (space.abbey)}
-            {@const at = SPACE_POINTS[space.abbey]}
             {@const owner = cloisterAt.get(space.abbey)}
-            <g transform="translate({at.x} {at.y})">
-                {#if owner}
+            {#if owner}
+                {@const at = SPACE_POINTS[space.abbey]}
+                <g transform="translate({at.x} {at.y})">
                     <Piece kind="house" fill={pieceColor(owner)} />
-                {:else}
-                    <path d={sketch.fill} class="sketch-fill"></path>
-                    <path d={sketch.lines} class="sketch-lines"></path>
-                {/if}
-            </g>
+                </g>
+            {/if}
         {/each}
 
         <!-- Choice rings above every piece, so a nearer house never covers one. -->
@@ -299,10 +327,8 @@
         fill: var(--wop-land);
     }
 
-    .border {
-        fill: none;
-        stroke: var(--wop-border);
-        stroke-width: 2;
+    .country-under {
+        stroke-width: 6;
         stroke-linejoin: round;
     }
 
@@ -328,7 +354,7 @@
     }
 
     .map-label {
-        font-family: Georgia, 'Times New Roman', serif;
+        font-family: Almendra, Georgia, serif;
         font-size: 22px;
         font-style: italic;
         letter-spacing: 1px;
@@ -341,31 +367,41 @@
         fill: color-mix(in srgb, var(--wop-sea-ink), transparent 15%);
     }
 
+    /* The printed sea routes: black dash-dot lines, inked by hand. */
     .sea-route {
-        fill: none;
-        stroke: var(--wop-sea-ink);
-        stroke-width: 3;
-        stroke-dasharray: 12 8;
-        stroke-linecap: round;
+        fill: var(--wop-road-ink);
     }
 
+    /* Black ink, gone over twice; the second pass a little lighter. */
     .road {
-        fill: none;
-        stroke: var(--wop-road);
-        stroke-width: 3.2;
-        stroke-linecap: round;
+        fill: var(--wop-road-ink);
+    }
+
+    .road.second {
+        fill-opacity: 0.85;
+    }
+
+    .smudge-wide {
+        fill: rgb(30 22 16 / 0.08);
+    }
+
+    .smudge-narrow {
+        fill: rgb(30 22 16 / 0.1);
+    }
+
+    .tag-shadow {
+        fill: rgb(40 25 10 / 0.25);
+    }
+
+    .tag {
+        stroke: var(--wop-border);
+        stroke-width: 1.2;
         stroke-linejoin: round;
     }
 
-    .alliance rect {
-        fill: #fbf6e8;
-        stroke: var(--wop-border);
-        stroke-width: 1.6;
-    }
-
     .alliance text {
-        font-family: Georgia, 'Times New Roman', serif;
-        font-size: 18px;
+        font-family: Almendra, Georgia, serif;
+        font-size: 19px;
         text-anchor: middle;
         fill: var(--wop-label);
     }
@@ -382,25 +418,27 @@
         pointer-events: none;
     }
 
+    /* Printed ink: a calligraphic hand at its own weight, the country's colour showing through a
+       little. */
     .country-name {
-        font-family: Georgia, 'Times New Roman', serif;
-        font-size: 30px;
-        font-weight: 600;
-        letter-spacing: 0.6px;
+        font-family: Almendra, Georgia, serif;
+        font-size: 33px;
+        letter-spacing: 0.4px;
         fill: var(--wop-label);
+        fill-opacity: 0.86;
         pointer-events: none;
     }
 
-    .sketch-fill {
-        fill: rgb(255 250 236 / 0.45);
-    }
-
-    .sketch-lines {
+    .cloister-ink {
         fill: none;
         stroke: var(--wop-road);
-        stroke-width: 1.4;
+        stroke-width: 1.6;
         stroke-linecap: round;
         stroke-linejoin: round;
+    }
+
+    .cloister-ink.fine {
+        stroke-width: 1;
     }
 
     .target-band {

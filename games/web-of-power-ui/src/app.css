@@ -59,11 +59,12 @@
     --wop-mark: #5ef0ff;
     /* The map, in the printed board's colours washed a quarter toward parchment, so the
        pieces stand out on countries of their own colour. */
-    --wop-sea: #a1c2c9;
+    --wop-sea: #7aa8c6;
     --wop-sea-ink: #2c5466;
     --wop-land: #e0d1ac;
     --wop-border: #4a3a2a;
     --wop-road: #3b2a1d;
+    --wop-road-ink: #221a14;
     --wop-label: #2b2016;
     /* The seals printed on the cards. */
     --wop-card-ink: #3a2216;
@@ -73,4 +74,11 @@
     --wop-lothringen-italien: #ddd6aa;
     --wop-england-schwaben: #d4a678;
     --wop-frankreich: #be97b4;
+    /* Each colour as printed, unwashed: the countries deepen to it at their edges (no border
+       lines, as on the board; scripts/render-coast.mjs draws the soft band). */
+    --wop-franken-aragon-edge: #c43b51;
+    --wop-bayern-burgund-edge: #5f9f59;
+    --wop-lothringen-italien-edge: #d6cf9d;
+    --wop-england-schwaben-edge: #ca8f5a;
+    --wop-frankreich-edge: #ac7baa;
 }

@@ -4,7 +4,9 @@ import type { Attachment } from 'svelte/attachments'
 // does not move the board each time the panel shrinks back. A new width starts over, since the
 // wrapping changes with it; the reset waits a frame so the observer never re-enters its own change.
 export const holdTallest: Attachment<HTMLElement> = (node) => {
-    let width = node.clientWidth
+    // Unknown until the observer's first report: reading it here would force a layout of the page
+    // while it is still being built.
+    let width = -1
     let tallest = 0
     let frame = 0
 
@@ -24,6 +26,11 @@ export const holdTallest: Attachment<HTMLElement> = (node) => {
     }
 
     const observer = new ResizeObserver(() => {
+        if (width < 0) {
+            width = node.clientWidth
+            hold()
+            return
+        }
         if (node.clientWidth === width) {
             hold()
             return
@@ -36,8 +43,8 @@ export const holdTallest: Attachment<HTMLElement> = (node) => {
             hold()
         })
     })
+    // The observer reports the first size itself, once the page is laid out.
     observer.observe(node)
-    hold()
 
     return () => {
         observer.disconnect()

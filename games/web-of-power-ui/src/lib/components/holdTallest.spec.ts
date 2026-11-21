@@ -66,8 +66,11 @@ function runFrames() {
     for (const callback of queued) callback()
 }
 
+// Attaches the hold and delivers the observer's first report, as a real ResizeObserver does once
+// the page is laid out.
 function attach(node: ReturnType<typeof panel>) {
     const cleanup = holdTallest(node as unknown as HTMLElement)
+    resize()
     return typeof cleanup === 'function' ? cleanup : () => {}
 }
 

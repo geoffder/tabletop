@@ -286,7 +286,7 @@
         .tray {
             --wop-card-width: min(46px, calc((100cqi - 36px) / 6.5));
             gap: 6px;
-            padding: 6px 4px 22px;
+            padding: 6px 4px 16px;
         }
 
         .piles {
@@ -295,7 +295,7 @@
         }
 
         .caption {
-            top: calc(100% + 11px);
+            top: calc(100% + 7px);
             font-size: 9px;
             letter-spacing: 0.04em;
         }

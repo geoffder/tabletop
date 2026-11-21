@@ -1,29 +1,274 @@
 // What the board draws round the pieces (the pieces themselves are pre-rendered by
-// scripts/render-pieces.mjs into pieceSprites.ts): an empty space's sketch, and where advisors
+// scripts/render-pieces.mjs into pieceSprites.ts): an empty space's drawing, and where advisors
 // stand on a coat of arms.
 
 const point = (x: number, y: number) => `${x.toFixed(2)} ${y.toFixed(2)}`
 
-// An empty space, as the board prints it: a small cloister sketched in ink, a tower with its spire
-// beside the church. `size` is its width.
-export function cloisterSketch(size: number): { fill: string; lines: string } {
-    const s = size / 28
-    const p = (x: number, y: number) => point(x * s, y * s)
-    const fill = `M${p(-14, 0)} L${p(-14, -20)} L${p(-10.5, -28)} L${p(-7, -20)} L${p(-7, -11)} L${p(2, -18)} L${p(14, -11)} L${p(14, 0)} Z`
-    const lines = [
-        // tower and spire
-        `M${p(-14, 0)} L${p(-14, -20)} L${p(-10.5, -28)} L${p(-7, -20)} L${p(-7, 0)}`,
-        `M${p(-14, -20)} L${p(-7, -20)}`,
-        // church and roof
-        `M${p(-7, -11)} L${p(2, -18)} L${p(14, -11)} L${p(14, 0)}`,
-        `M${p(-7, -11)} L${p(14, -11)}`,
-        // door and window
-        `M${p(1, 0)} L${p(1, -5)} A${2 * s} ${2 * s} 0 0 1 ${p(5, -5)} L${p(5, 0)}`,
-        `M${p(-10.5, -13)} L${p(-10.5, -16)}`,
-        // the ground
-        `M${p(-17, 0)} L${p(17, 0)}`
-    ].join(' ')
-    return { fill, lines }
+// An empty space, as the board prints it: a cloister drawn in ink, a square tower with a capped
+// top beside a long, low hall under a pitched roof, on a stepped base. Drawn in the design's units
+// (foot at the origin, 40 wide, 31 tall), scaled by CLOISTER_SCALE.
+export const CLOISTER_SCALE = 42 / 38
+
+// The drawing's outline, unwobbled, in board units about its foot: emit.py in
+// /workspace/tmp/web-of-power/map cuts each road where it meets this, so no road runs under a
+// drawing, as on the printed board. Change both together.
+export const CLOISTER_FOOTPRINT: readonly (readonly [number, number])[] = [
+    [-15, -5],
+    [-15, -23],
+    [-16.5, -23],
+    [-11.5, -31],
+    [-6.5, -23],
+    [-8, -23],
+    [-8, -12],
+    [-5, -18],
+    [12, -18],
+    [15, -12],
+    [15, -5],
+    [18, -5],
+    [18, -2],
+    [20, -2],
+    [20, 0],
+    [-20, 0],
+    [-20, -2],
+    [-18, -2],
+    [-18, -5]
+].map(([x, y]) => [x * CLOISTER_SCALE, y * CLOISTER_SCALE] as const)
+
+type Stroke = { points: [number, number][]; fine?: boolean; overshoot?: boolean }
+
+const arch = (x: number, width: number, top: number, bottom: number): [number, number][] => {
+    const r = width / 2
+    const springs = top + r
+    const curve: [number, number][] = []
+    for (let k = 0; k <= 6; k++) {
+        const angle = Math.PI + (k * Math.PI) / 6
+        curve.push([x + Math.cos(angle) * r, springs + Math.sin(angle) * r])
+    }
+    return [[x - r, bottom], ...curve, [x + r, bottom]]
+}
+
+const CLOISTER_STROKES: Stroke[] = [
+    // the tower, its cap and a slit window
+    {
+        points: [
+            [-15, -5],
+            [-15, -23]
+        ],
+        overshoot: true
+    },
+    {
+        points: [
+            [-8, -5],
+            [-8, -23]
+        ],
+        overshoot: true
+    },
+    {
+        points: [
+            [-16.5, -23],
+            [-6.5, -23]
+        ],
+        overshoot: true
+    },
+    {
+        points: [
+            [-16.5, -23],
+            [-11.5, -31],
+            [-6.5, -23]
+        ]
+    },
+    {
+        points: [
+            [-11.5, -19.5],
+            [-11.5, -16]
+        ],
+        fine: true
+    },
+    {
+        points: [
+            [-9.6, -21.5],
+            [-9.6, -7]
+        ],
+        fine: true
+    },
+    // the hall: roof, eaves, wall, door, windows and a few tiles
+    {
+        points: [
+            [-8, -12],
+            [-5, -18],
+            [12, -18],
+            [15, -12]
+        ]
+    },
+    {
+        points: [
+            [15, -12],
+            [15, -5]
+        ],
+        overshoot: true
+    },
+    {
+        points: [
+            [-8, -12],
+            [15, -12]
+        ],
+        overshoot: true
+    },
+    { points: arch(-3, 3.2, -10, -5), fine: true },
+    { points: arch(3.5, 2.2, -10.5, -7.5), fine: true },
+    { points: arch(8.5, 2.2, -10.5, -7.5), fine: true },
+    {
+        points: [
+            [-2.5, -17],
+            [-4.5, -13]
+        ],
+        fine: true
+    },
+    {
+        points: [
+            [3, -17],
+            [1.6, -13]
+        ],
+        fine: true
+    },
+    {
+        points: [
+            [8.5, -17],
+            [7.4, -13]
+        ],
+        fine: true
+    },
+    // the stepped base, its lower step rough as rock
+    {
+        points: [
+            [-18, -5],
+            [18, -5]
+        ],
+        overshoot: true
+    },
+    {
+        points: [
+            [-18, -5],
+            [-18, -2]
+        ]
+    },
+    {
+        points: [
+            [18, -5],
+            [18, -2]
+        ]
+    },
+    {
+        points: [
+            [-20, -2],
+            [20, -2]
+        ],
+        overshoot: true
+    },
+    {
+        points: [
+            [-20, -2],
+            [-20, 0]
+        ]
+    },
+    {
+        points: [
+            [20, -2],
+            [20, 0]
+        ]
+    },
+    {
+        points: [
+            [-21, 0],
+            [21, 0]
+        ],
+        overshoot: true
+    },
+    {
+        points: [
+            [-12, -2],
+            [-13, 0]
+        ],
+        fine: true
+    },
+    {
+        points: [
+            [-4, -2],
+            [-3.5, 0]
+        ],
+        fine: true
+    },
+    {
+        points: [
+            [5, -2],
+            [4.2, 0]
+        ],
+        fine: true
+    },
+    {
+        points: [
+            [13, -2],
+            [13.6, 0]
+        ],
+        fine: true
+    }
+]
+
+// The drawing of one space, its lines a little unsteady as if inked by hand, each space's its own
+// (`seed`): every line wavers slightly along its length, sits a touch off true, and some run a
+// little past their corners. `outline` is drawn in the heavier pen, `detail` in the finer; `at`
+// places the drawing's foot on the board.
+export function cloisterDrawing(
+    seed: number,
+    at: { x: number; y: number } = { x: 0, y: 0 }
+): { outline: string; detail: string } {
+    const random = mulberry32(seed * 7919 + 13)
+    const wobble = () => (random() * 2 - 1) * 0.45
+    const k = CLOISTER_SCALE
+    const outline: string[] = []
+    const detail: string[] = []
+    for (const stroke of CLOISTER_STROKES) {
+        // Ends land a little apart, so corners neither meet exactly nor match space to space.
+        let points = stroke.points.map(
+            ([x, y]) => [x + wobble() * 0.8, y + wobble() * 0.8] as [number, number]
+        )
+        const [dx, dy] = [wobble(), wobble()]
+        if (stroke.overshoot && points.length === 2) {
+            const [[ax, ay], [bx, by]] = points
+            const length = Math.hypot(bx - ax, by - ay)
+            const [ux, uy] = [(bx - ax) / length, (by - ay) / length]
+            const before = random() * 1.3
+            const after = random() * 1.3
+            points = [
+                [ax - ux * before, ay - uy * before],
+                [bx + ux * after, by + uy * after]
+            ]
+        }
+        // Long lines bend gently along their length: a few points set off them, sideways.
+        const drawn: [number, number][] = [points[0]]
+        for (let index = 1; index < points.length; index++) {
+            const [ax, ay] = points[index - 1]
+            const [bx, by] = points[index]
+            const length = Math.hypot(bx - ax, by - ay)
+            const pieces = Math.max(1, Math.round(length / 4))
+            for (let step = 1; step <= pieces; step++) {
+                const t = step / pieces
+                const off = step < pieces ? (random() * 2 - 1) * 0.6 : 0
+                drawn.push([
+                    ax + (bx - ax) * t - ((by - ay) / length) * off,
+                    ay + (by - ay) * t + ((bx - ax) / length) * off
+                ])
+            }
+        }
+        const d = drawn
+            .map(
+                ([x, y], index) =>
+                    `${index === 0 ? 'M' : 'L'}${point(at.x + (x + dx) * k, at.y + (y + dy) * k)}`
+            )
+            .join('')
+        ;(stroke.fine ? detail : outline).push(d)
+    }
+    return { outline: outline.join(' '), detail: detail.join(' ') }
 }
 
 // Where a country's advisors stand on its coat of arms, round the emblem's middle as Indonesia
@@ -141,7 +386,7 @@ export function advisorRing(
     }))
 }
 
-function mulberry32(seed: number): () => number {
+export function mulberry32(seed: number): () => number {
     let state = seed >>> 0
     return () => {
         state = (state + 0x6d2b79f5) >>> 0

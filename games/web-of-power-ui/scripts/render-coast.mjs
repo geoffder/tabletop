@@ -1,7 +1,8 @@
-// Renders the coasts as the board prints them into ../src/lib/images/coast.webp: a pale rim along
-// the land's edge and a lighter glow in the water off the shore. Both are blurs of the coastline
-// (src/lib/board/mapData.ts), so they are drawn once here rather than as a game opens; the image
-// lies over the countries, under the borders and roads. Rerun after changing the coastline:
+// Renders the coasts and borders as the board prints them into ../src/lib/images/coast.webp: each
+// country deepening to its printed colour along its edges (the board has no border lines), a pale
+// rim along the land's edge and a lighter glow in the water off the shore. All are blurs of the
+// outlines (src/lib/board/mapData.ts), so they are drawn once here rather than as a game opens; the
+// image lies over the countries, under the roads. Rerun after changing an outline or a colour:
 // pnpm run render-coast
 import { readFile, writeFile } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
@@ -19,6 +20,25 @@ const mapData = await readFile(join(ROOT, 'src', 'lib', 'board', 'mapData.ts'), 
 const view = mapData.match(/MAP_VIEW = \{ x: (\d+), y: (\d+), width: (\d+), height: (\d+) \}/)
 const [x, y, width, height] = view.slice(1).map(Number)
 const land = mapData.match(/LAND_PATH =\s*'([^']+)'/)[1]
+// Each country's outline, and its edge colour from app.css (the --wop-*-edge variable naming it).
+const css = await readFile(join(ROOT, 'src', 'app.css'), 'utf8')
+const edges = [...css.matchAll(/--wop-([a-z-]+)-edge: (#[0-9a-f]{6});/g)].map(
+    ([, name, colour]) => ({
+        names: name.split('-'),
+        colour
+    })
+)
+const countries = [...mapData.matchAll(/\[Country\.(\w+)\]:\s*'([^']+)'/g)]
+    .filter(([, , d]) => d.length > 200)
+    .map(([, name, d]) => {
+        const edge = edges.find(({ names }) => names.includes(name.toLowerCase()))
+        if (!edge) throw Error(`No edge colour for ${name}`)
+        return { name, d, colour: edge.colour }
+    })
+if (countries.length !== 9) throw Error(`Expected 9 country outlines, found ${countries.length}`)
+// The edge band: how wide the printed colour reaches in, and how softly it fades.
+const EDGE_WIDTH = 14
+const EDGE_BLUR = 3
 
 const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${width * SCALE}" height="${height * SCALE}"
     viewBox="${x} ${y} ${width} ${height}">
@@ -30,8 +50,18 @@ const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${width * SCALE}" he
         <filter id="rim" filterUnits="userSpaceOnUse" x="${x}" y="${y}" width="${width}" height="${height}">
             <feGaussianBlur in="SourceGraphic" stdDeviation="4.5"/>
         </filter>
+        <filter id="edge" filterUnits="userSpaceOnUse" x="${x}" y="${y}" width="${width}" height="${height}">
+            <feGaussianBlur stdDeviation="${EDGE_BLUR}"/>
+        </filter>
         <clipPath id="land"><path d="${land}"/></clipPath>
+        ${countries.map(({ name, d }) => `<clipPath id="in-${name}"><path d="${d}"/></clipPath>`).join('')}
     </defs>
+    ${countries
+        .map(
+            ({ name, d, colour }) =>
+                `<g clip-path="url(#in-${name})"><path d="${d}" fill="none" stroke="${colour}" stroke-width="${EDGE_WIDTH}" filter="url(#edge)"/></g>`
+        )
+        .join('')}
     <path d="${land}" fill="#eaf8f2" filter="url(#glow)" opacity="${Math.min(1, 0.85 * STRENGTH)}"/>
     <g clip-path="url(#land)">
         <path d="M${x - 50} ${y - 50}h${width + 100}v${height + 100}h${-width - 100}Z ${land}"

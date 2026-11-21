@@ -12,7 +12,7 @@
 
 <div
     id={headerId}
-    class="relative flex h-[44px] items-center justify-between px-4 tracking-[0.08em] text-(--wop-table-ink) max-sm:h-[30px] max-sm:px-1"
+    class="relative flex h-[44px] items-center justify-between px-4 tracking-[0.08em] text-(--wop-table-ink) max-sm:h-[24px] max-sm:px-1"
 >
     <div class="header-grid grid text-[18px] max-sm:text-[14px]">
         {#if session.isViewingHistory}

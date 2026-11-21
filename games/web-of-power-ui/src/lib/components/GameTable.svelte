@@ -1,6 +1,7 @@
 <script lang="ts">
     import type { Attachment } from 'svelte/attachments'
     import {
+        CustomFont,
         DefaultTableLayout,
         DefaultTabs,
         GameChat,
@@ -22,6 +23,8 @@
     import CardTray from '$lib/components/CardTray.svelte'
     import { WebOfPowerGameSession } from '$lib/model/session.svelte.js'
     import { setGameSession } from '$lib/model/sessionContext.svelte.js'
+    import AlmendraFont from '$lib/fonts/Almendra-Latin.woff2'
+    import AlmendraItalicFont from '$lib/fonts/Almendra-Italic-Latin.woff2'
 
     let {
         gameSession
@@ -56,6 +59,16 @@
         <CardTray />
     </div>
 {/snippet}
+
+<!-- The board's lettering: a calligraphic hand like the printed board's (SIL OFL 1.1). -->
+<CustomFont fontFamily="Almendra" url={AlmendraFont} format="woff2" fontWeight="400" />
+<CustomFont
+    fontFamily="Almendra"
+    url={AlmendraItalicFont}
+    format="woff2"
+    fontWeight="400"
+    fontStyle="italic"
+/>
 
 <div class="wop-table">
     <DefaultTableLayout>
@@ -105,7 +118,7 @@
             <div class="shrink-0">
                 {@render turnControls()}
             </div>
-            <div class="grow-0 overflow-hidden pt-2" style="flex:1; min-height: 40dvh;">
+            <div class="grow-0 overflow-hidden pt-2 max-sm:pt-1" style="flex:1; min-height: 40dvh;">
                 <ScalingWrapper
                     justify="center"
                     controls="bottom-left"
