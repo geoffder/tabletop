@@ -32,6 +32,8 @@
     import { renderTemple } from '$lib/board/templeLight.js'
     import { renderBridge } from '$lib/board/bridgeLight.js'
     import { renderToken } from '$lib/board/tokenLight.js'
+    import { renderPalace } from '$lib/board/palaceLight.js'
+    import { palaceLook } from '$lib/board/palaceShape.js'
     import { tokenLook } from '$lib/board/tokenShape.js'
     import { SPILL_DEPTHS, type SpillKind } from '$lib/board/spillShape.js'
     import { DESIGN, type TempleDesign, templeBounds } from '$lib/board/templeShape.js'
@@ -144,6 +146,9 @@
         }
         for (const tilt of [TILT, FLAT]) {
             drawn[tokenLook(tilt === FLAT)] = toUrl(renderToken(tilt), 0.9)
+        }
+        for (const tilt of [TILT, FLAT]) {
+            drawn[palaceLook(tilt === FLAT)] = toUrl(renderPalace(tilt), 0.9)
         }
         const traced: Record<string, string> = {}
         for (const tilt of [TILT, FLAT]) {

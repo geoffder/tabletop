@@ -1,4 +1,5 @@
 <script lang="ts">
+    import { palaceBounds, palaceLook, palaceRise } from '$lib/board/palaceShape.js'
     import {
         Axis,
         type Cell,
@@ -8,6 +9,7 @@
         isLand,
         LAND_CELLS,
         type Level,
+        PALACE_CENTRE,
         rowOf,
         tokenSize,
         placePoints
@@ -157,6 +159,7 @@
     }
 
     const landCells = LAND_CELLS
+    const palace = $derived(view.centre(PALACE_CENTRE))
 </script>
 
 <!-- A calpulli token, `radius` to its corners: its size, and below it the points for second
@@ -294,6 +297,14 @@
                 ></image>
             {/each}
         </g>
+        <g transform="translate({palace.x} {palace.y})" class="surface">
+            <image
+                href={LOOK_URLS[palaceLook(view.flat)]}
+                {...palaceBounds(view.tilt)}
+                preserveAspectRatio="none"
+            ></image>
+        </g>
+
         {#if session.showCoordinates}
             {#each view.labels as label (label.key)}
                 <text class="label" x={label.at.x} y={label.at.y} dy="4.2" text-anchor="middle"
@@ -310,17 +321,18 @@
         {#each [...choosable] as cell (cell)}
             {@const centre = view.centre(cell)}
             {@const move = session.moves.get(cell)}
+            {@const raised = centre.y - view.lift(palaceRise(cell))}
             {#if !move?.teleport}
                 <ellipse
                     cx={centre.x}
-                    cy={centre.y}
+                    cy={raised}
                     rx={CELL * 0.16}
                     ry={CELL * 0.16 * view.tilt}
                     class="mark-band"
                 ></ellipse>
                 <ellipse
                     cx={centre.x}
-                    cy={centre.y}
+                    cy={raised}
                     rx={CELL * 0.16}
                     ry={CELL * 0.16 * view.tilt}
                     class="mark"
@@ -388,7 +400,7 @@
                     />
                 </g>
             {:else}
-                {@const lift = piece.onBridge ? view.lift(BRIDGE_RISE) : 0}
+                {@const lift = view.lift(piece.onBridge ? BRIDGE_RISE : palaceRise(piece.cell))}
                 {@const look = pilliLook(view.flat)}
                 <g
                     transform="translate({centre.x} {centre.y +

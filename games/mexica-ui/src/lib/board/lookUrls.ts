@@ -7,6 +7,8 @@ import bridgeNs from '../images/looks/bridge-ns.webp'
 import bridgeNsFlat from '../images/looks/bridge-ns-flat.webp'
 import canal from '../images/looks/canal.webp'
 import lake from '../images/looks/lake.webp'
+import palace from '../images/looks/palace.webp'
+import palaceFlat from '../images/looks/palace-flat.webp'
 import paving from '../images/looks/paving.webp'
 import pilli from '../images/looks/pilli.webp'
 import pilliFlat from '../images/looks/pilli-flat.webp'
@@ -109,6 +111,8 @@ export const LOOK_URLS: Record<string, string> = {
     'bridge-ns-flat': bridgeNsFlat,
     canal: canal,
     lake: lake,
+    palace: palace,
+    'palace-flat': palaceFlat,
     paving: paving,
     pilli: pilli,
     'pilli-flat': pilliFlat,
