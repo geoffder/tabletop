@@ -49,6 +49,9 @@ const MARK_FADE = 0.15
 // A canal dug: the paving runs away like a liquid to show its finished banks over the earth, and
 // then water runs in the same way from the canal or lake beside it, or with none, from the middle.
 const DIG = { build: 0.3, water: 0.32 }
+// The same without an action (Undo, history), quicker: undone, the water drains back the way it
+// came, and then the paving runs back over the banks.
+const DIG_QUICK = { build: 0.2, water: 0.2 }
 // The paving over a flooding square reaches this far into the land beside it, over the kerb the
 // canal brings there.
 const KERB_REACH = 3
@@ -364,28 +367,23 @@ export class BoardAnimator implements MoveInterrupter {
         animationContext.afterAnimations(land)
     }
 
-    // The banks and kerbs show through the paving as it runs away like a liquid, and then the
-    // water runs in the same way. Without an action, or undone, the canal is shown finished, with
-    // the paving fading away from over it or back over it.
+    // Dug, the banks and kerbs show through the paving as it runs away like a liquid, and then the
+    // water runs in the same way. Filled in, the same backwards: the water drains back the way it
+    // came, then the paving runs back over the banks.
     private flood(flood: Flood, dug: boolean, timeline: Timeline, digging: boolean) {
         const paving = this.floodPavings.get(flood.key)
         if (paving === undefined) throw new Error('A dug canal is drawn before it is dug')
-        if (!digging) {
-            this.runIn(flood, timeline, 1, 1, 0, 0)
-            this.runIn(flood, timeline, 1, 1, 0, 0, 'wet')
-            this.runIn(flood, timeline, 1, 1, 0, 0, 'build')
-            const [from, to] = dug ? [1, 0] : [0, 1]
-            timeline.fromTo(
-                paving,
-                { opacity: from },
-                { opacity: to, duration: QUICK, ease: 'power1.inOut', immediateRender: true },
-                0
-            )
+        timeline.set(paving, { opacity: 1 }, 0)
+        const { build, water } = digging ? DIG : DIG_QUICK
+        if (dug) {
+            this.runIn(flood, timeline, 0, 1, build, 0, 'build')
+            this.runIn(flood, timeline, 0, 1, water, build)
+            this.runIn(flood, timeline, 0, 1, water, build, 'wet')
             return
         }
-        this.runIn(flood, timeline, 0, 1, DIG.build, 0, 'build')
-        this.runIn(flood, timeline, 0, 1, DIG.water, DIG.build)
-        this.runIn(flood, timeline, 0, 1, DIG.water, DIG.build, 'wet')
+        this.runIn(flood, timeline, 1, 0, water, 0)
+        this.runIn(flood, timeline, 1, 0, water, 0, 'wet')
+        this.runIn(flood, timeline, 1, 0, build, water, 'build')
     }
 
     // Water runs into the canal from each spring as a disc; the discs, blurred and cut back to a
