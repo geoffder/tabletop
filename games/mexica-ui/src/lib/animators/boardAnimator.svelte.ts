@@ -21,6 +21,7 @@ import {
 import type { MexicaGameSession, MoveInterrupter } from '$lib/model/session.svelte.js'
 import { type Box, type BoardView, CELL } from '$lib/board/view.js'
 import { pilliSpot } from '$lib/board/pilliSpot.js'
+import { COVE_TOE } from '$lib/board/looks.js'
 import { BANK_WIDTH } from '$lib/board/waterworks.js'
 import { poseOf, setPose } from './svgPose.js'
 
@@ -382,31 +383,65 @@ export class BoardAnimator implements MoveInterrupter {
         const stage = { pit: 0, walls: 0, water: 0 }
         const rect = (x0: number, y0: number, x1: number, y1: number) =>
             `M${x0} ${y0}H${x1}V${y1}H${x0}Z`
-        const rounded = (cx: number, cy: number, hx: number, hy: number, square = 0) => {
-            const r = Math.min(hx, hy) * (1 - square)
+        // A rectangle with its corners rounded by `radii`, clockwise from the top left.
+        const rounded = (x0: number, y0: number, x1: number, y1: number, radii: number[]) => {
+            const [a, b, c, d] = radii.map((r) =>
+                Math.max(0, Math.min(r, (x1 - x0) / 2, (y1 - y0) / 2))
+            )
             return (
-                `M${cx - hx + r} ${cy - hy}H${cx + hx - r}A${r} ${r} 0 0 1 ${cx + hx} ${cy - hy + r}` +
-                `V${cy + hy - r}A${r} ${r} 0 0 1 ${cx + hx - r} ${cy + hy}H${cx - hx + r}` +
-                `A${r} ${r} 0 0 1 ${cx - hx} ${cy + hy - r}V${cy - hy + r}` +
-                `A${r} ${r} 0 0 1 ${cx - hx + r} ${cy - hy}Z`
+                `M${x0 + a} ${y0}H${x1 - b}A${b} ${b} 0 0 1 ${x1} ${y0 + b}` +
+                `V${y1 - c}A${c} ${c} 0 0 1 ${x1 - c} ${y1}H${x0 + d}` +
+                `A${d} ${d} 0 0 1 ${x0} ${y1 - d}V${y0 + a}A${a} ${a} 0 0 1 ${x0 + a} ${y0}Z`
             )
         }
         const { box, floor, banks } = flood
+        // The walls' foot, rounded where two walls meet in a cove.
+        const foot = {
+            x: floor.x + banks.w,
+            y: floor.y + banks.n,
+            width: floor.width - banks.w - banks.e,
+            height: floor.height - banks.n - banks.s
+        }
+        const cove = (one: number, other: number) => (one > 0 && other > 0 ? COVE_TOE : 0)
+        const coves = [
+            cove(banks.n, banks.w),
+            cove(banks.n, banks.e),
+            cove(banks.s, banks.e),
+            cove(banks.s, banks.w)
+        ]
+        // A pool from the middle of `area`, `reach` of the way out and `beyond` past its edge,
+        // round at first and taking the corners `radii` as it fills out (`square` from 0 to 1).
+        const pool = (
+            area: Box,
+            beyond: number,
+            reach: number,
+            radii: number[],
+            square: number
+        ) => {
+            const cx = area.x + area.width / 2
+            const cy = area.y + area.height / 2
+            const hx = (area.width / 2 + beyond) * reach
+            const hy = (area.height / 2 + beyond) * reach
+            const round = Math.min(hx, hy)
+            return rounded(
+                cx - hx,
+                cy - hy,
+                cx + hx,
+                cy + hy,
+                radii.map((r) => round + (r - round) * square)
+            )
+        }
         const write = () => {
             // The pit: a hole from the middle of the paving's reach out to all of it.
             const pit = stage.pit
-            const bx = box.x + box.width / 2
-            const by = box.y + box.height / 2
             const outline = rect(box.x, box.y, box.x + box.width, box.y + box.height)
             edge.setAttribute(
                 'd',
-                pit <= 0
-                    ? outline
-                    : outline +
-                          rounded(bx, by, (box.width / 2 + 1) * pit, (box.height / 2 + 1) * pit)
+                pit <= 0 ? outline : outline + pool(box, 1, pit, [0, 0, 0, 0], 0)
             )
             // The earth: the whole floor, less the bricked ring from the walls' foot out to
-            // where they have reached, less the pool.
+            // where they have reached, less the pool; the pool fills to the walls' foot exactly,
+            // so as it ends no earth is left and none is drawn over the walls.
             const x0 = floor.x
             const y0 = floor.y
             const x1 = floor.x + floor.width
@@ -420,22 +455,9 @@ export class BoardAnimator implements MoveInterrupter {
                         y0 + banks.n * built,
                         x1 - banks.e * built,
                         y1 - banks.s * built
-                    ) + rect(x0 + banks.w, y0 + banks.n, x1 - banks.e, y1 - banks.s)
+                    ) + rounded(foot.x, foot.y, foot.x + foot.width, foot.y + foot.height, coves)
             }
-            if (stage.water > 0) {
-                const fx0 = x0 + banks.w
-                const fy0 = y0 + banks.n
-                const fx1 = x1 - banks.e
-                const fy1 = y1 - banks.s
-                // A round pool at first, its corners filling out to the walls' coves.
-                shape += rounded(
-                    (fx0 + fx1) / 2,
-                    (fy0 + fy1) / 2,
-                    ((fx1 - fx0) / 2 + 3) * stage.water,
-                    ((fy1 - fy0) / 2 + 3) * stage.water,
-                    0.55 * stage.water
-                )
-            }
+            if (stage.water > 0) shape += pool(foot, 0, stage.water, coves, stage.water)
             for (const path of earth) path.setAttribute('d', shape)
         }
         write()
