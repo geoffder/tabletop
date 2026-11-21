@@ -9,12 +9,17 @@ import type {
 import {
     type Bridge,
     type Cell,
+    cellAt,
+    columnOf,
     type HydratedMexicaGameState,
+    isDigCanal,
+    isLand,
     isMovePilli,
+    rowOf,
     type Temple
 } from '@tabletop/mexica'
 import type { MexicaGameSession, MoveInterrupter } from '$lib/model/session.svelte.js'
-import type { BoardView } from '$lib/board/view.js'
+import { type Box, type BoardView, CELL } from '$lib/board/view.js'
 import { pilliSpot } from '$lib/board/pilliSpot.js'
 import { poseOf, setPose } from './svgPose.js'
 
@@ -39,16 +44,28 @@ const WALK = { hop: 0.15, glide: 0.2, height: -7 }
 // placed pieces drop in or lift off.
 const QUICK = 0.18
 const MARK_FADE = 0.15
+// A canal dug floods its square from the water beside it as the paving gives way; a double
+// canal's second square after its first.
+const FLOOD = { duration: 0.42, next: 0.3 }
+// The paving over a flooding square reaches this far into the land beside it, over the kerb the
+// canal brings there.
+const KERB_REACH = 3
 // The motion waits at most this long for its pieces to be drawn; any longer skips its start.
 const DRAW_WAIT = 0.01
 
 export type DrawnPilli = { playerId: string; cell: Cell }
 // What the board draws: the state shown, or while a step plays, everything on screen during it.
 export type DrawnBoard = {
+    canals: ReadonlySet<Cell>
     temples: readonly Temple[]
     bridges: readonly Bridge[]
     pillis: readonly DrawnPilli[]
 }
+
+// A square of paving laid over a canal square while the water floods it or the paving comes
+// back, in plan units, with the side the water comes from.
+export type Flood = { cell: Cell; box: Box; from: Side | undefined }
+type Side = 'n' | 'e' | 's' | 'w'
 
 type Timeline = gsap.core.Timeline
 type Step = TransitionStep<HydratedMexicaGameState, AnimationContext>
@@ -61,9 +78,11 @@ export class BoardAnimator implements MoveInterrupter {
     drawn: DrawnBoard = $derived.by(() => this.boardOf(this.session.gameState))
     // Where each walking Pilli Mexica has got to, for the order the board draws in.
     walking: ReadonlyMap<string, Cell> = $state.raw(new Map())
+    floods: readonly Flood[] = $state.raw([])
 
     private readonly parts = new Map<string, Parts>()
     private readonly marks = new Set<SVGElement>()
+    private readonly floodEdges = new Map<Cell, SVGRectElement>()
     private readonly listener = (step: Step) => this.onGameStateChange(step)
     private timeline: Timeline | undefined
     private landMove: (() => void) | undefined
@@ -111,6 +130,16 @@ export class BoardAnimator implements MoveInterrupter {
         }
     }
 
+    // The clip of the paving over a flooding square, which the water wipes away.
+    floodEdge(cell: Cell): Attachment<SVGRectElement> {
+        return (node) => {
+            this.floodEdges.set(cell, node)
+            return () => {
+                if (this.floodEdges.get(cell) === node) this.floodEdges.delete(cell)
+            }
+        }
+    }
+
     // A choice mark, which fades as a move starts: its choices belong to the state it leaves.
     mark(): Attachment<SVGElement> {
         return (node) => {
@@ -135,6 +164,7 @@ export class BoardAnimator implements MoveInterrupter {
         } catch (error) {
             this.drawn = this.boardOf(this.session.gameState)
             this.walking = new Map()
+            this.floods = []
             throw error
         }
     }
@@ -147,6 +177,8 @@ export class BoardAnimator implements MoveInterrupter {
 
         const before = this.boardOf(from)
         const after = this.boardOf(to)
+        const dug = [...after.canals].filter((cell) => !before.canals.has(cell))
+        const filled = [...before.canals].filter((cell) => !after.canals.has(cell))
         const temples = this.changed(before.temples, after.temples, (temple) => temple.cell)
         const bridges = this.changed(before.bridges, after.bridges, (bridge) => bridge.cell)
         const moves = after.pillis.flatMap((pilli) => {
@@ -159,6 +191,7 @@ export class BoardAnimator implements MoveInterrupter {
             (pilli) => !after.pillis.some((other) => other.playerId === pilli.playerId)
         )
         if (
+            dug.length + filled.length === 0 &&
             temples.added.length + temples.removed.length === 0 &&
             bridges.added.length + bridges.removed.length === 0 &&
             moves.length + gone.length === 0
@@ -172,6 +205,7 @@ export class BoardAnimator implements MoveInterrupter {
         // Pieces taken off stay on screen until they have gone; pieces put down are drawn from
         // the start, hidden until they drop.
         this.drawn = {
+            canals: new Set([...before.canals, ...after.canals]),
             temples: [...before.temples, ...temples.added],
             bridges: [...before.bridges, ...bridges.added],
             pillis: [
@@ -184,6 +218,10 @@ export class BoardAnimator implements MoveInterrupter {
                 )
             ]
         }
+        this.floods = [
+            ...dug.map((cell) => this.floodOf(cell, before.canals, dug)),
+            ...filled.map((cell) => this.floodOf(cell, after.canals, filled))
+        ]
         const drawing = performance.now()
         await tick()
         const timeline = gsap.timeline()
@@ -197,6 +235,18 @@ export class BoardAnimator implements MoveInterrupter {
         }
         const fall = quick ? QUICK : DROP.fall
         const lift = quick ? QUICK : LIFT_OFF.duration
+        const digging = !quick && isDigCanal(action)
+        for (const flood of this.floods) {
+            const index = Math.max(dug.indexOf(flood.cell), filled.indexOf(flood.cell))
+            const at = digging ? index * FLOOD.next : 0
+            this.flood(
+                flood,
+                dug.includes(flood.cell),
+                timeline,
+                digging ? FLOOD.duration : QUICK,
+                at
+            )
+        }
         // A bridge moved comes off its canal before it goes down on the next.
         const dropAt = !quick && bridges.removed.length > 0 ? LIFT_OFF.duration * 0.7 : 0
         for (const temple of temples.removed) {
@@ -251,6 +301,7 @@ export class BoardAnimator implements MoveInterrupter {
             if (this.landMove === land) this.landMove = undefined
             if (this.timeline === timeline) this.timeline = undefined
             this.walking = new Map()
+            this.floods = []
             for (const node of touched) {
                 setPose(node, { x: 0, y: 0, scale: 1 })
                 gsap.set(node, { opacity: 1 })
@@ -263,6 +314,67 @@ export class BoardAnimator implements MoveInterrupter {
         }
         this.landMove = land
         animationContext.afterAnimations(land)
+    }
+
+    // The paving over a square wipes away from the side the water comes in by, or back over it.
+    private flood(flood: Flood, dug: boolean, timeline: Timeline, duration: number, at: number) {
+        const edge = this.floodEdges.get(flood.cell)
+        if (edge === undefined) throw new Error('A flooding square is drawn before it floods')
+        const { x, y, width, height } = flood.box
+        const whole = { x, y, width, height }
+        const gone =
+            flood.from === 'w'
+                ? { x: x + width, y, width: 0, height }
+                : flood.from === 'e'
+                  ? { x, y, width: 0, height }
+                  : flood.from === 'n'
+                    ? { x, y: y + height, width, height: 0 }
+                    : flood.from === 's'
+                      ? { x, y, width, height: 0 }
+                      : { x: x + width / 2, y: y + height / 2, width: 0, height: 0 }
+        const [start, end] = dug ? [whole, gone] : [gone, whole]
+        timeline.fromTo(
+            edge,
+            { attr: start },
+            { attr: end, duration, ease: dug ? 'power1.in' : 'power1.out', immediateRender: true },
+            at
+        )
+    }
+
+    // A square of canal and the reach of its paving, and the side the water comes from: water
+    // already there, or the lake, or failing those the other square of its tile.
+    private floodOf(cell: Cell, water: ReadonlySet<Cell>, tile: readonly Cell[]): Flood {
+        const column = columnOf(cell)
+        const row = rowOf(cell)
+        const steps: [Side, number, number][] = [
+            ['w', -1, 0],
+            ['e', 1, 0],
+            ['n', 0, -1],
+            ['s', 0, 1]
+        ]
+        const near = steps.map(([side, dc, dr]) => ({ side, cell: cellAt(column + dc, row + dr) }))
+        const wet = (other: Cell | undefined) =>
+            other === undefined || !isLand(other) || water.has(other)
+        const from =
+            near.find((side) => wet(side.cell))?.side ??
+            near.find((side) => side.cell !== undefined && tile.includes(side.cell))?.side
+        // Over the kerb on each side where land stays beside it.
+        const reach = (side: Side) => {
+            const other = near.find((step) => step.side === side)?.cell
+            return other !== undefined && !wet(other) && !tile.includes(other) ? KERB_REACH : 0
+        }
+        const x = column * CELL - reach('w')
+        const y = row * CELL - reach('n')
+        return {
+            cell,
+            from,
+            box: {
+                x,
+                y,
+                width: CELL + reach('w') + reach('e'),
+                height: CELL + reach('n') + reach('s')
+            }
+        }
     }
 
     // The Pilli Mexica walks its route: a small hop onto each square, a glide onto or off the
@@ -435,6 +547,7 @@ export class BoardAnimator implements MoveInterrupter {
 
     private boardOf(state: HydratedMexicaGameState): DrawnBoard {
         return {
+            canals: state.layout().canals,
             temples: state.temples,
             bridges: state.bridges,
             pillis: state.players.flatMap((player) =>
