@@ -86,7 +86,11 @@ export class MexicaGameSession extends GameSession<MexicaGameState, HydratedMexi
     moveCosts: boolean = $derived(this.preferences.values.moveCosts)
 
     view: BoardView = $derived(
-        boardView(this.flatBoard, quarterTurnsOf(this.rotatedBoard, this.farSide))
+        boardView(
+            this.flatBoard,
+            quarterTurnsOf(this.rotatedBoard, this.farSide),
+            this.showCoordinates
+        )
     )
 
     // A player asking for the colourblind palette keeps the site's colours for it.

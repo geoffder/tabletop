@@ -321,8 +321,12 @@
 
         {#if session.showCoordinates}
             {#each view.labels as label (label.key)}
-                <text class="label" x={label.at.x} y={label.at.y} dy="4.2" text-anchor="middle"
-                    >{label.text}</text
+                <text
+                    class="label"
+                    x={label.at.x}
+                    y={label.at.y}
+                    dy="4.2"
+                    text-anchor={label.anchor}>{label.text}</text
                 >
             {/each}
         {/if}
