@@ -36,9 +36,8 @@ export const holdTallest: Attachment<HTMLElement> = (node) => {
             hold()
         })
     })
-    // The observer's first report, before the first paint, holds the starting height; measuring
-    // here would force a layout of the page while it is still being built.
     observer.observe(node)
+    hold()
 
     return () => {
         observer.disconnect()
