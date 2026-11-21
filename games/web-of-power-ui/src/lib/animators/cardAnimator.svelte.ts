@@ -198,14 +198,12 @@ function leftOut(cards: readonly CardColor[], others: readonly CardColor[]) {
     return out
 }
 
-// The cards as the table draws them: the viewer's hand, the face-up row, the piles, and how many
-// cards each player holds.
+// The cards as the table draws them: the viewer's hand, the face-up row and the piles.
 export type CardTable = {
     hand: CardColor[]
     display: CardColor[]
     discard: CardColor[]
     deckCount: number
-    handCounts: ReadonlyMap<string, number>
 }
 
 function tableOf(state: HydratedWebOfPowerGameState, me: string | undefined): CardTable {
@@ -213,8 +211,7 @@ function tableOf(state: HydratedWebOfPowerGameState, me: string | undefined): Ca
         hand: me === undefined ? [] : [...(state.getPlayerState(me).hand ?? [])],
         display: [...state.display],
         discard: [...state.discard],
-        deckCount: state.deck.remaining,
-        handCounts: new Map(state.players.map((player) => [player.playerId, player.handCount]))
+        deckCount: state.deck.remaining
     }
 }
 
@@ -345,14 +342,12 @@ export class CardAnimator implements MoveInterrupter {
 
         // The hand and the face-up row take their new layout at once: cards that stay slide to
         // their new places, and a card's new place waits, empty, for it to land. A pile keeps a
-        // card that is coming to it until it lands, and gives one up as it leaves. The player
-        // cards count each hand as it is after the move, as its cards start to go.
+        // card that is coming to it until it lands, and gives one up as it leaves.
         this.table = {
             hand: after.hand,
             display: after.display,
             discard: after.discard.length < before.discard.length ? after.discard : before.discard,
-            deckCount: Math.min(before.deckCount, after.deckCount),
-            handCounts: after.handCounts
+            deckCount: Math.min(before.deckCount, after.deckCount)
         }
         const fliers = moves.flatMap((move, order) => {
             const start = starts[order]

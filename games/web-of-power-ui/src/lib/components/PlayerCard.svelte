@@ -2,16 +2,11 @@
     import type { HydratedWebOfPowerPlayerState } from '@tabletop/web-of-power'
     import { getGameSession } from '$lib/model/sessionContext.svelte.js'
     import Piece from './Piece.svelte'
-    import {
-        getCardAnimator,
-        getPieceAnimator,
-        getScoringAnimator
-    } from '$lib/animators/cardAnimatorContext.js'
+    import { getPieceAnimator, getScoringAnimator } from '$lib/animators/cardAnimatorContext.js'
 
     let { playerState }: { playerState: HydratedWebOfPowerPlayerState } = $props()
 
     const session = getGameSession()
-    const cards = getCardAnimator()
     const scoring = getScoringAnimator()
     const pieces = getPieceAnimator()
 
@@ -44,20 +39,15 @@
         >
         <span class="tally" title="Cloisters left">
             <svg viewBox="-19 -47 47 49" width="19" height="20" aria-hidden="true">
-                <Piece kind="house" {fill} />
+                <Piece kind="house" {fill} small />
             </svg>
             <b>{pieces?.cloistersLeft(playerId) ?? session.gameState.cloistersLeft(playerId)}</b>
         </span>
         <span class="tally" title="Advisors left">
             <svg viewBox="-10 -27 20 32" width="12" height="19" aria-hidden="true">
-                <Piece kind="peg" {fill} />
+                <Piece kind="peg" {fill} small />
             </svg>
             <b>{pieces?.advisorsLeft(playerId) ?? session.gameState.advisorsLeft(playerId)}</b>
-        </span>
-        <span class="tally" title="Cards in hand">
-            <span class="mini-card"></span><b
-                >{cards?.table.handCounts.get(playerId) ?? playerState.handCount}</b
-            >
         </span>
     </div>
 </div>
@@ -111,17 +101,8 @@
         gap: 4px;
     }
 
-    /* Each piece's ground shadow is part of its light image and reaches past the piece; let it
-       fall onto the card rather than be cut off at the icon's edge. */
+    /* A small piece's shadow falls just past its edge; let it, rather than cut it off. */
     .tally svg {
         overflow: visible;
-    }
-
-    .mini-card {
-        width: 11px;
-        height: 15px;
-        border-radius: 2px;
-        background: #2e5ea8;
-        box-shadow: inset 0 0 0 1px rgb(20 20 20 / 0.35);
     }
 </style>
