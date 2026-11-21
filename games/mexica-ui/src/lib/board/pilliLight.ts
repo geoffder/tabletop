@@ -21,7 +21,7 @@ import {
     srgb,
     type Vec
 } from './light.js'
-import { PILLI, PILLI_PIXELS, pilliBounds } from './pilliShape.js'
+import { FACE_UP, PILLI, PILLI_PIXELS, pilliBounds } from './pilliShape.js'
 import { FLAT } from './view.js'
 import {
     castRays,
@@ -540,16 +540,12 @@ function scaledFan(fan: Fan, by: number): Fan {
     }
 }
 
-// Seen from straight above, the figure shows only its mask, lying face up on the ground with
-// its feathers spreading above it on the board: the head's centre `lift` above the ground and
-// `shift` towards the viewer from the figure's foot, so mask and feathers fit its box.
-const FACE_UP = { lift: 4.2, shift: 2.4 }
-
 // The figure with its headdress scaled by `headdress`, standing or lying face up.
 function figureWith(headdress: number, faceUp: boolean): Figure {
     const parts: Part[] = [
         { distance: mask, finish: maskFinish },
-        HOODED,
+        // Lying face up, only the mask's own hood: no neck or body under it.
+        faceUp ? { distance: head, finish: HOODED.finish } : HOODED,
         ...(faceUp ? [] : [{ distance: body, finish: bodyFinish }]),
         ...[BACK_FAN, FRONT_FAN].map((row) => {
             const fan = scaledFan(row, headdress)
@@ -559,14 +555,15 @@ function figureWith(headdress: number, faceUp: boolean): Figure {
             }
         })
     ]
-    // Lying face up, the figure turns a quarter about its width: its face to the sky, the
-    // top of its head away from the viewer.
+    // Lying face up, the mask turns a quarter about its width, its face to the sky and the top
+    // of its head away from the viewer, and grows by `FACE_UP.scale` round its face's middle.
+    const by = faceUp ? FACE_UP.scale : 1
     const posed = (p: Vec): Vec =>
         faceUp
             ? [
-                  p[0] + HEAD.at[0],
-                  HEAD.at[1] + p[2] - FACE_UP.lift,
-                  HEAD.at[2] + FACE_UP.shift - p[1]
+                  HEAD.at[0] + p[0] / by,
+                  HEAD.at[1] + (p[2] / by - FACE_UP.lift),
+                  HEAD.at[2] - p[1] / by
               ]
             : p
     const nearestPart = (p: Vec): { part: Part; distance: number } => {
@@ -582,7 +579,7 @@ function figureWith(headdress: number, faceUp: boolean): Figure {
         return { part, distance }
     }
     return {
-        scene: (p) => Math.max(nearestPart(posed(p)).distance, -p[2]),
+        scene: (p) => Math.max(nearestPart(posed(p)).distance * by, -p[2]),
         finish: (p) => nearestPart(posed(p)).part.finish(posed(p))
     }
 }

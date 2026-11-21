@@ -1,6 +1,6 @@
 import { linear } from './light.js'
 import { riseOf } from './templeShape.js'
-import { type Box, PILLI_SIZE, PILLI_WIDTH } from './view.js'
+import { type Box, FLAT, PILLI_SIZE, PILLI_WIDTH } from './view.js'
 
 // A Pilli Mexica as a painted wooden figure, feet at the origin: x to the right, y towards the
 // viewer, z up, in board units at full size: a noble in a robe flaring like a pawn's to a ring at
@@ -22,7 +22,23 @@ export const HEADDRESS = { half: 7.8, rise: 11.2 }
 export type PilliProportions = { height: number; width: number; headdress: number }
 export const PILLI: PilliProportions = { height: PILLI_SIZE, width: PILLI_WIDTH, headdress: 1.2 }
 
+// Seen from straight above, the figure is only its mask, lying face up with its feathers
+// spreading above it on the board, `scale` times as big as worn and centred on its spot: the
+// head's centre `lift` above the ground. `reach` is how far the feathers spread either side
+// and above the face's middle, and `chin` how far the pendant hangs below it, as worn.
+export const FACE_UP = { scale: 1.6, lift: 4.2, reach: 10.6, above: 9.8, chin: 4.8 }
+
 export function pilliBounds(tilt: number, proportions = PILLI): Box {
+    if (tilt === FLAT) {
+        const by = FACE_UP.scale * proportions.width
+        const margin = 1
+        return {
+            x: -FACE_UP.reach * by - margin,
+            y: -FACE_UP.above * by - margin,
+            width: 2 * (FACE_UP.reach * by + margin),
+            height: (FACE_UP.above + FACE_UP.chin) * by + 2 * margin
+        }
+    }
     const half =
         Math.max(EXTENT.half, HEADDRESS.half * proportions.headdress + 1.5) * proportions.width
     const depth = EXTENT.depth * proportions.width
