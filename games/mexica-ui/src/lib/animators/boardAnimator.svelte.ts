@@ -44,9 +44,9 @@ const WALK = { hop: 0.15, glide: 0.2, height: -7 }
 // placed pieces drop in or lift off.
 const QUICK = 0.18
 const MARK_FADE = 0.15
-// A canal dug floods its square from the water beside it as the paving gives way; a double
-// canal's second square after its first.
-const FLOOD = { duration: 0.42, next: 0.3 }
+// A canal dug is built in from its sides: the paving gives way to brick from the edges to the
+// middle, and then the water rises through the brick from below, like ground water.
+const FLOOD = { build: 0.32, rise: 0.5 }
 // The paving over a flooding square reaches this far into the land beside it, over the kerb the
 // canal brings there.
 const KERB_REACH = 3
@@ -64,7 +64,9 @@ export type DrawnBoard = {
 
 // A square of paving laid over a canal square while the water floods it or the paving comes
 // back, in plan units, with the side the water comes from.
-export type Flood = { cell: Cell; box: Box; from: Side | undefined }
+// A canal tile being dug or filled in: its brick floor covers its squares, and its paving
+// reaches over the kerbs beside them.
+export type Flood = { key: string; cells: readonly Cell[]; box: Box; floor: Box }
 type Side = 'n' | 'e' | 's' | 'w'
 
 type Timeline = gsap.core.Timeline
@@ -82,7 +84,8 @@ export class BoardAnimator implements MoveInterrupter {
 
     private readonly parts = new Map<string, Parts>()
     private readonly marks = new Set<SVGElement>()
-    private readonly floodEdges = new Map<Cell, SVGRectElement>()
+    private readonly floodEdges = new Map<string, SVGRectElement>()
+    private readonly floodFloors = new Map<string, SVGPathElement>()
     private readonly listener = (step: Step) => this.onGameStateChange(step)
     private timeline: Timeline | undefined
     private landMove: (() => void) | undefined
@@ -131,11 +134,21 @@ export class BoardAnimator implements MoveInterrupter {
     }
 
     // The clip of the paving over a flooding square, which the water wipes away.
-    floodEdge(cell: Cell): Attachment<SVGRectElement> {
+    floodEdge(key: string): Attachment<SVGRectElement> {
         return (node) => {
-            this.floodEdges.set(cell, node)
+            this.floodEdges.set(key, node)
             return () => {
-                if (this.floodEdges.get(cell) === node) this.floodEdges.delete(cell)
+                if (this.floodEdges.get(key) === node) this.floodEdges.delete(key)
+            }
+        }
+    }
+
+    // The brick floor of a square being built, which the water rises over.
+    floodFloor(key: string): Attachment<SVGPathElement> {
+        return (node) => {
+            this.floodFloors.set(key, node)
+            return () => {
+                if (this.floodFloors.get(key) === node) this.floodFloors.delete(key)
             }
         }
     }
@@ -218,9 +231,11 @@ export class BoardAnimator implements MoveInterrupter {
                 )
             ]
         }
+        const tilesOf = (state: HydratedMexicaGameState, changed: readonly Cell[]) =>
+            state.canals.filter((tile) => tile.cells.some((cell) => changed.includes(cell)))
         this.floods = [
-            ...dug.map((cell) => this.floodOf(cell, before.canals, dug)),
-            ...filled.map((cell) => this.floodOf(cell, after.canals, filled))
+            ...tilesOf(to, dug).map((tile) => this.floodOf(tile.cells, before.canals)),
+            ...tilesOf(from, filled).map((tile) => this.floodOf(tile.cells, after.canals))
         ]
         const drawing = performance.now()
         await tick()
@@ -237,15 +252,7 @@ export class BoardAnimator implements MoveInterrupter {
         const lift = quick ? QUICK : LIFT_OFF.duration
         const digging = !quick && isDigCanal(action)
         for (const flood of this.floods) {
-            const index = Math.max(dug.indexOf(flood.cell), filled.indexOf(flood.cell))
-            const at = digging ? index * FLOOD.next : 0
-            this.flood(
-                flood,
-                dug.includes(flood.cell),
-                timeline,
-                digging ? FLOOD.duration : QUICK,
-                at
-            )
+            this.flood(flood, dug.includes(flood.cells[0]), timeline, digging)
         }
         // A bridge moved comes off its canal before it goes down on the next.
         const dropAt = !quick && bridges.removed.length > 0 ? LIFT_OFF.duration * 0.7 : 0
@@ -316,63 +323,129 @@ export class BoardAnimator implements MoveInterrupter {
         animationContext.afterAnimations(land)
     }
 
-    // The paving over a square wipes away from the side the water comes in by, or back over it.
-    private flood(flood: Flood, dug: boolean, timeline: Timeline, duration: number, at: number) {
-        const edge = this.floodEdges.get(flood.cell)
-        if (edge === undefined) throw new Error('A flooding square is drawn before it floods')
+    // The paving draws in from every side to the tile's middle, leaving brick, and then the
+    // water wells up through the middle of the floor and spreads out to the banks. Filled in
+    // again, the brick closes over the water and the paving spreads back over the brick.
+    private flood(flood: Flood, dug: boolean, timeline: Timeline, digging: boolean) {
+        const edge = this.floodEdges.get(flood.key)
+        const floor = this.floodFloors.get(flood.key)
+        if (edge === undefined || floor === undefined) {
+            throw new Error('A flooding canal is drawn before it floods')
+        }
         const { x, y, width, height } = flood.box
         const whole = { x, y, width, height }
-        const gone =
-            flood.from === 'w'
-                ? { x: x + width, y, width: 0, height }
-                : flood.from === 'e'
-                  ? { x, y, width: 0, height }
-                  : flood.from === 'n'
-                    ? { x, y: y + height, width, height: 0 }
-                    : flood.from === 's'
-                      ? { x, y, width, height: 0 }
-                      : { x: x + width / 2, y: y + height / 2, width: 0, height: 0 }
-        const [start, end] = dug ? [whole, gone] : [gone, whole]
+        const gone = { x: x + width / 2, y: y + height / 2, width: 0, height: 0 }
+        const build = digging ? FLOOD.build : QUICK / 2
+        const rise = digging ? FLOOD.rise : QUICK / 2
+        const water = this.welling(floor, flood.floor)
+        const immediateRender = true
+        if (dug) {
+            timeline.fromTo(
+                edge,
+                { attr: whole },
+                { attr: gone, duration: build, ease: 'power1.in', immediateRender },
+                0
+            )
+            timeline.fromTo(
+                water,
+                { reach: 0 },
+                { reach: 1, duration: rise, ease: 'power1.out', immediateRender },
+                build
+            )
+            return
+        }
+        timeline.fromTo(
+            water,
+            { reach: 1 },
+            { reach: 0, duration: rise, ease: 'power1.in', immediateRender },
+            0
+        )
         timeline.fromTo(
             edge,
-            { attr: start },
-            { attr: end, duration, ease: dug ? 'power1.in' : 'power1.out', immediateRender: true },
-            at
+            { attr: gone },
+            { attr: whole, duration: build, ease: 'power1.out', immediateRender },
+            rise
         )
     }
 
-    // A square of canal and the reach of its paving, and the side the water comes from: water
-    // already there, or the lake, or failing those the other square of its tile.
-    private floodOf(cell: Cell, water: ReadonlySet<Cell>, tile: readonly Cell[]): Flood {
-        const column = columnOf(cell)
-        const row = rowOf(cell)
+    // The water in a canal's brick floor as it wells up: a pool from the floor's middle whose
+    // `reach` grows from nothing to the whole floor, cut out of the floor's path as it is set.
+    private welling(node: SVGPathElement, floor: Box): { reach: number } {
+        const { x, y, width, height } = floor
+        const outline = `M${x} ${y}H${x + width}V${y + height}H${x}Z`
+        const cx = x + width / 2
+        const cy = y + height / 2
+        let reach = 0
+        const write = () => {
+            if (reach <= 0) {
+                node.setAttribute('d', outline)
+                return
+            }
+            const hx = (width / 2 + 2) * reach
+            const hy = (height / 2 + 2) * reach
+            const r = Math.min(hx, hy)
+            const pool =
+                `M${cx - hx + r} ${cy - hy}H${cx + hx - r}A${r} ${r} 0 0 1 ${cx + hx} ${cy - hy + r}` +
+                `V${cy + hy - r}A${r} ${r} 0 0 1 ${cx + hx - r} ${cy + hy}H${cx - hx + r}` +
+                `A${r} ${r} 0 0 1 ${cx - hx} ${cy + hy - r}V${cy - hy + r}A${r} ${r} 0 0 1 ${cx - hx + r} ${cy - hy}Z`
+            node.setAttribute('d', outline + pool)
+        }
+        write()
+        return {
+            get reach() {
+                return reach
+            },
+            set reach(value: number) {
+                reach = value
+                write()
+            }
+        }
+    }
+
+    // A canal tile, and the reach of its paving over the kerb on each side where land stays
+    // beside it.
+    private floodOf(cells: readonly Cell[], water: ReadonlySet<Cell>): Flood {
         const steps: [Side, number, number][] = [
             ['w', -1, 0],
             ['e', 1, 0],
             ['n', 0, -1],
             ['s', 0, 1]
         ]
-        const near = steps.map(([side, dc, dr]) => ({ side, cell: cellAt(column + dc, row + dr) }))
-        const wet = (other: Cell | undefined) =>
-            other === undefined || !isLand(other) || water.has(other)
-        const from =
-            near.find((side) => wet(side.cell))?.side ??
-            near.find((side) => side.cell !== undefined && tile.includes(side.cell))?.side
-        // Over the kerb on each side where land stays beside it.
+        const columns = cells.map(columnOf)
+        const rows = cells.map(rowOf)
+        const left = Math.min(...columns)
+        const top = Math.min(...rows)
+        const right = Math.max(...columns) + 1
+        const bottom = Math.max(...rows) + 1
+        // Kerbs reach over a side where any square beside the tile on it is land.
         const reach = (side: Side) => {
-            const other = near.find((step) => step.side === side)?.cell
-            return other !== undefined && !wet(other) && !tile.includes(other) ? KERB_REACH : 0
+            const [, dc, dr] = steps.find(([named]) => named === side) ?? steps[0]
+            const land = cells.some((cell) => {
+                const other = cellAt(columnOf(cell) + dc, rowOf(cell) + dr)
+                return (
+                    other !== undefined &&
+                    !cells.includes(other) &&
+                    isLand(other) &&
+                    !water.has(other)
+                )
+            })
+            return land ? KERB_REACH : 0
         }
-        const x = column * CELL - reach('w')
-        const y = row * CELL - reach('n')
+        const floor = {
+            x: left * CELL,
+            y: top * CELL,
+            width: (right - left) * CELL,
+            height: (bottom - top) * CELL
+        }
         return {
-            cell,
-            from,
+            key: cells.join('-'),
+            cells,
+            floor,
             box: {
-                x,
-                y,
-                width: CELL + reach('w') + reach('e'),
-                height: CELL + reach('n') + reach('s')
+                x: floor.x - reach('w'),
+                y: floor.y - reach('n'),
+                width: floor.width + reach('w') + reach('e'),
+                height: floor.height + reach('n') + reach('s')
             }
         }
     }
