@@ -78,6 +78,10 @@ export type Flood = {
     springs: readonly { x: number; y: number; reach: number; cover: number }[]
 }
 type Side = 'n' | 'e' | 's' | 'w'
+// The discs that run in from a spring: clearing the paving (build), then the water over the
+// canal's floor (water) and up its banks (wet), which reaches past the floor by WET_REACH.
+type SpringKind = 'water' | 'wet' | 'build'
+const WET_REACH = 6
 
 type Timeline = gsap.core.Timeline
 type Step = TransitionStep<HydratedMexicaGameState, AnimationContext>
@@ -180,7 +184,7 @@ export class BoardAnimator implements MoveInterrupter {
     }
 
     // A disc of water running into a dug canal from one of its springs.
-    spring(key: string, kind: 'water' | 'build', index: number): Attachment<SVGCircleElement> {
+    spring(key: string, kind: SpringKind, index: number): Attachment<SVGCircleElement> {
         const name = `${key}-${kind}-${index}`
         return (node) => {
             this.springNodes.set(name, node)
@@ -368,6 +372,7 @@ export class BoardAnimator implements MoveInterrupter {
         if (paving === undefined) throw new Error('A dug canal is drawn before it is dug')
         if (!digging) {
             this.runIn(flood, timeline, 1, 1, 0, 0)
+            this.runIn(flood, timeline, 1, 1, 0, 0, 'wet')
             this.runIn(flood, timeline, 1, 1, 0, 0, 'build')
             const [from, to] = dug ? [1, 0] : [0, 1]
             timeline.fromTo(
@@ -380,6 +385,7 @@ export class BoardAnimator implements MoveInterrupter {
         }
         this.runIn(flood, timeline, 0, 1, DIG.build, 0, 'build')
         this.runIn(flood, timeline, 0, 1, DIG.water, DIG.build)
+        this.runIn(flood, timeline, 0, 1, DIG.water, DIG.build, 'wet')
     }
 
     // Water runs into the canal from each spring as a disc; the discs, blurred and cut back to a
@@ -391,12 +397,16 @@ export class BoardAnimator implements MoveInterrupter {
         to: number,
         duration: number,
         at: number,
-        kind: 'water' | 'build' = 'water'
+        kind: SpringKind = 'water'
     ) {
         flood.springs.forEach((spring, index) => {
             const node = this.springNodes.get(`${flood.key}-${kind}-${index}`)
             if (node === undefined) throw new Error('A spring is drawn before the water runs in')
-            const full = kind === 'water' ? spring.reach : spring.cover
+            const full = {
+                water: spring.reach,
+                wet: spring.reach + WET_REACH,
+                build: spring.cover
+            }[kind]
             timeline.fromTo(
                 new Disc(node),
                 { r: from * full },

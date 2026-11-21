@@ -34,6 +34,10 @@ export type KerbJoin = { key: string; stone: string; edge: string }
 export type Zone = { key: string; points: string }
 
 export type Waterworks = {
+    // The water's surface over the banks' feet, in canals and in their mouths in the lake, each
+    // as one path: see waterSurface.
+    surface: string
+    mouthSurface: string
     banks: Bank[]
     curves: Curve[]
     spills: Spill[]
@@ -132,7 +136,13 @@ class Island {
     }
 }
 
-export function waterworks(landCells: readonly Cell[], canals: ReadonlySet<Cell>): Waterworks {
+// `filling` are canal squares the water is still running into: their surface is drawn with the
+// water as it comes (surfaceOf), not here.
+export function waterworks(
+    landCells: readonly Cell[],
+    canals: ReadonlySet<Cell>,
+    filling: ReadonlySet<Cell> = new Set()
+): Waterworks {
     const island = new Island(canals)
     const spotOf = (cell: Cell): Spot => ({ column: columnOf(cell), row: rowOf(cell) })
     const waters: Spot[] = []
@@ -159,6 +169,14 @@ export function waterworks(landCells: readonly Cell[], canals: ReadonlySet<Cell>
         }
     }
     return {
+        surface: waters
+            .filter((spot) => island.canal(spot) && !filling.has(island.cell(spot) as Cell))
+            .map((spot) => waterSurface(island, spot))
+            .join(''),
+        mouthSurface: waters
+            .filter((spot) => island.mouth(spot))
+            .map((spot) => waterSurface(island, spot))
+            .join(''),
         banks: waters.flatMap((spot) => banksOf(island, spot)),
         curves: [
             ...waters.flatMap((spot) => curvesOf(island, spot)),
@@ -169,6 +187,63 @@ export function waterworks(landCells: readonly Cell[], canals: ReadonlySet<Cell>
         joins: waters.flatMap((spot) => joinsOf(island, spot)),
         zones: landCells.map(spotOf).flatMap((spot) => zonesOf(island, spot))
     }
+}
+
+// The water's surface in these canal squares, as one path.
+export function surfaceOf(canals: ReadonlySet<Cell>, cells: readonly Cell[]): string {
+    const island = new Island(canals)
+    return cells
+        .map((cell) => waterSurface(island, { column: columnOf(cell), row: rowOf(cell) }))
+        .join('')
+}
+
+// How much of each bank stands dry above the water, from its top: the rest, down to its foot,
+// lies under the water, seen through it.
+export const DRY_BANK = 4
+// A cove's course rounds its corner by this much at the bank's top, and by COVE_TOE at its foot.
+const COVE_TOP_ROUND = 4
+
+// A water square's surface: the square, kept DRY_BANK back from the land beside it, and
+// rounded as the bank's course is there: in a cove; round a corner of land jutting into the
+// water; square where two banks meet in a mitre. It laps a little into the water beside it, and
+// the squares together make one path, so no seams open between them.
+function waterSurface(island: Island, spot: Spot): string {
+    const dry = DRY_BANK
+    const lap = SEAM
+    const banked = (side: SlopeSide) => island.ground(plus(spot, STEP[side]))
+    const inset = (side: SlopeSide) => (banked(side) ? dry : -lap)
+    const x0 = spot.column * CELL + inset('w')
+    const y0 = spot.row * CELL + inset('n')
+    const x1 = (spot.column + 1) * CELL - inset('e')
+    const y1 = (spot.row + 1) * CELL - inset('s')
+    const cove = COVE_TOP_ROUND + ((COVE_TOE - COVE_TOP_ROUND) * dry) / BANK_WIDTH
+    // Each corner clockwise from the top left: its point, the ways in and out along the edges.
+    const corners: [SlopeSide, SlopeSide, Point, Point, Point][] = [
+        ['n', 'w', { x: x0, y: y0 }, { x: 0, y: -1 }, { x: 1, y: 0 }],
+        ['n', 'e', { x: x1, y: y0 }, { x: 1, y: 0 }, { x: 0, y: 1 }],
+        ['s', 'e', { x: x1, y: y1 }, { x: 0, y: 1 }, { x: -1, y: 0 }],
+        ['s', 'w', { x: x0, y: y1 }, { x: -1, y: 0 }, { x: 0, y: -1 }]
+    ]
+    const parts = corners.map(([up, beside, at, into, out]) => {
+        const across = island.ground(plus(spot, plus(STEP[up], STEP[beside])))
+        const coved = banked(up) && banked(beside) && across
+        const jutting = !banked(up) && !banked(beside) && across
+        if (coved) {
+            const a = offset(at, into, -cove)
+            const b = offset(at, out, cove)
+            return `L${a.x} ${a.y}A${cove} ${cove} 0 0 1 ${b.x} ${b.y}`
+        }
+        if (jutting) {
+            // The land's corner lies `lap` beyond this one, outward on both edges.
+            const land = offset(offset(at, into, -lap), out, lap)
+            const r = dry
+            const a = offset(land, into, -r)
+            const b = offset(land, out, r)
+            return `L${a.x} ${a.y}A${r} ${r} 0 0 0 ${b.x} ${b.y}`
+        }
+        return `L${at.x} ${at.y}`
+    })
+    return `M${x0} ${(y0 + y1) / 2}${parts.join('')}Z`
 }
 
 // A water square's banks on every side where it meets land, mitred where two meet.
