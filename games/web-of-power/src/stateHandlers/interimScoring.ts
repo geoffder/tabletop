@@ -10,7 +10,6 @@ import type { HydratedWebOfPowerGameState } from '../model/gameState.js'
 import { HydratedScoreInterim, isScoreInterim, ScoreInterim } from '../actions/scoreInterim.js'
 import { afterDrawing } from './turnFlow.js'
 
-// Scoring interrupts the turn; afterwards the player who emptied the deck carries on drawing.
 export class InterimScoringStateHandler implements MachineStateHandler<
     HydratedScoreInterim,
     HydratedWebOfPowerGameState

@@ -1,7 +1,3 @@
-// The alliance tags, drawn as scraps of worn parchment: edges that waver, a nick or two cut into
-// them and one chipped corner, each tag its own (`seed`). The outline is in the tag's units about its
-// middle, 32 across; the board draws it twice, a shadow offset below, then the scrap.
-
 import { mulberry32 } from './pieces.js'
 
 const point = (x: number, y: number) => `${x.toFixed(2)} ${y.toFixed(2)}`
@@ -24,7 +20,6 @@ export function wornTag(seed: number): string {
     for (let edge = 0; edge < 4; edge++) {
         const [ax, ay] = corners[edge]
         const [bx, by] = corners[(edge + 1) % 4]
-        // inward, across the edge
         const nx = -(by - ay) / (2 * H)
         const ny = (bx - ax) / (2 * H)
         const nickAt = nicked.has(edge) ? 0.25 + random() * 0.5 : -1
@@ -33,7 +28,6 @@ export function wornTag(seed: number): string {
             let x = ax + (bx - ax) * t
             let y = ay + (by - ay) * t
             if (step === 0) {
-                // a chipped corner starts a little along its edge
                 if (edge === chipped) {
                     x += (bx - ax) * 0.06
                     y += (by - ay) * 0.06

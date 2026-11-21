@@ -1,6 +1,6 @@
 // Traced from a photograph of the printed board (BoardGameGeek image 188465), in its pixel
 // coordinates: country outlines by colour, roads along the printed lines. Regenerate with
-// /workspace/tmp/web-of-power/map (segment2.py, trace.py, roads.py, emit.py).
+// the map tracing pipeline (segment2.py, trace.py, roads.py, emit.py).
 import { Abbey, Country } from '@tabletop/web-of-power'
 
 export const MAP_VIEW = { x: 42, y: 62, width: 1448, height: 1054 }
@@ -95,8 +95,6 @@ export const SPACE_POINTS: Record<Abbey, { x: number; y: number }> = {
     [Abbey.Fossanova]: { x: 1275, y: 1079 }
 }
 
-// Each road's course, keyed by its two ends as the rules list them, stopping where it meets the
-// drawing of the cloister at each end.
 export const ROAD_PATHS: Record<string, string> = {
     'glastonbury|ford':
         'M181.6,187.1C183.4,187.5 187.1,188.2 192.7,189.4C198.3,190.6 201.4,193.7 215,194C228.6,194.3 258.1,193.8 274,191C289.9,188.2 301.2,180.5 310.3,177.0C319.4,173.5 325.4,171.2 328.4,170.0',
@@ -208,7 +206,6 @@ export const ROAD_PATHS: Record<string, string> = {
         'M1438.7,725.0C1438.6,725.2 1438.4,725.6 1438.1,726.3C1437.8,727.0 1437.5,726.4 1437,729C1436.5,731.6 1437.3,737.7 1435,742C1432.7,746.3 1435.2,747.2 1423,755C1410.8,762.8 1393.8,783.7 1362,789C1330.2,794.3 1260.2,785.7 1232,787C1203.8,788.3 1214.3,785.3 1193,797C1171.7,808.7 1129.2,847.0 1104,857C1078.8,867.0 1052.8,858.1 1042,857C1031.2,855.9 1039.8,852.0 1039.0,850.3C1038.2,848.6 1037.8,847.5 1037.5,847.0'
 }
 
-// The numbered alliance boxes, and the dashed sea routes joining countries across water.
 export const ALLIANCE_BOXES: Record<number, { x: number; y: number }> = {
     1: { x: 685, y: 163 },
     2: { x: 515, y: 272 },

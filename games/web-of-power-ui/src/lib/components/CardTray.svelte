@@ -4,15 +4,12 @@
     import { getGameSession } from '$lib/model/sessionContext.svelte.js'
     import Card from './Card.svelte'
     import { getCardAnimator } from '$lib/animators/cardAnimatorContext.js'
-    // Degrees between neighbouring cards in the fanned hand.
     import { FAN_STEP } from '$lib/animators/cardAnimator.svelte.js'
 
     const session = getGameSession()
     const cards = getCardAnimator()
-    // Where the card animator finds each place cards are drawn at.
     const place = (name: string) => cards?.place(name)
 
-    // The cards as the card animator draws them while moves play, the state's otherwise.
     const table = $derived(
         cards?.table ?? {
             hand: session.hand,
@@ -21,8 +18,7 @@
             deckCount: session.gameState.deck.remaining
         }
     )
-    // A chosen card of the hand; while a move plays the hand is drawn as the move leaves it, so
-    // none is.
+    // While a move plays the hand is drawn as the move leaves it, so no card shows chosen.
     const chosen = (index: number) =>
         !session.updatingVisibleState && session.chosenIndices.includes(index)
     const display = $derived(table.display)
@@ -31,7 +27,6 @@
     // The tray is drawn twice in full screen; each opens its own discard view.
     const uid = $props.id()
 
-    // The discard pile by colour, for the open pile.
     const discardCounts = $derived(
         Object.values(CardColor)
             .map((card) => ({ card, count: discard.filter((held) => held === card).length }))
@@ -112,8 +107,6 @@
             </div>
         </div>
         {#if session.openDiscard && discard.length > 0}
-            <!-- Every card discarded since the last shuffle, by colour: what is still to come is
-                 the rest of each colour's count. -->
             <Popover
                 triggeredBy="#{uid}-discard"
                 trigger="click"
@@ -137,15 +130,13 @@
 </div>
 
 <style>
-    /* The game column narrows beside the side panel on tablets, so cards size to the tray's own
-       width, not the screen's. */
+    /* The game column narrows beside the side panel on tablets, so cards size to the tray. */
     .fit {
         container-type: inline-size;
     }
 
     .tray {
-        /* seven cards' width (the fanned hand takes 2.5), shrinking below 54px where the column
-           is narrow to keep the tray clear of its edges */
+        /* seven cards' width; the fanned hand takes 2.5 */
         --wop-card-width: min(54px, calc((100cqi - 86px) / 6.5));
         display: flex;
         align-items: flex-end;
@@ -170,8 +161,6 @@
         margin-top: calc(-1 * var(--wop-caption-drop));
     }
 
-    /* The hand fans from a point just below the cards, each overlapping the one to its left; the
-       padding keeps the outer cards' tilted corners inside the hand's own space. */
     .hand {
         display: flex;
         align-items: flex-end;
@@ -183,7 +172,6 @@
         transform-origin: 50% 120%;
     }
 
-    /* A chosen card comes out over its neighbours, its ring whole. */
     .fanned.raised {
         position: relative;
         z-index: 1;
@@ -199,7 +187,6 @@
         background: var(--wop-panel-rule);
     }
 
-    /* The deck and discard sit in a shallow recess of their own, apart from the cards to take. */
     .piles {
         display: flex;
         align-items: flex-end;
@@ -287,7 +274,6 @@
         border: 1.5px dashed var(--wop-panel-rule);
     }
 
-    /* The discard view: the tray's panel, the pile's cards small, each colour's count beneath. */
     :global(.discard-view) {
         background: var(--wop-panel) !important;
         border: none !important;

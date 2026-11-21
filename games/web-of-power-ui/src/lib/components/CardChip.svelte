@@ -4,7 +4,6 @@
     let { card }: { card: CardColor } = $props()
 </script>
 
-<!-- A card named inline in text, in its colour. -->
 <span class="chip" style:background="var(--wop-{card})">{cardColorName(card)}</span>
 
 <style>

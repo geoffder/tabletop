@@ -16,7 +16,6 @@ import {
 const SEATS = ['p1', 'p2', 'p3', 'p4']
 const orders = [SEATS, ['p3', 'p1', 'p4', 'p2']]
 
-// The same position with the players' seats renamed by the mapping.
 function rename(state: WebOfPowerGameState, mapping: Record<string, string>): WebOfPowerGameState {
     return JSON.parse(
         JSON.stringify(state).replace(/"p[1-4]"/g, (id) => `"${mapping[id.slice(1, -1)]}"`)
@@ -31,7 +30,6 @@ describe.each([{}, { fasterVariant: true }])('Web of Power tournaments %o', (con
             expect(initialState.turnManager.turnOrder).toEqual(order)
             expect(initialState.activePlayerIds).toEqual([order[0]])
             assert(WebOfPowerGameStateValidator.Check(initialState), 'Setup is canonical')
-            // Exchanging and drawing passes the turn to seat two.
             const exchange = legalActions(game, initialState).find(
                 (action) => action.type === ActionType.ExchangeCard
             )

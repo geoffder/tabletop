@@ -1,12 +1,5 @@
-// Renders the light on the two pieces, a cloister's wooden house and an advisor's peg, as painted
-// wood, into ../src/lib/images/{house,peg}-light.webp, and writes their outlines to
-// ../src/lib/board/pieceSprites.ts. The board fills each outline with the
-// player's colour and lays the light over it (black where a face turns from the light, white where
-// it catches it, and the piece's soft shadow on the ground), so one image serves every player
-// colour, the colour-blind palette's too. Each piece is a plain solid with softly rounded edges,
-// ray-marched in the board's own view of it: the house as the board has always drawn it, its gable
-// square to the viewer and its side and roof receding up to the right; the peg seen from a little
-// above. The drawing takes a few seconds, so it is done here rather than as a game opens.
+// Ray-marching takes a few seconds, so the pieces' light is rendered here, not as a game opens. The
+// light is black and white over the player's colour, so one image serves every colour.
 // Rerun after changing a piece: pnpm run render-pieces
 import { writeFile } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
@@ -18,15 +11,9 @@ const IMAGES = join(ROOT, 'src', 'lib', 'images')
 
 // Pixels per map unit: 2.5 times the board's largest fit (maxFitScale 1.5 in GameTable).
 const SCALE = 2.5 * 1.5
-// Rays per pixel along each side, for smooth edges.
 const SAMPLES = 3
 
-// The finish: how much light falls on each face, the paint's sheen (broad and tight), the wood's
-// grain showing through the paint, and the darkening where an edge rounds away. Chosen as a worn
-// paint, the grain plain, over a smoother satin and a glossier one.
 const LOOK = { ambient: 0.8, diffuse: 0.58, broad: 0.05, tight: 0.08, grain: 0.045, rim: 0.24 }
-
-// ---- vectors
 
 const add = (a, b) => [a[0] + b[0], a[1] + b[1], a[2] + b[2]]
 const sub = (a, b) => [a[0] - b[0], a[1] - b[1], a[2] - b[2]]
@@ -36,10 +23,7 @@ const len = (a) => Math.hypot(a[0], a[1], a[2])
 const norm = (a) => mul(a, 1 / len(a))
 const clamp = (x, lo, hi) => Math.min(hi, Math.max(lo, x))
 
-// ---- views. x runs right, y up, z toward the viewer; a piece stands on y = 0.
-
-// The house's view, as the board drew it by hand: the front face true, each unit of depth shifting
-// a point 0.442 right and 0.34 up the screen.
+// The board's hand-drawn house shifts each unit of depth 0.442 right and 0.34 up the screen.
 function oblique(kx, ky) {
     const toViewer = norm([kx, ky, 1])
     return {
@@ -49,7 +33,6 @@ function oblique(kx, ky) {
     }
 }
 
-// The peg's: seen from `pitch` degrees above, straight on.
 function from(pitch) {
     const p = (pitch * Math.PI) / 180
     const toViewer = [0, Math.sin(p), Math.cos(p)]
@@ -64,13 +47,9 @@ function from(pitch) {
     }
 }
 
-// Light from above and a little in front: the roof brightest, the gable at the paint's own
-// colour, the side in shade.
 const LIGHT = norm([-0.05, 1, 0.38])
 // The ground shadow falls down and to the right on the screen, as the board's shadows always have.
 const SHADOW_LIGHT = norm([-0.4, 1, -0.3])
-
-// ---- the pieces, in map units
 
 function box(p, half) {
     const q = [Math.abs(p[0]) - half[0], Math.abs(p[1]) - half[1], Math.abs(p[2]) - half[2]]
@@ -78,9 +57,7 @@ function box(p, half) {
     return outside + Math.min(Math.max(q[0], q[1], q[2]), 0)
 }
 
-// The house as the board drew it: a gable end 34 wide, walls 21 high, the ridge 17 above them,
-// running 20 back. Its foot, the origin, is the middle of the front edge. The gable is pushed back
-// into depth and every edge rounded, its outline staying the board's own.
+// Its foot, the origin, is the middle of the front edge.
 const HOUSE = { width: 34, wall: 21.08, ridge: 17, depth: 20, round: 1.8 }
 const GABLE = [
     [-HOUSE.width / 2, 0],
@@ -89,7 +66,6 @@ const GABLE = [
     [0, HOUSE.wall + HOUSE.ridge],
     [-HOUSE.width / 2, HOUSE.wall]
 ]
-// The gable shrunk by the rounding: each edge moved in, the corners where they meet.
 const INNER = GABLE.map((_, i) => {
     const edge = (k) => {
         const [a, b] = [GABLE[(k + GABLE.length) % GABLE.length], GABLE[(k + 1) % GABLE.length]]
@@ -130,7 +106,6 @@ function house(p) {
     )
 }
 
-// The peg: an upright cylinder 16 across, its rims softened. Its foot is its base's centre.
 const PEG = { radius: 8, height: 23.8, round: 1.5 }
 function peg(p) {
     const { radius, height, round } = PEG
@@ -142,8 +117,6 @@ function peg(p) {
         round
     )
 }
-
-// ---- marching and light
 
 function normalAt(sdf, p) {
     const e = 0.04
@@ -187,8 +160,6 @@ function softShadow(sdf, p, toward, k) {
     return clamp(lit, 0, 1)
 }
 
-// The grain under the paint: fine bands along the wood, wavering. The house's run along its
-// length (front to back), the peg's up its side.
 const wobble = (a, b) =>
     Math.sin(a * 0.31 + b * 0.11) * 1.4 + Math.sin(a * 0.83 + 1.7) * 0.5 + Math.sin(b * 0.57) * 0.4
 const fine = (x) =>
@@ -196,12 +167,10 @@ const fine = (x) =>
 const houseGrain = (p) => fine(p[1] * 0.9 + p[0] * 0.35 + wobble(p[2], p[0]))
 const pegGrain = (p) => fine(Math.atan2(p[2], p[0]) * 9 + wobble(p[1], p[0]) * 0.6)
 
-// The light at one sample: [white, alpha], the colour black or white.
 function sample(piece, u, v) {
     const ray = piece.view.ray(u, v)
     const t = march(piece.sdf, ray)
     if (t < 0) {
-        // The ground, darkened under and beside the piece.
         const tg = ray.origin[1] / -ray.direction[1]
         const g = add(ray.origin, mul(ray.direction, tg))
         const sky = softShadow(piece.sdf, g, SHADOW_LIGHT, 3)
@@ -225,15 +194,11 @@ function sample(piece, u, v) {
     return light < 1 ? [0, 1 - light] : [1, Math.min(light - 1, 1)]
 }
 
-// ---- drawing a piece
-
 function render(piece) {
-    // `bounds` in map units on screen, with the foot at the origin.
     const [x0, y0, x1, y1] = piece.bounds
     const width = Math.ceil((x1 - x0) * SCALE)
     const height = Math.ceil((y1 - y0) * SCALE)
     const rgba = new Uint8ClampedArray(width * height * 4)
-    // Coverage at four times the pixels, for the outline.
     const fine = 4
     const [fw, fh] = [width * fine, height * fine]
     const mask = new Uint8Array(fw * fh)
@@ -269,7 +234,6 @@ function render(piece) {
     return { ...piece, width, height, rgba, outline: outline(mask, fw, fh, x0, y0, SCALE * fine) }
 }
 
-// The silhouette as a path in map units: its boundary walked round the coverage, simplified.
 function outline(mask, w, h, x0, y0, scale) {
     const at = (x, y) => (x >= 0 && y >= 0 && x < w && y < h ? mask[y * w + x] : 0)
     let start
@@ -336,8 +300,6 @@ function simplify(points, tolerance) {
 
 const HOUSE_VIEW = oblique(8.84 / HOUSE.depth, 6.8 / HOUSE.depth)
 
-// ---- render and write
-
 const pieces = [
     render({
         name: 'house',
@@ -380,7 +342,6 @@ try {
 
 const lightBox = ({ bounds: [x0, y0, x1, y1] }) =>
     `{ x: ${x0}, y: ${y0}, width: ${x1 - x0}, height: ${y1 - y0} }`
-// The circle round a piece's outline, for the ring marking a choice.
 function ringOf({ outline }) {
     const points = [...outline.matchAll(/(-?[\d.]+) (-?[\d.]+)/g)].map((m) => [
         Number(m[1]),
@@ -394,9 +355,7 @@ function ringOf({ outline }) {
 }
 const [houseSprite, pegSprite] = pieces
 const lines = [
-    "// The pieces as scripts/render-pieces.mjs drew them: each outline, filled with the player's",
-    '// colour, the box its light image covers, and the circle round it for a choice ring, in map',
-    "// units with the piece's foot at the origin. Generated; rerun pnpm run render-pieces.",
+    "// Generated by pnpm run render-pieces, in map units with the piece's foot at the origin.",
     '',
     'export type PieceSprite = {',
     '    outline: string',

@@ -15,7 +15,6 @@ const card = (value: CardColor): Segment => ({ kind: 'card', card: value })
 const pieceName = (kind: PieceKind) => (kind === PieceKind.Cloister ? 'a cloister' : 'an advisor')
 
 // Spaces live inside text segments: Svelte trims whitespace at the edges of template blocks.
-// The brief form keeps the action banner to one line; the history panel uses the full one.
 export function turnSegments(entry: TurnEntry, brief = false): Segment[] {
     const parts: Segment[][] = []
     if (entry.placed.length > 0) parts.push(placedSegments(entry.placed, brief))

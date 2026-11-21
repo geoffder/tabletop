@@ -3,8 +3,6 @@
     import type { FinalEntry, InterimEntry } from '$lib/history/historyEntries.js'
     import { getGameSession } from '$lib/model/sessionContext.svelte.js'
 
-    // A scoring's every award, in the order it was scored: the cloisters by country, then (at the
-    // end) each alliance and each chain.
     let { entry }: { entry: InterimEntry | FinalEntry } = $props()
 
     const session = getGameSession()

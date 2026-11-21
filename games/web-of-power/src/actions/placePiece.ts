@@ -19,11 +19,10 @@ export const PlacePiece = Type.Evaluate(
         Type.Object({
             type: Type.Literal(ActionType.PlacePiece),
             playerId: Type.String(),
-            // One card naming the country, or two of one colour as a joker. Played cards are shown.
+            // Played cards are shown.
             cards: Type.Array(CardColorSchema, { minItems: 1, maxItems: 2 }),
             kind: Type.Enum(PieceKind),
             country: CountrySchema,
-            // The space a cloister goes on; an advisor goes on the country's coat of arms.
             abbey: Type.Optional(AbbeySchema)
         })
     ])

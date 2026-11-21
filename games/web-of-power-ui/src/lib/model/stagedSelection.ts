@@ -5,7 +5,6 @@ import {
 } from '@tabletop/frontend-components'
 import type { CardColor } from '@tabletop/web-of-power'
 
-// The card to pay with, then a second of the same colour to make a joker.
 export type WebOfPowerSelectionValues = {
     card: CardColor
     joker: CardColor

@@ -22,48 +22,35 @@ const ANIMATED_KINDS: ReadonlySet<TransitionKind> = new Set<TransitionKind>([
     'exploration'
 ])
 
-// A card crosses the table in FLY, each after the first a little behind the one before; a step
-// without an action moves them within QUICK.
 const FLY = { duration: 0.45, stagger: 0.07, ease: 'power2.inOut' }
 const QUICK = 0.18
-// Another player's cards are not followed to their player card. A card they play drops onto its
-// pile like a piece, from RISE card widths up and SCALE times larger (nearer the eye), slowing as
-// it lands, with no bounce; it shows over the first SHOW of the fall. A card they take lifts off
-// the same way in reverse, gathering speed, and goes over the last SHOW of the rise.
+// Another player's cards are not followed to their player card, which read as specks crossing the
+// viewer's own hand: they drop onto, or lift off, their place like a piece.
 const DROP = { duration: 0.3, rise: 1.2, scale: 1.15, show: 0.3 }
-// Degrees between neighbouring cards in the fanned hand (CardTray draws it so).
 export const FAN_STEP = 8
 
 type Step = TransitionStep<HydratedWebOfPowerGameState, AnimationContext>
 
-// Where a card can be: a player's hand (a card of the viewer's own hand by its place in it), a
-// place in the face-up row, the deck or the discard pile.
 export type CardPlace =
     | { kind: 'hand'; playerId: string; index?: number }
     | { kind: 'display'; index: number }
     | { kind: 'deck' }
     | { kind: 'discard' }
 
-// One card's move: its face, or undefined for a card seen from the back.
 export type CardMove = { card?: CardColor; from: CardPlace; to: CardPlace }
 
-// A card in the air, drawn over the table at the rectangle it starts from.
 export type Flier = {
     id: number
     card?: CardColor
-    // Leaves face down and turns over on the way: a card coming off the deck that its taker sees.
     flips: boolean
     left: number
     top: number
     width: number
 }
 
-// Another player's hand, which the table does not draw.
 const othersHand = (place: CardPlace, me: string | undefined): boolean =>
     place.kind === 'hand' && place.playerId !== me
 
-// The places on the page cards are drawn at, by name: 'hand:<i>' for a card of the viewer's
-// hand, 'hand' for the hand itself, 'display:<i>', 'deck' and 'discard'.
 const placeName = (place: CardPlace, me: string | undefined): string => {
     switch (place.kind) {
         case 'hand':
@@ -76,9 +63,7 @@ const placeName = (place: CardPlace, me: string | undefined): string => {
     }
 }
 
-// The cards one state turns into the other: every card that leaves a hand, the face-up row, the
-// deck or the discard pile, and where it goes. Read from the states alone, so a move, its Undo and
-// a step through history all move the same cards.
+// Read from the two states alone, so a move, its Undo and a history step move the same cards.
 export function cardMoves(
     from: HydratedWebOfPowerGameState,
     to: HydratedWebOfPowerGameState,
@@ -92,7 +77,6 @@ export function cardMoves(
     const own = actor !== undefined && actor.playerId === me
     const fromHand = own ? [...(from.getPlayerState(actor.playerId).hand ?? [])] : []
     const toHand = own ? [...(actor.hand ?? [])] : []
-    // A card of the viewer's hand by colour, each place used once.
     const takeFrom = (hand: (CardColor | undefined)[], card: CardColor | undefined) => {
         const index = card === undefined ? -1 : hand.indexOf(card)
         if (index < 0) return undefined
@@ -105,7 +89,6 @@ export function cardMoves(
         index
     })
 
-    // The discard pile emptied into the deck: the interim scoring's reshuffle.
     const reshuffled =
         from.discard.length > 0 &&
         to.discard.length === 0 &&
@@ -116,7 +99,6 @@ export function cardMoves(
     }
 
     let handLeft = handDelta
-    // Cards played or exchanged onto the discard pile, or taken back off it by an Undo.
     const discarded = to.discard.slice(from.discard.length)
     const undiscarded = from.discard.slice(to.discard.length)
     for (const card of discarded) {
@@ -128,7 +110,6 @@ export function cardMoves(
         handLeft -= 1
     }
 
-    // The face-up row: a card taken leaves its place; a card added fills one at the end.
     const removed = leftOut(from.display, to.display)
     const added = leftOut(to.display, from.display)
     for (const { card, index } of removed) {
@@ -156,7 +137,6 @@ export function cardMoves(
         }
     }
 
-    // What is left of the hand's change came from the deck, or went back to it in an Undo.
     for (; handLeft > 0; handLeft--) {
         const card = own
             ? toHand.find((held) => held !== undefined && !fromHand.includes(held))
@@ -172,8 +152,6 @@ export function cardMoves(
     return moves
 }
 
-// The places in `later` of the cards of `earlier` that stay, by colour and order: [earlier index,
-// later index] for each.
 function matchUp(earlier: readonly CardColor[], later: readonly CardColor[]): [number, number][] {
     const free = later.map((card, index) => ({ card, index }))
     const pairs: [number, number][] = []
@@ -186,7 +164,6 @@ function matchUp(earlier: readonly CardColor[], later: readonly CardColor[]): [n
     return pairs
 }
 
-// The cards of `cards` not in `others`, counting repeats, with their places in `cards`.
 function leftOut(cards: readonly CardColor[], others: readonly CardColor[]) {
     const unmatched = [...others]
     const out: { card: CardColor; index: number }[] = []
@@ -198,7 +175,6 @@ function leftOut(cards: readonly CardColor[], others: readonly CardColor[]) {
     return out
 }
 
-// The cards as the table draws them: the viewer's hand, the face-up row and the piles.
 export type CardTable = {
     hand: CardColor[]
     display: CardColor[]
@@ -216,10 +192,8 @@ function tableOf(state: HydratedWebOfPowerGameState, me: string | undefined): Ca
 }
 
 export class CardAnimator implements MoveInterrupter {
-    // The cards in the air; drawn over the table.
     fliers: Flier[] = $state.raw([])
-    // What the table draws. A move and the system actions after it play one after another before
-    // the visible state catches up, so each leaves the cards as it ended until that state lands.
+    // A move and its system actions play before the visible state catches up.
     table: CardTable = $derived.by(() => tableOf(this.session.gameState, this.session.myPlayer?.id))
 
     private readonly places = new Map<string, Set<HTMLElement>>()
@@ -251,8 +225,7 @@ export class CardAnimator implements MoveInterrupter {
         if (this.stop()) this.abandoned = this.session.presentingState
     }
 
-    // A place cards are drawn at (see placeName). The tray is drawn twice in full screen; the
-    // one on view is used.
+    // The tray is drawn twice in full screen; the one on view is used.
     place(name: string): Attachment<HTMLElement> {
         return (node) => {
             const nodes = this.places.get(name) ?? new Set<HTMLElement>()
@@ -293,7 +266,6 @@ export class CardAnimator implements MoveInterrupter {
         }
     }
 
-    // The rectangle a place is drawn in on screen, if it is.
     private rectOf(name: string): DOMRect | undefined {
         for (const node of this.places.get(name) ?? []) {
             const rect = node.getBoundingClientRect()
@@ -328,9 +300,7 @@ export class CardAnimator implements MoveInterrupter {
         const quick = action === undefined
         const duration = quick ? QUICK : FLY.duration
 
-        // Where every card starts, measured while the table still shows the state it leaves: for
-        // a card out of another player's hand, roughly where it lands (it is placed exactly once
-        // the table shows the new state).
+        // A card from another player's hand is placed exactly once the new state shows.
         const starts = moves.map((move) =>
             othersHand(move.from, me)
                 ? (this.rectOf(placeName(move.to, me)) ?? this.rectOf('deck'))
@@ -340,9 +310,7 @@ export class CardAnimator implements MoveInterrupter {
         const rowBefore = this.rectsOf('display', before.display.length)
         const width = this.cardWidth()
 
-        // The hand and the face-up row take their new layout at once: cards that stay slide to
-        // their new places, and a card's new place waits, empty, for it to land. A pile keeps a
-        // card that is coming to it until it lands, and gives one up as it leaves.
+        // A pile counts an arriving card only once it lands.
         this.table = {
             hand: after.hand,
             display: after.display,
@@ -402,7 +370,6 @@ export class CardAnimator implements MoveInterrupter {
                 0
             )
         }
-        // The cards that stay in the hand and the row, from where they stood to where they stand.
         const fan = (count: number) => (index: number) => (index - (count - 1) / 2) * FAN_STEP
         for (const [index, later] of matchUp(before.hand, after.hand)) {
             const node = this.nodeOf(`hand:${later}`)
@@ -425,7 +392,6 @@ export class CardAnimator implements MoveInterrupter {
             const at = quick ? 0 : order * FLY.stagger
             const fade = quick ? QUICK : DROP.duration
             const rise = width * DROP.rise
-            // Taken by another player: up off its place and away.
             if (othersHand(flier.move.to, me)) {
                 timeline.fromTo(
                     node,
@@ -453,8 +419,6 @@ export class CardAnimator implements MoveInterrupter {
                 return
             }
             const name = placeName(flier.move.to, me)
-            // A card coming to the hand or the row lands on its own place there, kept empty
-            // until then.
             const arriving =
                 flier.move.to.kind === 'display' ||
                 (flier.move.to.kind === 'hand' && flier.move.to.playerId === me)
@@ -470,7 +434,6 @@ export class CardAnimator implements MoveInterrupter {
             }
             const x = end.left + end.width / 2 - (flier.left + width / 2)
             const y = end.top + end.height / 2 - (flier.top + (width * 1.5) / 2)
-            // A card drawn face down turns over through the middle of its flight.
             const spin = node.querySelector<HTMLElement>('.spin')
             if (flier.flips && spin !== null) {
                 this.tweened.add(spin)
@@ -486,12 +449,10 @@ export class CardAnimator implements MoveInterrupter {
                     at + duration * 0.2
                 )
             }
-            // A card landing in the fan turns to lie as the fan does.
             const lands =
                 flier.move.to.kind === 'hand' && flier.move.to.playerId === me
                     ? fan(after.hand.length)(flier.move.to.index ?? after.hand.length - 1)
                     : 0
-            // A card reaching a pile goes into it as it lands, the pile showing its new count.
             if (flier.move.to.kind === 'deck' || flier.move.to.kind === 'discard') {
                 timeline.call(
                     () => {
@@ -508,7 +469,6 @@ export class CardAnimator implements MoveInterrupter {
                     at + travel
                 )
             }
-            // Played by another player: drops onto where it lands.
             if (othersHand(flier.move.from, me)) {
                 timeline.fromTo(
                     node,
@@ -548,20 +508,17 @@ export class CardAnimator implements MoveInterrupter {
                 gsap.set(node, { clearProps: 'transform' })
             }
             this.fliers = []
-            // A switch of view while the move played has already shown another state, which this
-            // move's cards must not cover.
+            // A switch of view mid-move has already shown another state, which must not be covered.
             if (this.session.gameState === shown) this.table = after
         }
         this.landMove = land
         animationContext.afterAnimations(land)
     }
 
-    // The rectangles of a place's first `count` cards ('hand' or 'display').
     private rectsOf(name: 'hand' | 'display', count: number): (DOMRect | undefined)[] {
         return Array.from({ length: count }, (_, index) => this.rectOf(`${name}:${index}`))
     }
 
-    // The width cards are drawn at in the tray.
     private cardWidth(): number {
         for (const name of ['deck', 'discard', 'hand:0', 'display:0']) {
             const rect = this.rectOf(name)

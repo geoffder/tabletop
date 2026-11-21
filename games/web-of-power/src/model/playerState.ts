@@ -39,7 +39,6 @@ export class HydratedWebOfPowerPlayerState
         return this.hand
     }
 
-    // Whether the hand holds every card listed, counting repeats.
     holds(cards: readonly CardColor[]): boolean {
         const hand = [...this.knownHand()]
         return cards.every((card) => {

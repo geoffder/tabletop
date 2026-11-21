@@ -8,7 +8,6 @@ import { afterDrawing, afterExhaustion, turnHolder } from './turnFlow.js'
 
 type DrawingAction = HydratedDrawFaceUp | HydratedDrawFromDeck
 
-// The player fills their hand back to three, a card at a time, from the face-up cards or the deck.
 export class DrawingStateHandler implements MachineStateHandler<
     DrawingAction,
     HydratedWebOfPowerGameState

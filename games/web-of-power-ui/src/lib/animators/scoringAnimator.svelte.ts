@@ -28,33 +28,24 @@ const ANIMATED_KINDS: ReadonlySet<TransitionKind> = new Set<TransitionKind>([
     'exploration'
 ])
 
-// Each scoring entry in turn: its countries light, its awards pop up as chips, the points count
-// on the player cards, and it fades as the next comes on, a little before it has gone.
 const BEAT = { step: 1, light: 0.24, chip: 0.3, count: 0.4, hold: 1, fade: 0.3 }
-// A chain is drawn along its roads, one after another.
 const CHAIN = { road: 0.2, hold: 0.8 }
 
 type Step = TransitionStep<HydratedWebOfPowerGameState, AnimationContext>
 
-// One beat of a scoring: what lights, where its chips stand, and the awards they show.
 export type ScoringBeat = {
     key: string
     countries: Country[]
     alliance?: number
-    // Roads to draw, each as its key in ROAD_PATHS and whether it runs from its key's second end.
     roads: { key: string; reversed: boolean }[]
     chipsAt: { x: number; y: number }
     awards: Award[]
-    // What the prompt names while it plays.
     label: string
 }
 
 export class ScoringAnimator implements MoveInterrupter {
-    // The beats being played, drawn on the board hidden until their time.
     beats: ScoringBeat[] = $state.raw([])
-    // Each player's score as the player cards show it while a scoring plays.
     scores: ReadonlyMap<string, number> | undefined = $state.raw()
-    // The scoring playing and the entry it has reached, for the prompt.
     heading: string | undefined = $state()
     label: string | undefined = $state()
 
@@ -84,7 +75,6 @@ export class ScoringAnimator implements MoveInterrupter {
         this.stop()
     }
 
-    // A beat's part: 'light:<key>', 'chips:<key>', 'road:<key>:<i>', 'tag:<key>'.
     part(name: string): Attachment<SVGElement> {
         return (node) => {
             this.nodes.set(name, node)
@@ -247,7 +237,6 @@ export class ScoringAnimator implements MoveInterrupter {
                 start + showFor
             )
             timeline.to(pose, { y: -8, duration: BEAT.fade, ease: 'power1.in' }, start + showFor)
-            // The points arrive on the player cards as the chips land.
             const awards = beat.awards
             timeline.call(
                 () => {

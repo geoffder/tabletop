@@ -25,20 +25,14 @@ const ANIMATED_KINDS: ReadonlySet<TransitionKind> = new Set<TransitionKind>([
     'exploration'
 ])
 
-// A placed house or peg falls onto its place from about a row's height, opaque within the first
-// quarter, gathering speed, and bounces a little as it lands.
 const DROP = { rise: -38, fall: 0.26, bounce: -4, settle: 0.14 }
-// The other pegs on a seal make room, sliding to their new spots as the new one falls.
 const SLIDE = 0.3
-// Undoing a placement lifts the piece off: seen rising before it fades.
 const LIFT_OFF = { rise: -30 }
-// A step without an action ends within QUICK.
 const QUICK = 0.18
 // While a move drops a piece, a phone's stall counts as one ordinary frame, so the drop runs late
 // but whole (GSAP would otherwise jump over it); GSAP's default is put back as the move lands.
 const STALL = { threshold: 100, frame: 33 }
 const GSAP_STALL = { threshold: 500, frame: 33 }
-// The motion waits for the board to draw what it moves, but never longer than this.
 const DRAW_WAIT = 0.01
 
 type Timeline = gsap.core.Timeline
@@ -47,23 +41,18 @@ type Step = TransitionStep<HydratedWebOfPowerGameState, AnimationContext>
 const owned = (pieces: readonly { playerId: string }[], playerId: string) =>
     pieces.filter((piece) => piece.playerId === playerId).length
 
-// An advisor's node: its country and its place in the order the country's advisors arrived.
 export const advisorKey = (country: Country, index: number) => `${country}:${index}`
 
 export class PieceAnimator implements MoveInterrupter {
-    // What the board draws. A replay plays several actions before the visible state catches up,
-    // so each animated action leaves the board as it ended until that state lands.
+    // A replay plays several actions before the visible state catches up.
     cloisters: Cloister[] = $derived.by(() => this.session.gameState.cloisters)
     advisors: Advisor[] = $derived.by(() => this.session.gameState.advisors)
-    // How many advisors each country's ring is laid out for, when not as many as it holds: while a
-    // peg lifts off, the others still stand in the ring it leaves.
+    // While a peg lifts off, the others still stand in the ring it leaves.
     ringSizes: ReadonlyMap<Country, number> = $derived.by(() => {
         void this.session.gameState
         return new Map<Country, number>()
     })
 
-    // The pieces a player has left as the board draws them: one goes from the count as it
-    // starts to drop, and comes back as it lifts off.
     cloistersLeft(playerId: string): number {
         const state = this.session.gameState
         return (
@@ -88,7 +77,6 @@ export class PieceAnimator implements MoveInterrupter {
     private readonly tweened = new Set<object>()
     private landMove: (() => void) | undefined
     private timeline: Timeline | undefined
-    // The state of a presentation a switch of view left behind.
     private abandoned: HydratedWebOfPowerGameState | undefined
 
     constructor(private readonly session: WebOfPowerGameSession) {}
@@ -111,7 +99,6 @@ export class PieceAnimator implements MoveInterrupter {
         if (this.stop()) this.abandoned = this.session.presentingState
     }
 
-    // The node a house moves by, inside the one that places it on its space.
     house(abbey: string): Attachment<SVGGElement> {
         return (node) => {
             this.houses.set(abbey, node)
@@ -121,7 +108,6 @@ export class PieceAnimator implements MoveInterrupter {
         }
     }
 
-    // The node a peg moves by, likewise.
     peg(key: string): Attachment<SVGGElement> {
         return (node) => {
             this.pegs.set(key, node)
@@ -167,9 +153,6 @@ export class PieceAnimator implements MoveInterrupter {
         const changes = this.advisorChanges(from, to)
         if (placed.length === 0 && lifted.length === 0 && changes.length === 0) return
 
-        // Houses both boards hold, so new ones can drop in and old ones lift off; each country's
-        // advisors as whichever board holds more, laid out for the ring they end in, except that
-        // pegs lifting off keep the ring they leave until they are gone.
         this.cloisters = [...from.cloisters, ...placed]
         const advisorsOf = (state: HydratedWebOfPowerGameState, country: Country) =>
             state.advisors.filter((advisor) => advisor.country === country)
@@ -211,8 +194,7 @@ export class PieceAnimator implements MoveInterrupter {
                 setPose(node, { x: 0, y: 0, scale: 1 })
                 gsap.set(node, { opacity: 1 })
             }
-            // A switch of view while the move played has already shown another state, which this
-            // move's board must not cover.
+            // A switch of view mid-move has already shown another state, which must not be covered.
             if (this.session.gameState !== shown) return
             this.cloisters = to.cloisters
             this.advisors = to.advisors
@@ -222,7 +204,6 @@ export class PieceAnimator implements MoveInterrupter {
         animationContext.afterAnimations(land)
     }
 
-    // Each country whose number of advisors changes.
     private advisorChanges(from: HydratedWebOfPowerGameState, to: HydratedWebOfPowerGameState) {
         const countries = new Set([...from.advisors, ...to.advisors].map((a) => a.country))
         return [...countries]
@@ -242,8 +223,6 @@ export class PieceAnimator implements MoveInterrupter {
         return node
     }
 
-    // A peg arriving drops onto its spot as the others slide round to theirs; a peg leaving lifts
-    // off as the others close up.
     private moveAdvisors(
         { country, before, after }: { country: Country; before: number; after: number },
         timeline: Timeline,
@@ -256,7 +235,6 @@ export class PieceAnimator implements MoveInterrupter {
         const slide = quick ? QUICK : SLIDE
         for (let index = 0; index < staying; index++) {
             const node = this.nodeOf(this.pegs, advisorKey(country, index), touched)
-            // Drawn where it ends when the ring grows, where it starts when it shrinks.
             const delta =
                 after > before
                     ? { x: from[index].x - to[index].x, y: from[index].y - to[index].y }

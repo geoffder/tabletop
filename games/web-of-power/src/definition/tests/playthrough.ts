@@ -21,7 +21,6 @@ import {
 export const MASTER_SEED = '0123456789abcdef0123456789abcdef'
 export const engine = new GameEngine(WebOfPowerRuntime)
 
-// `userIds` gives seats a user; the game's creator is the user `ownerId`.
 export function createGame(
     config: WebOfPowerGameConfig = {},
     playerIds: string[] = ['anna', 'barbara', 'chris', 'dan'],
@@ -94,7 +93,6 @@ export function act(
     return execute(game, state, { ...actionBase(game, playerId), type, ...fields }).updatedState
 }
 
-// Every action the player to act may take.
 export function legalActions(game: WebOfPowerGame, state: WebOfPowerGameState): GameAction[] {
     const hydrated = new HydratedWebOfPowerGameState(state)
     const [playerId] = state.activePlayerIds
@@ -137,8 +135,7 @@ export function legalActions(game: WebOfPowerGame, state: WebOfPowerGameState): 
     return [...placements, ...others]
 }
 
-// Plays legal actions chosen by a seeded generator until the game ends. Placing is favoured over
-// exchanging, as players do, so the board fills.
+// Placing is favoured over exchanging, as players do, so the board fills.
 export function playToEnd(
     game: WebOfPowerGame,
     state: WebOfPowerGameState,

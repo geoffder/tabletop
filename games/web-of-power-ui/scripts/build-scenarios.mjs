@@ -50,7 +50,6 @@ function start(count, config = {}) {
 }
 
 let counter = 0
-// Every action the player to act may take.
 function legalActions(game, state) {
     const hydrated = new HydratedWebOfPowerGameState(state)
     const [playerId] = state.activePlayerIds
@@ -87,7 +86,6 @@ function legalActions(game, state) {
     return [{ ...base(), type: ActionType.ExchangeCard, card: hand[0] }]
 }
 
-// Plays seeded legal actions until `done` says stop, at the start of a player's turn.
 function playUntil({ game, state }, seed, done) {
     let value = seed
     for (let step = 0; step < 2000; step++) {
@@ -122,7 +120,6 @@ for (const old of readdirSync(OUT).filter((file) => file.endsWith('.json'))) {
     rmSync(join(OUT, old))
 }
 
-// Four players part way through the first pass of the deck.
 const middle = playUntil(
     start(4),
     11,
@@ -133,7 +130,6 @@ console.log(
     `Middle game: ${middle.state.cloisters.length} cloisters, ${middle.state.advisors.length} advisors`
 )
 
-// Five players late in the game, the map nearly full.
 const late = playUntil(
     start(5),
     5,
@@ -144,8 +140,7 @@ console.log(
     `Late game: ${late.state.cloisters.length} cloisters, ${late.state.advisors.length} advisors`
 )
 
-// Five players, Eve (red) to play with a Franken/Aragon card, her houses already standing in red
-// Franken and Aragon and places still open there: for judging red pieces on lit red countries.
+// For judging red pieces on lit red countries.
 const RED = new Set([Country.Franken, Country.Aragon])
 const countryOf = new Map(SPACES.map((space) => [space.abbey, space.country]))
 let red
@@ -172,9 +167,6 @@ if (!red) throw Error('No red position found')
 write('red-country', 'Red country', red)
 console.log(`Red country: ${red.state.cloisters.length} cloisters`)
 
-// One card left in the deck: whoever draws it brings on the interim scoring (cloisters only). And
-// the final round, after the deck has run out the second time: each plays or passes once more, and
-// then the final scoring.
 for (const [slug, name, passes, remaining] of [
     ['interim-scoring', 'Interim scoring next', 0, 1],
     ['final-round', 'Final round', 2, 0]

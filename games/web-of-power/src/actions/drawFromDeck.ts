@@ -9,7 +9,6 @@ export type DrawFromDeckResult = Type.Static<typeof DrawFromDeckResult>
 export const DrawFromDeckResult = Type.Object({
     // Only the drawing player learns the card.
     card: Visibility.protect(CardColorSchema, { policy: Visibility.Policy.Actor }),
-    // The draw took the deck's last card.
     exhausted: Type.Boolean()
 })
 

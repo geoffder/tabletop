@@ -15,7 +15,6 @@ export const CountryAwards = Type.Object({
 
 export type AllianceAwards = Type.Static<typeof AllianceAwards>
 export const AllianceAwards = Type.Object({
-    // The number printed on the board, 1 to 15.
     alliance: Type.Integer({ minimum: 1, maximum: 15 }),
     awards: Type.Array(Award)
 })
@@ -23,15 +22,13 @@ export const AllianceAwards = Type.Object({
 export type ChainAward = Type.Static<typeof ChainAward>
 export const ChainAward = Type.Object({
     playerId: Type.String(),
-    // The chain's cloisters in order along the road.
     abbeys: Type.Array(AbbeySchema, { minItems: 4 })
 })
 
 export const MIN_CHAIN = 4
 
-// Cloister majorities in one country. The most cloisters scores one point for every cloister there;
-// each later place scores the count of the place before it. Tied players share their place, and the
-// next place follows them.
+// Each place scores the count of the place before it (the first, its own count); tied players
+// share their place, and the next place follows them.
 export function cloisterAwards(counts: ReadonlyMap<string, number>): Award[] {
     const present = [...counts.entries()].filter(([, count]) => count > 0)
     const total = present.reduce((sum, [, count]) => sum + count, 0)
@@ -44,7 +41,6 @@ export function cloisterAwards(counts: ReadonlyMap<string, number>): Award[] {
         .sort((a, b) => b.points - a.points)
 }
 
-// The players with the most advisors in a country, none when it has none.
 export function advisorLeaders(counts: ReadonlyMap<string, number>): string[] {
     const most = Math.max(0, ...counts.values())
     if (most === 0) return []

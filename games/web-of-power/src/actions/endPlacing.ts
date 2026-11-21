@@ -3,7 +3,6 @@ import { Compile } from 'typebox/compile'
 import { GameAction, HydratableAction } from '@tabletop/common'
 import { ActionType } from '../definition/actions.js'
 
-// The player stops after one piece, leaving the second they could have placed.
 export type EndPlacing = Type.Static<typeof EndPlacing>
 export const EndPlacing = Type.Evaluate(
     Type.Intersect([

@@ -24,8 +24,6 @@ export class WebOfPowerGameInitializer
 {
     readonly supportsStartingPositions = true
 
-    // The first in turn order starts and holds the black marker; the last round ends with the
-    // player before them.
     initializeGameState(
         game: Game,
         state: UninitializedGameState,

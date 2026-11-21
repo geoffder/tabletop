@@ -12,7 +12,6 @@ export const ScoreFinalResult = Type.Object({
     chains: Type.Array(ChainAward)
 })
 
-// Cloisters score as before, then the alliances between advisors, then cloister chains.
 export type ScoreFinal = Type.Static<typeof ScoreFinal>
 export const ScoreFinal = Type.Evaluate(
     Type.Intersect([

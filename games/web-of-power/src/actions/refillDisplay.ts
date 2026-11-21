@@ -11,7 +11,6 @@ export const RefillDisplayResult = Type.Object({
     exhausted: Type.Boolean()
 })
 
-// After a player has drawn, cards from the deck replace the face-up cards they took.
 export type RefillDisplay = Type.Static<typeof RefillDisplay>
 export const RefillDisplay = Type.Evaluate(
     Type.Intersect([

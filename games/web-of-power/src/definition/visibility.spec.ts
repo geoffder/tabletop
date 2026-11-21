@@ -139,7 +139,6 @@ describe('exploring', () => {
     })
 })
 
-// The other world shares everything the explorer may see but not the hidden cards.
 function sameViewWithDeck(view: WebOfPowerGameState, state: WebOfPowerGameState) {
     const result = structuredClone(state)
     result.deck = { items: [...state.deck.items].reverse(), remaining: state.deck.remaining }

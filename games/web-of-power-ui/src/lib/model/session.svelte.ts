@@ -28,7 +28,6 @@ import {
     type WebOfPowerSelection
 } from './stagedSelection.js'
 
-// Lets the session stop the motion an animator is playing.
 export type MoveInterrupter = {
     // Lands the move at once; the rest of its replay still plays.
     interrupt(): void
@@ -45,8 +44,7 @@ export class WebOfPowerGameSession extends GameSession<
     HydratedWebOfPowerGameState
 > {
     selection: WebOfPowerSelection = $state({})
-    // Anyone but the selection's owner, as the harness's Non-active view can be after an Undo,
-    // sees none of it, and Undo passes it by.
+    // Another viewer (the harness's other seats, after an Undo) sees none of it.
     private selectionOwner: string | undefined = $state()
     private ownSelection: WebOfPowerSelection = $derived(
         this.selectionOwner !== undefined && this.selectionOwner === this.myPlayer?.id
@@ -75,9 +73,7 @@ export class WebOfPowerGameSession extends GameSession<
         if (kind === 'view-switch') for (const animator of this.moveInterrupters) animator.abandon()
     }
 
-    // History steps take each move with the system actions that follow it (the row's refill
-    // closes the turn that took from it, a scoring the draw that ran the deck out), so a step or
-    // a turn's replay ends with its own refill rather than running on into the next player's move.
+    // The market's refill closes a turn, so a history step takes the system actions after a move.
     override shouldAutoStepAction(_action: GameAction, next?: GameAction): boolean {
         return next !== undefined && isCascadedSystemAction(next)
     }
@@ -92,22 +88,18 @@ export class WebOfPowerGameSession extends GameSession<
     canDrawFaceUp = $derived(this.canAct(ActionType.DrawFaceUp))
     canDrawFromDeck = $derived(this.canAct(ActionType.DrawFromDeck))
     isDrawing = $derived(this.canDrawFaceUp || this.canDrawFromDeck)
-    // Cards may be chosen to place with or to exchange.
     canChooseCards = $derived(this.canPlace || this.canExchange)
 
-    // The viewer's own hand; empty for spectators.
     hand: CardColor[] = $derived(
         this.myPlayer ? (this.gameState.getPlayerState(this.myPlayer.id).hand ?? []) : []
     )
 
-    // The cards chosen to pay with: one, or two of a colour as a joker.
     chosenCards: CardColor[] = $derived(
         [this.ownSelection.card?.value, this.ownSelection.joker?.value].filter(
             (card): card is CardColor => card !== undefined
         )
     )
 
-    // Which cards of the hand show as chosen: the first of each chosen colour.
     chosenIndices: number[] = $derived.by(() => {
         const indices: number[] = []
         for (const card of this.chosenCards) {
@@ -119,8 +111,6 @@ export class WebOfPowerGameSession extends GameSession<
         return indices
     })
 
-    // The cards of the hand that could pay for a piece somewhere now: one naming a country with a
-    // place open, or one of a pair, as a joker, while any place is open.
     placeableIndices: ReadonlySet<number> = $derived.by(() => {
         const playerId = this.myPlayer?.id
         if (!this.canPlace || playerId === undefined) return new Set<number>()
@@ -137,7 +127,6 @@ export class WebOfPowerGameSession extends GameSession<
         return indices
     })
 
-    // Where the chosen cards could put a piece now.
     targets: PieceTarget[] = $derived.by(() => {
         const playerId = this.myPlayer?.id
         if (!this.canPlace || playerId === undefined || this.chosenCards.length === 0) return []
@@ -147,8 +136,7 @@ export class WebOfPowerGameSession extends GameSession<
             .filter((target) => this.gameState.canPay(playerId, cards, target.country))
     })
 
-    // The places the board marks: none while a move plays, so they fade away under the piece
-    // going down while the prompt still reads as chosen.
+    // None while a move plays, so they fade under the piece going down.
     shownTargets: PieceTarget[] = $derived(this.updatingVisibleState ? [] : this.targets)
 
     cloisterTargets: ReadonlySet<string> = $derived(
@@ -167,7 +155,6 @@ export class WebOfPowerGameSession extends GameSession<
         )
     )
 
-    // The countries the chosen cards name, or every country for a joker.
     chosenCountries: readonly Country[] = $derived(
         this.chosenCards.length === 2
             ? Object.values(Country)
@@ -176,7 +163,6 @@ export class WebOfPowerGameSession extends GameSession<
               : []
     )
 
-    // How many more cards the drawing player takes.
     cardsToDraw: number = $derived.by(() => {
         const playerId = this.myPlayer?.id
         if (!this.isDrawing || playerId === undefined) return 0
@@ -187,7 +173,6 @@ export class WebOfPowerGameSession extends GameSession<
         return !this.isViewingHistory && this.isMyTurn && this.validActionTypes.includes(type)
     }
 
-    // A card of the hand tapped: choose it, add a second of its colour as a joker, or let go.
     chooseCard(index: number) {
         if (this.updatingVisibleState || !this.canChooseCards) return
         const card = this.hand[index]
@@ -210,7 +195,6 @@ export class WebOfPowerGameSession extends GameSession<
         }
     }
 
-    // Tapping where there is nothing to choose lets go of the chosen cards.
     letGo() {
         if (this.updatingVisibleState || this.chosenCards.length === 0) return
         this.select({})

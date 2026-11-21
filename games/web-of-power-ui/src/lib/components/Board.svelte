@@ -33,9 +33,7 @@
     import Piece from './Piece.svelte'
     import { PieceAnimator, advisorKey } from '$lib/animators/pieceAnimator.svelte.js'
 
-    // Each empty space's cloister, inked by hand: every one a little different.
-    // Every space's cloister, joined into one path per pen (the drawings never change), each
-    // placed at its space.
+    // One path per pen for every space: far fewer elements, so the board opens faster.
     const cloisterLayers = (() => {
         const drawn = SPACES.map((space, index) =>
             cloisterDrawing(index + 1, SPACE_POINTS[space.abbey])
@@ -46,10 +44,8 @@
         }
     })()
 
-    // Each road inked by hand: rough, gone over twice, smudged.
     const roadInks = ROADS.map(([a, b], index) => roadInk(ROAD_PATHS[`${a}|${b}`], index + 1))
-    // One path per layer for all the roads (four elements, not four per road); overlapping
-    // smudges inside one path don't darken each other where roads meet.
+    // Smudges overlapping inside one path don't darken each other where roads meet.
     const roadLayers = {
         smudgeWide: roadInks.map((road) => road.smudge[0]).join(' '),
         smudgeNarrow: roadInks.map((road) => road.smudge[1]).join(' '),
@@ -57,40 +53,31 @@
         second: roadInks.map((road) => road.ink[1]).join(' ')
     }
 
-    // The sea routes, inked dash-dot by hand, all in one path.
     const seaRoutes = Object.values(SEA_ROUTES)
         .map((route, index) => seaRouteInk(route, index + 1))
         .join(' ')
 
-    // Each alliance tag a scrap of worn parchment, torn its own way.
     const tags = ALLIANCES.map((_, index) => wornTag(index + 1))
     const uid = $props.id()
 
     const session = getGameSession()
 
-    // The countries the chosen cards can put a piece in now, lit on the map.
     const litCountries = $derived(new Set(session.shownTargets.map((target) => target.country)))
 
-    // The map reaches far enough past the printed frame that houses on spaces by its edges, with
-    // their shadows and choice rings, stand on it (the trace carries it out: map/trace.py).
-    // Above the map, room for Whitland's house and choice ring, which stand up past its edge.
+    // Room above the map for Whitland's house and choice ring, which stand past its edge.
     const TOP_ROOM = 18
     const viewBox = `${MAP_VIEW.x} ${MAP_VIEW.y - TOP_ROOM} ${MAP_VIEW.width} ${MAP_VIEW.height + TOP_ROOM}`
     const countries = Object.values(Country)
 
-    // A scoring's beats, played entry by entry over the board; each award a chip large enough to
-    // read on a phone.
     const scoring = getScoringAnimator()
     const CHIP = { width: 78, height: 50, step: 86, font: 36 }
 
-    // Places and lifts pieces as moves play; the board draws the pieces it is moving.
     const pieces = getPieceAnimator() ?? new PieceAnimator(session)
 
     const cloisterAt = $derived(
         new Map(pieces.cloisters.map((cloister) => [cloister.abbey, cloister.playerId]))
     )
 
-    // Every country's advisors, in the order they arrived.
     const advisorsIn = $derived(
         new Map(
             countries.map((country) => [
@@ -127,11 +114,7 @@
         session.letGo()
     }
 
-    // Where each country's name stands, about its coat of arms (the text's anchor on its baseline):
-    // placed by /workspace/tmp/web-of-power/labels/place.js to cross as few roads, borders, houses
-    // and other labels as it can, near the seal. England's sits below and right of its seal, by
-    // Waverley; Schwaben's south-west of its seal, alliance box 13 moved east along its border to
-    // make room (user's choice).
+    // Found by a search for the spots near each seal crossing the fewest roads, borders and pieces.
     const LABELS: Record<Country, { x: number; y: number; anchor: string }> = {
         [Country.England]: { x: -26, y: 86, anchor: 'start' },
         [Country.Lothringen]: { x: 2, y: -62, anchor: 'middle' },
@@ -149,11 +132,8 @@
         (a, b) => SPACE_POINTS[a.abbey].y - SPACE_POINTS[b.abbey].y
     )
 
-    // A mountain, as the board draws them: two peaks sketched in ink.
     const MOUNTAIN = 'M-11 1 L-6 -6 L-2 -1 L3 -8 L10 1'
 
-    // Each advisor's spot on its seal, worked out ahead of time (board/advisorSpots.ts); drawn
-    // from the back so nearer pegs stand in front.
     function standing<T>(country: Country, advisors: readonly T[]) {
         const ring = advisorSpots(country, pieces.ringSizes.get(country) ?? advisors.length)
         return advisors
@@ -164,8 +144,6 @@
     const pieceColor = (playerId: string) => session.colors.getPlayerBgColorValue(playerId)
 </script>
 
-<!-- A place the chosen cards can take: a dashed ink ring over a pale halo, pulsing gently as
-     Magna Grecia's targets do, so it stands out on every colour. -->
 {#snippet targetRing(cx: number, cy: number, r: number)}
     <g class="target" transition:fade={{ duration: 180 }}>
         <circle {cx} {cy} {r} class="target-halo"></circle>
@@ -184,7 +162,6 @@
         {@attach pieces.attach}
     >
         <defs>
-            <!-- Parchment for the alliance tags, darker towards its worn edges. -->
             <radialGradient id="{uid}-parchment" cx="45%" cy="40%" r="75%">
                 <stop offset="0%" stop-color="#fbf3dc"></stop>
                 <stop offset="62%" stop-color="#f1e2bd"></stop>
@@ -205,8 +182,7 @@
         <path d={seaRoutes} class="sea-route"></path>
         <path d={LAND_PATH} class="land"></path>
         <path d={ISLANDS} class="land"></path>
-        <!-- Under the countries, each grown a little in its edge colour: closes the slivers
-             where traced outlines don't quite meet. -->
+        <!-- Grown a little under the countries, closing slivers where traced outlines don't meet. -->
         {#each countries as country (country)}
             <path
                 d={COUNTRY_PATHS[country]}
@@ -223,7 +199,6 @@
                 style:fill="var(--wop-{cardColorOf(country)})"
             ></path>
         {/each}
-        <!-- The pale rim along each coast and the glow in the water off it, pre-rendered. -->
         <image
             href={coast}
             x={MAP_VIEW.x}
@@ -232,11 +207,8 @@
             height={MAP_VIEW.height}
             class="coast"
         ></image>
-        <!-- Where the chosen cards can go: each such country's colour deepened inside a dark ink
-             outline, a pale line just within it so it stands off every colour. -->
         {#each countries as country (country)}
             {#if litCountries.has(country)}
-                <!-- Lit and let go quickly, so a choice of card answers at once. -->
                 <g
                     clip-path="url(#{uid}-in-{country})"
                     class="lit"
@@ -283,14 +255,12 @@
             </g>
         {/each}
 
-        <!-- Each country's coat of arms, where its advisors stand. -->
         {#each countries as country (country)}
             {@const at = ARMS[country]}
             {@const advisors = advisorsIn.get(country) ?? []}
             {@const label = LABELS[country]}
             <g transform="translate({at.x} {at.y})">
                 <circle r={ARMS_R} class="arms"></circle>
-                <!-- The country's emblem, as on its cards, filling the seal behind the advisors. -->
                 <path
                     d={EMBLEMS[country]}
                     transform="scale({(ARMS_R * 0.9) / 50})"
@@ -321,7 +291,7 @@
             </g>
         {/each}
 
-        <!-- Every space's cloister, drawn on the board; a house stands on its own. -->
+        <!-- Every space keeps its drawing under a house, as the printed board does. -->
         <path d={cloisterLayers.outline} class="cloister-ink"></path>
         <path d={cloisterLayers.detail} class="cloister-ink fine"></path>
         {#each spacesFromBack as space (space.abbey)}
@@ -336,9 +306,6 @@
             {/if}
         {/each}
 
-        <!-- A scoring's beats, each hidden until the scoring animator plays it: its countries lit,
-             its alliance tag ringed, its chain's roads drawn in its player's colour, and its awards
-             as chips in the players' colours. -->
         {#each scoring?.beats ?? [] as beat (beat.key)}
             {#if beat.countries.length > 0 || beat.alliance !== undefined}
                 <g class="beat-light" opacity="0" {@attach scoring?.part(`light:${beat.key}`)}>
@@ -406,7 +373,6 @@
                 {@const at = SPACE_POINTS[space.abbey]}
                 {@const ring = HOUSE_SPRITE.ring}
                 <g transform="translate({at.x + ring.x} {at.y + ring.y})">
-                    <!-- Round the drawing's middle, 17 above its foot. -->
                     {@render targetRing(-ring.x, -17 - ring.y, 35)}
                     <circle
                         r={ring.r}
@@ -477,12 +443,10 @@
         fill: color-mix(in srgb, var(--wop-sea-ink), transparent 15%);
     }
 
-    /* The printed sea routes: black dash-dot lines, inked by hand. */
     .sea-route {
         fill: var(--wop-road-ink);
     }
 
-    /* Black ink, gone over twice; the second pass a little lighter. */
     .road {
         fill: var(--wop-road-ink);
     }
@@ -528,8 +492,6 @@
         pointer-events: none;
     }
 
-    /* Printed ink: a calligraphic hand at its own weight, the country's colour showing through a
-       little. */
     .country-name {
         font-family: Almendra, Georgia, serif;
         font-size: 33px;
@@ -569,9 +531,8 @@
         stroke-dasharray: 7 5;
     }
 
-    /* The pulse waits until a choice's own motion has settled, and steps in small changes of
-       opacity rather than every frame: WebKit redraws the whole board for each, which cost a
-       third of the frames while a card was chosen (38 against 57 fps). */
+    /* Stepped, and only once a choice's own motion has settled: WebKit redraws the whole board
+       for each change (38 against 57 fps while a card was chosen). */
     @media (prefers-reduced-motion: no-preference) {
         .target-halo,
         .target-ring {
@@ -596,7 +557,6 @@
         stroke-width: 3;
     }
 
-    /* A scoring chain drawn along its roads in its player's colour. */
     .beat-road {
         fill: none;
         stroke-width: 9;

@@ -3,7 +3,6 @@ import { Compile } from 'typebox/compile'
 import { GameAction, HydratableAction } from '@tabletop/common'
 import { ActionType } from '../definition/actions.js'
 
-// In the last round, with no cards left to draw, a player who places nothing passes.
 export type Pass = Type.Static<typeof Pass>
 export const Pass = Type.Evaluate(
     Type.Intersect([

@@ -1,9 +1,5 @@
-// Renders the coasts and borders as the board prints them into ../src/lib/images/coast.webp: each
-// country deepening to its printed colour along its edges (the board has no border lines), a pale
-// rim along the land's edge and a lighter glow in the water off the shore. All are blurs of the
-// outlines (src/lib/board/mapData.ts), so they are drawn once here rather than as a game opens; the
-// image lies over the countries, under the roads. Rerun after changing an outline or a colour:
-// pnpm run render-coast
+// The coasts and country edges are blurs, too costly to draw live (docs/phone-rendering.md), so
+// they are rendered here. Rerun after changing an outline or a colour: pnpm run render-coast
 import { readFile, writeFile } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -11,7 +7,6 @@ import { chromium } from '@playwright/test'
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..')
 const OUT = process.env.OUT ?? join(ROOT, 'src', 'lib', 'images', 'coast.webp')
-// How strongly the rim and glow show, 1 as chosen.
 const STRENGTH = Number(process.env.STRENGTH ?? 1)
 // Pixels per map unit. Both effects are soft, so the map's own size is enough even zoomed in.
 const SCALE = 1
@@ -20,9 +15,7 @@ const mapData = await readFile(join(ROOT, 'src', 'lib', 'board', 'mapData.ts'), 
 const view = mapData.match(/MAP_VIEW = \{ x: (\d+), y: (\d+), width: (\d+), height: (\d+) \}/)
 const [x, y, width, height] = view.slice(1).map(Number)
 const details = await readFile(join(ROOT, 'src', 'lib', 'board', 'mapDetails.ts'), 'utf8')
-// The mainland and the islands, whose coasts all take the rim and glow.
 const land = `${mapData.match(/LAND_PATH =\s*'([^']+)'/)[1]} ${details.match(/ISLANDS =\s*'([^']+)'/)[1]}`
-// Each country's outline, and its edge colour from app.css (the --wop-*-edge variable naming it).
 const css = await readFile(join(ROOT, 'src', 'app.css'), 'utf8')
 const edges = [...css.matchAll(/--wop-([a-z-]+)-edge: (#[0-9a-f]{6});/g)].map(
     ([, name, colour]) => ({
@@ -38,7 +31,6 @@ const countries = [...mapData.matchAll(/\[Country\.(\w+)\]:\s*'([^']+)'/g)]
         return { name, d, colour: edge.colour }
     })
 if (countries.length !== 9) throw Error(`Expected 9 country outlines, found ${countries.length}`)
-// The edge band: how wide the printed colour reaches in, and how softly it fades.
 const EDGE_WIDTH = 14
 const EDGE_BLUR = 3
 

@@ -18,7 +18,6 @@ const fresh = () =>
     )
 
 describe('advisor spots', () => {
-    // Run from the UI package's folder.
     it('keeps the worked-out table in step with advisorRing', () => {
         const table = fresh()
         // eslint-disable-next-line turbo/no-undeclared-env-vars -- a hand-run switch, not a build input

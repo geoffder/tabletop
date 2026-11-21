@@ -1,22 +1,16 @@
-// The roads as the printed board inks them: black, a little rough, gone over twice with the pen,
-// with a soft smudge round them. Each road is sampled along its course (ROAD_PATHS, cubic
-// Béziers) and drawn as filled outlines rather than strokes, so its width can swell, thin and
-// fray; the smudge is two wider translucent bands, not a blur (docs/phone-rendering.md). Each
-// road's seed keeps its look the same on every screen.
+// Filled outlines rather than strokes, so a road's width can swell and fray; the smudge is two
+// translucent bands, not a blur (docs/phone-rendering.md).
 import { mulberry32 } from './pieces.js'
 
 type Point = [number, number]
 
 export type RoadInk = {
-    // the two smudge bands, widest first
     smudge: [string, string]
-    // the two passes of the pen
     ink: [string, string]
 }
 
 const SPACING = 4.5
 
-// The points along a path of M and C commands (as emit.py writes them), about `spacing` apart.
 export function samplePath(d: string, spacing = SPACING): Point[] {
     const numbers = (d.match(/-?\d+(?:\.\d+)?/g) ?? []).map(Number)
     const points: Point[] = [[numbers[0], numbers[1]]]
@@ -38,7 +32,6 @@ export function samplePath(d: string, spacing = SPACING): Point[] {
                 u * u * u * y0 + 3 * u * u * t * c1y + 3 * u * t * t * c2y + t * t * t * y3
             ]
         }
-        // roughly even spacing: as many steps as the control polygon is long
         const reach =
             Math.hypot(c1x - x0, c1y - y0) +
             Math.hypot(c2x - c1x, c2y - c1y) +
@@ -59,7 +52,6 @@ export function roadInk(d: string, seed: number): RoadInk {
         const length = Math.hypot(bx - ax, by - ay) || 1
         return [-(by - ay) / length, (bx - ax) / length]
     })
-    // a slow random wave along the road, `amount` at most a few tenths of a unit
     const wave = (amount: number) => {
         const out: number[] = []
         let value = 0
@@ -75,13 +67,10 @@ export function roadInk(d: string, seed: number): RoadInk {
     const course = wave(0.12)
     const pressure = wave(0.1)
 
-    // A band about the road's course: `half` its half width at each sample, `sway` its shift
-    // across the road, its edges frayed and narrowing towards the road's ends.
     const band = (half: (i: number) => number, sway: number[], stride = 1) => {
         const left = ragged()
         const right = ragged()
-        // A soft band needs only every `stride`-th sample (and the last), which keeps the
-        // board's path data small: its size, not the arithmetic, is what costs on opening.
+        // Path data size, not the arithmetic, is what costs on opening, so soft bands skip samples.
         const kept = points.flatMap((_, i) => (i % stride === 0 || i === n ? [i] : []))
         const side = (sign: number, fray: number[]) =>
             kept.map((i) => {
@@ -123,10 +112,6 @@ export function roadInk(d: string, seed: number): RoadInk {
     }
 }
 
-// A sea route as the printed board inks it: a dash-dot line (a long dash, a gap, a dot, a gap) in
-// the same rough ink as the roads but without their smudge. Each dash is a short frayed stroke that
-// swells a little and tapers at its ends; each dot a small irregular blot. One outline for the
-// whole route.
 const DASH = 15
 const GAP = 7
 const DOT = 1.6
@@ -134,7 +119,6 @@ const DOT = 1.6
 export function seaRouteInk(d: string, seed: number): string {
     const random = mulberry32(seed * 4423 + 29)
     const points = samplePath(d, 1.5)
-    // distance along the route at each sample
     const along = [0]
     for (let i = 1; i < points.length; i++) {
         along.push(
@@ -157,7 +141,6 @@ export function seaRouteInk(d: string, seed: number): string {
     const total = along[along.length - 1]
     let at = 0
     while (at < total) {
-        // a dash
         const from = indexAt(at)
         const to = indexAt(Math.min(total, at + DASH))
         if (to > from) {
@@ -175,7 +158,6 @@ export function seaRouteInk(d: string, seed: number): string {
         }
         at += DASH + GAP
         if (at >= total) break
-        // a dot: a small blot, not quite round
         const [x, y] = points[indexAt(at)]
         const corners = Array.from({ length: 7 }, (_, k) => {
             const angle = (k / 7) * Math.PI * 2

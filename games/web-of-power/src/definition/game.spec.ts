@@ -38,7 +38,6 @@ interface Position {
     deckExhaustions?: number
 }
 
-// Rewrites the started game's board and cards, so each rule is tested in a few pieces.
 function withPosition(state: WebOfPowerGameState, position: Position): WebOfPowerGameState {
     const result = structuredClone(state)
     if (position.cloisters) result.cloisters = position.cloisters
@@ -138,7 +137,6 @@ describe('placing pieces', () => {
             Country.Franken,
             Abbey.Chorin
         )
-        // Opening Franken ends the placing; the player draws next.
         expect(after.machineState).toBe(MachineState.Drawing)
         expect(after.cloisters).toEqual([{ abbey: Abbey.Chorin, playerId: first }])
     })
@@ -158,7 +156,6 @@ describe('placing pieces', () => {
             Abbey.Pforta
         )
         expect(once.machineState).toBe(MachineState.PlacingPieces)
-        // The Bayern/Burgund pair is a joker: an advisor in Franken.
         const twice = place(
             game,
             once,
@@ -371,7 +368,6 @@ describe('cards', () => {
         expect(exchanged.discard.at(-1)).toBe(Frankreich)
         const drawn = act(game, exchanged, ActionType.DrawFaceUp, { card: EnglandSchwaben })
         expect(drawn.players[0].hand).toEqual([Frankreich, Frankreich, EnglandSchwaben])
-        // The face-up card taken is replaced once the hand is full, and the turn passes.
         expect(drawn.display).toHaveLength(2)
         expect(drawn.activePlayerIds).toEqual([second])
     })
@@ -396,7 +392,6 @@ describe('cards', () => {
         expect(fromDeck.players[0].hand).toEqual([Frankreich, Frankreich])
         const faceUp = act(game, fromDeck, ActionType.DrawFaceUp, { card: BayernBurgund })
         expect(faceUp.players[0].hand).toEqual([Frankreich, Frankreich, BayernBurgund])
-        // One face-up card was taken, so one comes from the deck.
         expect(faceUp.display).toEqual([BayernBurgund, LothringenItalien])
         expect(faceUp.deck.remaining).toBe(2)
     })
@@ -442,8 +437,6 @@ describe('running out of cards', () => {
         const after = result.updatedState
         expect(after.players.find((p) => p.playerId === first)?.score).toBe(3)
         expect(after.players.find((p) => p.playerId === second)?.score).toBe(2)
-        // The face-up card stayed; the four discards made the new deck, and the player's hand is full,
-        // so one replaces the face-up card that is missing.
         expect(after.deckExhaustions).toBe(1)
         expect(after.discard).toEqual([])
         expect(after.display).toHaveLength(2)

@@ -1,11 +1,9 @@
 import type { Attachment } from 'svelte/attachments'
 
-// Holds the action panel at the tallest height it has reached, so a line that wraps for a long name
-// does not move the board each time the panel shrinks back. A new width starts over, since the
-// wrapping changes with it; the reset waits a frame so the observer never re-enters its own change.
+// Holds the tallest height so a line wrapping for a long name does not move the board. A new width
+// starts over a frame later, so the observer never re-enters its own change.
 export const holdTallest: Attachment<HTMLElement> = (node) => {
-    // Unknown until the observer's first report: reading it here would force a layout of the page
-    // while it is still being built.
+    // Reading the width here would force a layout of the page while it is still being built.
     let width = -1
     let tallest = 0
     let frame = 0
@@ -43,7 +41,6 @@ export const holdTallest: Attachment<HTMLElement> = (node) => {
             hold()
         })
     })
-    // The observer reports the first size itself, once the page is laid out.
     observer.observe(node)
 
     return () => {

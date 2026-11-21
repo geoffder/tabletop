@@ -1,8 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { holdTallest } from './holdTallest.js'
 
-// A panel whose laid-out height is its content's or its min-height, whichever is taller, with
-// the ResizeObserver and animation frames driven by hand.
 function panel({ width = 360, content = 50, boxSizing = 'border-box', padding = 0 } = {}) {
     const node = {
         clientWidth: width,
@@ -66,8 +64,6 @@ function runFrames() {
     for (const callback of queued) callback()
 }
 
-// Attaches the hold and delivers the observer's first report, as a real ResizeObserver does once
-// the page is laid out.
 function attach(node: ReturnType<typeof panel>) {
     const cleanup = holdTallest(node as unknown as HTMLElement)
     resize()

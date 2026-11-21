@@ -26,7 +26,6 @@
     )
 </script>
 
-<!-- One row: the last move while you wait, the prompt on your turn. -->
 <div class="fit">
     <div class="panel" {@attach holdTallest}>
         {#if scoring?.heading}
@@ -126,11 +125,8 @@
         }
     }
 
-    /* Where a usual line would wrap, every line gets two lines' room, so the board stays put as
-       prompts and moves change. The widest usual line is a move with pieces in two countries
-       ("Carol placed a cloister in Frankreich and an advisor in Lothringen"); the widths are its
-       single-line width at each font size, padding included. Lines that need three (long names)
-       are left to holdTallest. */
+    /* Two lines' room wherever the widest usual line ("Carol placed a cloister in Frankreich and
+       an advisor in Lothringen") would wrap, so the board stays put. */
     @media (min-width: 640px) {
         @container wop-panel (width < 580px) {
             .panel {

@@ -17,8 +17,6 @@
     const ranking = $derived(session.gameState.players.toSorted((a, b) => b.score - a.score || 0))
 </script>
 
-<!-- Within the height the action panel holds, as in the GIPF titles: the winner over every
-     score, the scores wrapping between players if they must. -->
 <div class="ending">
     {#if session.gameCall}
         <CalledGameEnding class="text-[18px] tracking-[0.02em]" />

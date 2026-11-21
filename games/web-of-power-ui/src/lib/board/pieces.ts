@@ -1,17 +1,8 @@
-// What the board draws round the pieces (the pieces themselves are pre-rendered by
-// scripts/render-pieces.mjs into pieceSprites.ts): an empty space's drawing, and where advisors
-// stand on a coat of arms.
-
 const point = (x: number, y: number) => `${x.toFixed(2)} ${y.toFixed(2)}`
 
-// An empty space, as the board prints it: a cloister drawn in ink, a square tower with a capped
-// top beside a long, low hall under a pitched roof, on a stepped base. Drawn in the design's units
-// (foot at the origin, 40 wide, 31 tall), scaled by CLOISTER_SCALE.
 export const CLOISTER_SCALE = 42 / 38
 
-// The drawing's outline, unwobbled, in board units about its foot: emit.py in
-// /workspace/tmp/web-of-power/map cuts each road where it meets this, so no road runs under a
-// drawing, as on the printed board. Change both together.
+// The map pipeline (emit.py) cuts each road at this outline; change both together.
 export const CLOISTER_FOOTPRINT: readonly (readonly [number, number])[] = [
     [-15, -5],
     [-15, -23],
@@ -48,7 +39,6 @@ const arch = (x: number, width: number, top: number, bottom: number): [number, n
 }
 
 const CLOISTER_STROKES: Stroke[] = [
-    // the tower, its cap and a slit window
     {
         points: [
             [-15, -5],
@@ -91,7 +81,6 @@ const CLOISTER_STROKES: Stroke[] = [
         ],
         fine: true
     },
-    // the hall: roof, eaves, wall, door, windows and a few tiles
     {
         points: [
             [-8, -12],
@@ -138,7 +127,6 @@ const CLOISTER_STROKES: Stroke[] = [
         ],
         fine: true
     },
-    // the stepped base, its lower step rough as rock
     {
         points: [
             [-18, -5],
@@ -214,10 +202,6 @@ const CLOISTER_STROKES: Stroke[] = [
     }
 ]
 
-// The drawing of one space, its lines a little unsteady as if inked by hand, each space's its own
-// (`seed`): every line wavers slightly along its length, sits a touch off true, and some run a
-// little past their corners. `outline` is drawn in the heavier pen, `detail` in the finer; `at`
-// places the drawing's foot on the board.
 export function cloisterDrawing(
     seed: number,
     at: { x: number; y: number } = { x: 0, y: 0 }
@@ -228,7 +212,6 @@ export function cloisterDrawing(
     const outline: string[] = []
     const detail: string[] = []
     for (const stroke of CLOISTER_STROKES) {
-        // Ends land a little apart, so corners neither meet exactly nor match space to space.
         let points = stroke.points.map(
             ([x, y]) => [x + wobble() * 0.8, y + wobble() * 0.8] as [number, number]
         )
@@ -244,7 +227,6 @@ export function cloisterDrawing(
                 [bx + ux * after, by + uy * after]
             ]
         }
-        // Long lines bend gently along their length: a few points set off them, sideways.
         const drawn: [number, number][] = [points[0]]
         for (let index = 1; index < points.length; index++) {
             const [ax, ay] = points[index - 1]
@@ -271,14 +253,7 @@ export function cloisterDrawing(
     return { outline: outline.join(' '), detail: detail.join(' ') }
 }
 
-// Where a country's advisors stand on its coat of arms, round the emblem's middle as Indonesia
-// sets its cubes round a square's number: one off the middle, two facing across it, more evenly
-// round it. The ring is turned, and made wider or narrower, to hide as little of the emblem's key
-// features (`avoid`, in the seal's units) as it can; then each advisor may slide a little along it,
-// or in or out, to step off what it still covers, keeping clear of its neighbours. An advisor stands
-// on a face or a head only when the seal is crowded. Every peg is then set a little off true, as if
-// put down by hand; `seed` makes that the same on every screen. A peg's foot is its spot; it stands
-// about 25 tall and 16 wide, so the ring's centre sits below the seal's to centre the pegs on it.
+// A peg's foot is its spot and it stands about 25 tall, so the ring sits below the seal's centre.
 export function advisorRing(
     count: number,
     seed: number,
@@ -286,8 +261,7 @@ export function advisorRing(
     sealRadius = 52
 ): { x: number; y: number }[] {
     if (count === 0) return []
-    // Each feature as points spread over it, sharing its weight, so a peg hiding half of a
-    // feature costs half of it.
+    // Spread as points, so a peg hiding half a feature costs half its weight.
     const samples = avoid.flatMap(({ x, y, r, weight }) => {
         const points = [[x, y]]
         for (const [share, many] of [
@@ -316,7 +290,6 @@ export function advisorRing(
             [x - 8, y + 3],
             [x + 8, y + 3]
         ].every(([cx, cy]) => Math.hypot(cx, cy) < sealRadius - 3)
-    // Two pegs clear each other side by side, or with one far enough behind the other to show.
     const apart = (a: { x: number; y: number }, b: { x: number; y: number }) =>
         Math.hypot((a.x - b.x) / 18, (a.y - b.y) / 15) >= 1
     const at = (radius: number, angle: number) => ({
@@ -324,7 +297,6 @@ export function advisorRing(
         y: Math.sin(angle) * radius * 0.92 + 10
     })
 
-    // The ring: the turn and width hiding least, the usual width preferred when it makes no odds.
     let ring: { radius: number; angle: number }[] = []
     let ringCost = Infinity
     for (const radius of [29, 25, 33]) {
@@ -353,7 +325,6 @@ export function advisorRing(
         }))
     }
 
-    // Each advisor steps off what it still covers, if a small move along or across the ring does.
     const spots = ring.map((peg) => at(peg.radius, peg.angle))
     for (let pass = 0; pass < 3; pass++) {
         ring.forEach((peg, index) => {

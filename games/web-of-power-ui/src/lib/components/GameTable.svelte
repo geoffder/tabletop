@@ -41,12 +41,9 @@
     assert(gameSession instanceof WebOfPowerGameSession, 'Web of Power needs its own game session')
     setGameSession(gameSession)
 
-    // Moves cards between hands, the face-up row, the deck and the discard pile as moves play.
     const cards = new CardAnimator(getGameSession())
     setCardAnimator(cards)
-    // Plays each scoring entry by entry, on the board and the player cards.
     const scoring = new ScoringAnimator(getGameSession())
-    // Places and lifts pieces as moves play; the board draws them and the player cards count them.
     setPieceAnimator(new PieceAnimator(getGameSession()))
     setScoringAnimator(scoring)
 
@@ -73,7 +70,7 @@
     </div>
 {/snippet}
 
-<!-- The board's lettering: a calligraphic hand like the printed board's (SIL OFL 1.1). -->
+<!-- Almendra is under the SIL OFL 1.1. -->
 <CustomFont fontFamily="Almendra" url={AlmendraFont} format="woff2" fontWeight="400" />
 <CustomFont
     fontFamily="Almendra"
@@ -84,7 +81,6 @@
 />
 
 <div class="wop-table" {@attach cards.attach} {@attach scoring.attach}>
-    <!-- Cards in the air, over everything on the table. -->
     <div class="fliers" aria-hidden="true">
         {#each cards.fliers as flier (flier.id)}
             <div
@@ -107,7 +103,6 @@
     </div>
     <DefaultTableLayout>
         {#snippet mobileControlsContent()}
-            <!-- Faded controls in a colour that still shows on the panels. -->
             <HistoryControls
                 enabledColor="text-(--wop-ink)"
                 disabledColor="text-(--wop-control-off)"
@@ -189,9 +184,8 @@
         color: var(--wop-table-ink);
     }
 
-    /* DefaultTableLayout leaves a tenth of a phone screen showing the sidebar's edge.
-       The history controls sit above the table there, so the board takes all but a
-       sliver of the narrower player cards; the tabs drop their icons to fit. */
+    /* DefaultTableLayout leaves a tenth of a phone screen to the sidebar; the board takes all but
+       a sliver of the narrower player cards, and the tabs drop their icons to fit. */
     @media (width < 40rem) {
         .wop-table :global(.game-column.game-column) {
             min-width: calc(100vw - 20px);
@@ -225,7 +219,6 @@
         perspective: 400px;
     }
 
-    /* A card turning over: its back, and its face turned away until the card has turned. */
     .spin {
         position: relative;
         transform-style: preserve-3d;

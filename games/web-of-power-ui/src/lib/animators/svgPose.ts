@@ -3,8 +3,7 @@
 // plain pose that writes translate() and scale() itself.
 export type Pose = { x: number; y: number; scale: number }
 
-// Each property writes the node's transform as it is set, so a tween finished or jumped by its
-// timeline still leaves the node where its pose is.
+// Writes the transform at once, so a tween its timeline jumps still leaves the node at its pose.
 class NodePose implements Pose {
     private at = { x: 0, y: 0, scale: 1 }
 

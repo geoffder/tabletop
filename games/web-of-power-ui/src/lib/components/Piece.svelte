@@ -5,10 +5,7 @@
     import pegLight from '$lib/images/peg-light.webp'
     import { HOUSE_SPRITE, PEG_SPRITE } from '$lib/board/pieceSprites.js'
 
-    // A cloister's house or an advisor's peg, its foot at the origin: the outline in the player's
-    // colour under the painted wood's light and shadow (scripts/render-pieces.mjs). A small piece
-    // (a player card's count) keeps its shading within its outline, its long ground shadow cut
-    // off, with a small shadow just past its edge instead.
+    // A small piece clips its light to its outline: the ground shadow looked awkward at that size.
     let {
         kind,
         fill,

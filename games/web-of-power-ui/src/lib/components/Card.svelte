@@ -11,13 +11,10 @@
         label,
         onclick
     }: {
-        // Undefined draws the card's back.
         card?: CardColor
         chosen?: boolean
-        // Could be chosen now: a gold edge, lifting a little under the pointer.
         choosable?: boolean
         dimmed?: boolean
-        // The top of a face-up pile: it lies askew and a little faded.
         pile?: boolean
         label?: string
         onclick?: () => void
@@ -26,8 +23,6 @@
     const countries = $derived(card ? CARD_COUNTRIES[card] : [])
     const names = $derived(countries.map((country) => COUNTRY_NAMES[country]))
 
-    // Each seal's centre and radius on a 60 × 90 card: two stacked, or one in the middle, as the
-    // printed cards have them. The names are left off; the arms say which countries it serves.
     const seals = $derived(
         countries.length === 1
             ? [{ country: countries[0], y: 45, r: 22 }]
@@ -124,8 +119,6 @@
         cursor: pointer;
     }
 
-    /* Cards to choose from wear a gold edge, as the euro titles mark them, and rise a little under
-       the pointer; the chosen one stands well out of the hand, inked round, with a deeper shadow. */
     .card.choosable {
         box-shadow:
             inset 0 0 0 1px rgb(40 30 20 / 0.4),

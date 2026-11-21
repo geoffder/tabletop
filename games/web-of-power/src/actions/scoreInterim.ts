@@ -10,8 +10,6 @@ export const ScoreInterimResult = Type.Object({
     cloisters: Type.Array(CountryAwards)
 })
 
-// The first time the deck runs out, only the cloisters score; then the discard pile is shuffled
-// into a new deck and play goes on.
 export type ScoreInterim = Type.Static<typeof ScoreInterim>
 export const ScoreInterim = Type.Evaluate(
     Type.Intersect([

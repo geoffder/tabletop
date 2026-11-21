@@ -5,7 +5,6 @@ import { ActionType } from '../definition/actions.js'
 import type { HydratedWebOfPowerGameState } from '../model/gameState.js'
 import { CardColor, CardColorSchema } from '../model/map.js'
 
-// Instead of placing, the player discards a card and draws one to replace it.
 export type ExchangeCard = Type.Static<typeof ExchangeCard>
 export const ExchangeCard = Type.Evaluate(
     Type.Intersect([

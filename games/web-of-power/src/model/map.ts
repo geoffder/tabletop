@@ -40,7 +40,6 @@ export const SCORING_ORDER: readonly Country[] = [
     Country.Burgund
 ]
 
-// Each card colour names the countries it may place a piece in.
 export enum CardColor {
     FrankenAragon = 'franken-aragon',
     BayernBurgund = 'bayern-burgund',
@@ -59,7 +58,6 @@ export const CARD_COUNTRIES: Record<CardColor, readonly Country[]> = {
     [CardColor.Frankreich]: [Country.Frankreich]
 }
 
-// The 55 cards of the box.
 export const CARD_COUNTS: Record<CardColor, number> = {
     [CardColor.FrankenAragon]: 13,
     [CardColor.BayernBurgund]: 12,
@@ -80,7 +78,6 @@ export function cardColorOf(country: Country): CardColor {
     return color
 }
 
-// The named cloister spaces, Cistercian abbeys on the printed map.
 export enum Abbey {
     Whitland = 'whitland',
     Glastonbury = 'glastonbury',
@@ -235,7 +232,7 @@ export function spacesIn(country: Country): CloisterSpace[] {
     return SPACES.filter((space) => space.country === country)
 }
 
-// The roads between cloister spaces, across borders too. Sea routes are not roads.
+// Sea routes are not roads.
 export const ROADS: readonly (readonly [Abbey, Abbey])[] = [
     [Abbey.Glastonbury, Abbey.Ford],
     [Abbey.Ford, Abbey.Waverley],
@@ -312,7 +309,7 @@ export function roadNeighbours(abbey: Abbey): readonly Abbey[] {
     return NEIGHBOURS.get(abbey) ?? []
 }
 
-// The 15 alliances printed on the board, scored in this order (alliance n is index n - 1).
+// Scored in this order; alliance n is index n - 1.
 export const ALLIANCES: readonly (readonly [Country, Country])[] = [
     [Country.England, Country.Lothringen],
     [Country.England, Country.Frankreich],
@@ -331,8 +328,7 @@ export const ALLIANCES: readonly (readonly [Country, Country])[] = [
     [Country.Italien, Country.Bayern]
 ]
 
-// With fewer than five players, cards of every colour go back in the box: one each for four
-// players, two each for three.
+// Fewer players put cards of every colour back in the box: one each for four, two each for three.
 export function deckFor(playerCount: number): CardColor[] {
     const removed = 5 - playerCount
     return Object.values(CardColor).flatMap((color) =>

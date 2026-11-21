@@ -22,14 +22,12 @@ type Span = { id: string; firstIndex: number; lastIndex: number }
 
 export type Placed = { kind: PieceKind; country: Country; abbey?: Abbey; cards: CardColor[] }
 
-// One player's turn: what they placed or exchanged, what they drew, or that they passed.
 export type TurnEntry = Span & {
     kind: 'turn'
     playerId: string
     placed: Placed[]
     exchanged?: CardColor
     faceUp: CardColor[]
-    // Cards from the deck; a card is known only to the player who drew it.
     fromDeck: (CardColor | undefined)[]
     passed: boolean
 }
@@ -43,7 +41,6 @@ export type FinalEntry = Span & {
     chains: ChainAward[]
 }
 
-// A game called, conceded or ended as stalled.
 export type CallEntry = Span & { kind: 'call'; action: GameAction }
 
 export type HistoryEntry = TurnEntry | InterimEntry | FinalEntry | CallEntry
@@ -111,7 +108,6 @@ export function historyEntries(actions: readonly GameAction[]): HistoryEntry[] {
     return entries
 }
 
-// Each player's points from a scoring, in seat order of first appearance.
 export function pointsByPlayer(
     entry: InterimEntry | FinalEntry
 ): { playerId: string; points: number }[] {

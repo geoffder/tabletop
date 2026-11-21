@@ -45,7 +45,6 @@ import {
 export const CLOISTERS_PER_PLAYER = 20
 export const ADVISORS_PER_PLAYER = 8
 export const DISPLAY_SIZE = 2
-// The deck runs out twice: the first time brings the interim scoring, the second the last round.
 export const DECK_PASSES = 2
 
 export enum PieceKind {
@@ -65,7 +64,6 @@ export const Advisor = Type.Object({
     playerId: Type.String()
 })
 
-// A piece placed this turn, which decides what else may go down before the turn ends.
 export type Placement = Type.Static<typeof Placement>
 export const Placement = Type.Object({
     country: CountrySchema,
@@ -83,7 +81,7 @@ export const WebOfPowerGameState = Type.Object({
     advisors: Type.Array(Advisor),
     deck: DrawBag(CardColorSchema),
     display: Type.Array(CardColorSchema, { maxItems: DISPLAY_SIZE }),
-    // Played and exchanged cards, the latest last. Every card in it was shown when it went there.
+    // Every card in it was shown when it went there, so it stays public.
     discard: Type.Array(CardColorSchema),
     deckExhaustions: Type.Integer({ minimum: 0, maximum: DECK_PASSES }),
     placements: Type.Array(Placement, { maxItems: 2 })
@@ -104,7 +102,6 @@ export class HydratedDeck extends HydratedDrawBag<CardColor, typeof ProjectedDec
     }
 }
 
-// What a placement covers: the piece and where it goes. Cards pay for it separately.
 export interface PieceTarget {
     kind: PieceKind
     country: Country
@@ -141,8 +138,6 @@ export class HydratedWebOfPowerGameState
         )
         this.deck = new HydratedDeck(data.deck)
     }
-
-    // The board
 
     cloisterAt(abbey: Abbey): Cloister | undefined {
         return this.cloisters.find((cloister) => cloister.abbey === abbey)
@@ -187,10 +182,6 @@ export class HydratedWebOfPowerGameState
         return this.cloistersLeft(playerId) + this.advisorsLeft(playerId)
     }
 
-    // Placing
-
-    // Whether the piece may go there now, given what the player placed earlier this turn. Cards are
-    // checked separately.
     canPlace(playerId: string, target: PieceTarget, faster: boolean): boolean {
         if (this.placements.length >= 2) return false
         const earlier = this.placements[0]
@@ -216,14 +207,12 @@ export class HydratedWebOfPowerGameState
         )
     }
 
-    // One card naming the country, or two cards of one colour as a joker for any country.
     canPay(playerId: string, cards: readonly CardColor[], country: Country): boolean {
         if (!this.getPlayerState(playerId).holds(cards)) return false
         if (cards.length === 1) return CARD_COUNTRIES[cards[0]].includes(country)
         return cards.length === 2 && cards[0] === cards[1]
     }
 
-    // Every way the player could pay for a piece in the country from their hand.
     payments(playerId: string, country: Country): CardColor[][] {
         const hand = this.getPlayerState(playerId).knownHand()
         const colors = [...new Set(hand)]
@@ -235,7 +224,6 @@ export class HydratedWebOfPowerGameState
         ]
     }
 
-    // Every piece and place the rules allow the player now, before cards.
     targets(playerId: string, faster: boolean): PieceTarget[] {
         const targets: PieceTarget[] = []
         for (const country of SCORING_ORDER) {
@@ -256,8 +244,7 @@ export class HydratedWebOfPowerGameState
         )
     }
 
-    // Whether anyone could still put a piece on the board, cards aside. When nobody can, the game
-    // ends.
+    // When nobody could put a piece down, cards aside, the game ends.
     anyPieceCanGoDown(): boolean {
         const freeSpace = this.cloisters.length < SPACES.length
         return this.players.some(
@@ -288,8 +275,6 @@ export class HydratedWebOfPowerGameState
         this.discard.push(card)
     }
 
-    // Cards
-
     isFinalRound(): boolean {
         return this.deckExhaustions >= DECK_PASSES
     }
@@ -298,7 +283,6 @@ export class HydratedWebOfPowerGameState
         return !this.isFinalRound() && (this.display.length > 0 || !this.deck.isEmpty())
     }
 
-    // Takes the top card of the deck. Returns true when that was its last card.
     drawFromDeck(): { card: CardColor; exhausted: boolean } {
         const card = this.deck.draw()
         const exhausted = this.deck.isEmpty()
@@ -312,7 +296,6 @@ export class HydratedWebOfPowerGameState
         this.display.splice(index, 1)
     }
 
-    // Fills the face-up row from the deck, stopping if the deck runs out.
     refillDisplay(): { cards: CardColor[]; exhausted: boolean } {
         const cards: CardColor[] = []
         let exhausted = false
@@ -337,8 +320,6 @@ export class HydratedWebOfPowerGameState
         this.discard = []
     }
 
-    // Scoring
-
     cloisterAwards(): CountryAwards[] {
         return SCORING_ORDER.map((country) => ({
             country,
@@ -346,8 +327,7 @@ export class HydratedWebOfPowerGameState
         })).filter((entry) => entry.awards.length > 0)
     }
 
-    // An alliance scores for a player with the most advisors, or a share of the most, in both its
-    // countries: one point for every advisor in the two countries.
+    // A share of the most advisors in both countries is enough to score.
     allianceAwards(): AllianceAwards[] {
         return ALLIANCES.map(([a, b], index) => {
             const leadersA = advisorLeaders(this.advisorCounts(a))
@@ -381,8 +361,7 @@ export class HydratedWebOfPowerGameState
         }
     }
 
-    // Most points wins; a tie goes to whoever has the most pieces left, and a tie in that too is
-    // shared.
+    // A tie goes to whoever has the most pieces left; a tie in that too is shared.
     declareResult() {
         const best = Math.max(...this.players.map((player) => player.score))
         const leaders = this.players.filter((player) => player.score === best)
