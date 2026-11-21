@@ -230,9 +230,16 @@
                     ></rect>
                 {/each}
             </clipPath>
-            {#each animator.floods as flood (flood.cell)}
-                <clipPath id="mx-flood-{flood.cell}">
-                    <rect {...flood.box} {@attach animator.floodEdge(flood.cell)}></rect>
+            <!-- Courses of tezontle brick, as the banks are laid in. -->
+            <pattern id="mx-canal-floor" patternUnits="userSpaceOnUse" width="8" height="5">
+                <rect width="8" height="5" fill="#7a5545"></rect>
+                <rect x="0.3" y="0.3" width="7.4" height="2" rx="0.4" fill="#8f6350"></rect>
+                <rect x="-3.7" y="2.8" width="7.4" height="2" rx="0.4" fill="#8a5f4c"></rect>
+                <rect x="4.3" y="2.8" width="7.4" height="2" rx="0.4" fill="#936653"></rect>
+            </pattern>
+            {#each animator.floods as flood (flood.key)}
+                <clipPath id="mx-flood-{flood.key}">
+                    <rect {...flood.box} {@attach animator.floodEdge(flood.key)}></rect>
                 </clipPath>
             {/each}
             <clipPath id="mx-land-clip">
@@ -286,6 +293,16 @@
                 clip-path="url(#mx-canal-clip)"
                 class="surface"
             ></image>
+            <!-- The brick floor of a canal being built, under its banks, which the water rises
+                 over. -->
+            {#each animator.floods as flood (flood.key)}
+                <path
+                    fill="url(#mx-canal-floor)"
+                    fill-rule="evenodd"
+                    class="surface"
+                    {@attach animator.floodFloor(flood.key)}
+                ></path>
+            {/each}
             {#each works.banks as bank (bank.key)}
                 <polygon points={bank.points} fill="url(#mx-slope-{bank.slope})" class="surface"
                 ></polygon>
@@ -322,12 +339,12 @@
                 ></image>
             {/each}
             <!-- The paving over a square the water is flooding, or coming back over it. -->
-            {#each animator.floods as flood (flood.cell)}
+            {#each animator.floods as flood (flood.key)}
                 <image
                     href={LOOK_URLS[PAVING_LOOK]}
                     {...PLAN}
                     preserveAspectRatio="none"
-                    clip-path="url(#mx-flood-{flood.cell})"
+                    clip-path="url(#mx-flood-{flood.key})"
                     class="surface"
                 ></image>
             {/each}
