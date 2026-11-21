@@ -47,6 +47,7 @@
         | { kind: 'temple'; cell: Cell; level: Level; playerId?: string }
         | { kind: 'pilli'; cell: Cell; playerId: string; onBridge: boolean }
         | { kind: 'bridge'; cell: Cell; axis: Axis }
+        | { kind: 'bridgeFront'; cell: Cell }
 
     // Everything standing on the board, far rows first so nearer pieces stand in front.
     const raised: Raised[] = $derived.by(() => {
@@ -71,7 +72,14 @@
                     onBridge: layout.bridges.has(player.pilli ?? -1)
                 }))
         ]
-        const order = { bridge: 0, temple: 1, pilli: 2 }
+        // A bridge running across the screen has its near curb and rail drawn after any Pilli
+        // Mexica standing on it.
+        for (const bridge of game.bridges) {
+            if (view.screenAxis(bridge.axis) === Axis.EastWest) {
+                pieces.push({ kind: 'bridgeFront', cell: bridge.cell })
+            }
+        }
+        const order = { bridge: 0, temple: 1, pilli: 2, bridgeFront: 3 }
         return pieces.sort(
             (a, b) => view.centre(a.cell).y - view.centre(b.cell).y || order[a.kind] - order[b.kind]
         )
@@ -86,6 +94,9 @@
 
     const playerFill = (playerId?: string) =>
         playerId === undefined ? 'var(--mx-neutral)' : session.playerFill(playerId)
+    // A Pilli Mexica's paint, toned a quarter of the way towards the island's earth so the
+    // figures sit among the stone.
+    const pilliPaint = (fill: string) => `color-mix(in srgb, ${fill} 75%, #8c7f6a)`
 
     // What a tap on each cell would do now.
     const choosable: ReadonlySet<Cell> = $derived.by(() => {
@@ -313,8 +324,16 @@
                         fill="url(#mx-piece-shadow)"
                     ></ellipse>
                     <image
-                        href={LOOK_URLS[bridgeLook(axis, view.flat)]}
+                        href={LOOK_URLS[bridgeLook(axis, view.flat, across ? 'back' : 'whole')]}
                         {...bridgeBounds(axis, view.tilt)}
+                        preserveAspectRatio="none"
+                    ></image>
+                </g>
+            {:else if piece.kind === 'bridgeFront'}
+                <g transform="translate({centre.x} {centre.y})" class="piece">
+                    <image
+                        href={LOOK_URLS[bridgeLook(Axis.EastWest, view.flat, 'front')]}
+                        {...bridgeBounds(Axis.EastWest, view.tilt)}
                         preserveAspectRatio="none"
                     ></image>
                 </g>
@@ -343,19 +362,21 @@
                 {@const lift = piece.onBridge ? view.lift(BRIDGE_RISE) : 0}
                 {@const look = pilliLook(view.flat)}
                 <g
-                    transform="translate({centre.x} {centre.y + CELL * 0.1 * view.tilt - lift})"
+                    transform="translate({centre.x} {centre.y +
+                        (piece.onBridge ? 0 : CELL * 0.1 * view.tilt) -
+                        lift})"
                     class="piece"
                 >
                     <ellipse
                         cx="1"
                         cy="1"
-                        rx={CELL * 0.26}
-                        ry={CELL * 0.26 * view.tilt}
+                        rx={CELL * 0.22}
+                        ry={CELL * 0.22 * view.tilt}
                         fill="url(#mx-piece-shadow)"
                     ></ellipse>
                     <path
                         d={LOOK_OUTLINES[look]}
-                        fill={playerFill(piece.playerId)}
+                        fill={pilliPaint(playerFill(piece.playerId))}
                         fill-rule="evenodd"
                     ></path>
                     <image

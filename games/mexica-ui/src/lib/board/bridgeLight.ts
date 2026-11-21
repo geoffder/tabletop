@@ -32,15 +32,25 @@ const PLANK = { pitch: 3.1, gap: 0.35 }
 const grain = fractal(noise2(151), 3)
 const streaks = noise2(157)
 
-export function renderBridge(screenAxis: Axis, tilt: number, pixels = BRIDGE_PIXELS): Bitmap {
+// The whole bridge, or for one running across the screen, its far layer (all but the near
+// curb, rail and posts, which its rays pass through) or its near one (those alone, where they
+// are the first thing a ray meets), so a Pilli Mexica can stand between them.
+export type BridgeLayer = 'whole' | 'back' | 'front'
+
+export function renderBridge(
+    screenAxis: Axis,
+    tilt: number,
+    layer: BridgeLayer = 'whole',
+    pixels = BRIDGE_PIXELS
+): Bitmap {
     const parts = bridgeParts()
     const local = (p: Vec): Vec =>
         screenAxis === Axis.EastWest ? [p[0], p[1], p[2]] : [p[1], p[0], p[2]]
-    const nearest = (p: Vec): { distance: number; part: Part } => {
+    const nearest = (p: Vec, among: readonly Part[]): { distance: number; part: Part } => {
         const [a, c, z] = local(p)
-        let part = parts[0]
+        let part = among[0]
         let distance = Infinity
-        for (const candidate of parts) {
+        for (const candidate of among) {
             const d = candidate.distance(a, c, z)
             if (d < distance) {
                 distance = d
@@ -49,11 +59,15 @@ export function renderBridge(screenAxis: Axis, tilt: number, pixels = BRIDGE_PIX
         }
         return { distance, part }
     }
-    const scene: Scene = (p) => nearest(p).distance
+    const back = parts.filter((part) => !part.front)
+    const scene: Scene = (p) => nearest(p, parts).distance
+    const marched: Scene = layer === 'back' ? (p) => nearest(p, back).distance : scene
     const box = bridgeBounds(screenAxis, tilt)
-    return castRays(box, tilt, pixels, scene, (p) => [
-        { color: shade(p, local(p), nearest(p).part, scene), alpha: 1 }
-    ]).bitmaps[0]
+    return castRays(box, tilt, pixels, marched, (p) => {
+        const part = nearest(p, layer === 'back' ? back : parts).part
+        const shown = layer !== 'front' || part.front === true
+        return [{ color: shade(p, local(p), part, scene), alpha: shown ? 1 : 0 }]
+    }).bitmaps[0]
 }
 
 function shade(p: Vec, [a, c, z]: Vec, part: Part, scene: Scene): Rgb {

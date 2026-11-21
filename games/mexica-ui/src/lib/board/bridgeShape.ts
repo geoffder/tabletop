@@ -9,7 +9,7 @@ import { BRIDGE_RISE, CELL, type Box } from './view.js'
 
 export const BRIDGE = {
     reach: 0.62 * CELL,
-    half: 0.24 * CELL,
+    half: 0.31 * CELL,
     deck: BRIDGE_RISE * CELL
 }
 
@@ -22,6 +22,9 @@ export type Part = {
     bounds: { a0: number; a1: number; c0: number; c1: number; z0: number; z1: number }
     material: Material
     grain: 'along' | 'across'
+    // On the bridge's near side when it runs across the screen: drawn over a Pilli Mexica
+    // standing on it.
+    front?: boolean
 }
 
 function box(
@@ -144,7 +147,8 @@ export function bridgeParts(): Part[] {
         )
     )
     const plankDeck = slab(reach, -half, half, top, thick, 'deck', 'across')
-    return [plankDeck, ...stringers, ...curbs, ...posts, ...rails]
+    const near = (part: Part): Part => ({ ...part, front: part.bounds.c0 > 0 })
+    return [plankDeck, ...stringers, ...[...curbs, ...posts, ...rails].map(near)]
 }
 
 // Where the bridge lies in the board's x (right) and y (towards the viewer) when its span runs
