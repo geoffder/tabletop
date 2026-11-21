@@ -52,25 +52,25 @@
                 >{/each}</span
         >
     {:else if tool === 'canal' && session.chosenCell !== undefined && session.canDigChosenAlone}
-        <span>Tap a neighbour for a double canal, or the same space again for a single</span>
+        <span>Choose a neighbour for a double, or this space again for a single</span>
     {:else if tool === 'canal' && session.chosenCell !== undefined}
-        <span>Tap a neighbour for a double canal</span>
+        <span>Choose a neighbour to finish the canal</span>
     {:else if tool === 'canal' && singles > 0}
-        <span>Tap a space to dig, twice for a single ({singles}&nbsp;left)</span>
+        <span>Choose two neighbouring spaces, or one twice for a single ({singles}&nbsp;left)</span>
     {:else if tool === 'canal'}
-        <span>Tap two neighbouring spaces to dig</span>
+        <span>Choose two neighbouring spaces</span>
     {:else if tool === 'bridge'}
-        <span>Build a bridge: tap a canal</span>
+        <span>Build a bridge: choose a canal</span>
     {:else if tool === 'moveBridge'}
         <span
             >{session.chosenCell === undefined
-                ? 'Move a bridge: tap the bridge'
-                : 'Move the bridge: tap a canal'}</span
+                ? 'Move a bridge: choose the bridge'
+                : 'Move the bridge: choose a canal'}</span
         >
     {:else if tool === 'found'}
-        <span>Found the district: tap a space for the token</span>
+        <span>Found the district: choose a space for the token</span>
     {:else if typeof tool === 'number'}
-        <span>Build a {tool}-level temple: tap a space</span>
+        <span>Build a {tool}-level temple: choose a space</span>
     {:else if foundingSize !== undefined}
         <span
             >Your district has {foundingSize} spaces:
@@ -81,7 +81,8 @@
         >
     {:else}
         <span
-            >{#if session.apAvailable === 0}No action points left{:else}Tap to move, or pick a piece{/if}
+            >{#if session.apAvailable === 0}No action points left{:else}Choose where to move, or
+                pick a piece{/if}
             {@render endTurn()}</span
         >
     {/if}
