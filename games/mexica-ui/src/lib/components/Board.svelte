@@ -448,14 +448,6 @@
                 <polygon points={join.stone} class="surface kerb"></polygon>
                 <polygon points={join.edge} class="surface kerb-edge"></polygon>
             {/each}
-            {#each works.spills as spill (spill.key)}
-                <image
-                    href={LOOK_URLS[spill.look]}
-                    {...spill.box}
-                    preserveAspectRatio="none"
-                    class="surface"
-                ></image>
-            {/each}
             <!-- The water standing up the banks, over their feet: under a canal being dug's earth,
                  so it shows as the water runs in. -->
             <image
@@ -487,6 +479,16 @@
                     clip-path="url(#mx-wet-clip-{flood.key})"
                     mask="url(#mx-wet-{flood.key})"
                     opacity={WATER_OVER_BANK}
+                    class="surface"
+                ></image>
+            {/each}
+            <!-- Rocks sliding over the brick where a shore is cut short, standing out of the
+                 water. -->
+            {#each works.spills as spill (spill.key)}
+                <image
+                    href={LOOK_URLS[spill.look]}
+                    {...spill.box}
+                    preserveAspectRatio="none"
                     class="surface"
                 ></image>
             {/each}
