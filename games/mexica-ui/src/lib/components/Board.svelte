@@ -5,6 +5,8 @@
     import {
         Axis,
         type Cell,
+        BOARD_HEIGHT,
+        BOARD_WIDTH,
         cellAt,
         cellName,
         columnOf,
@@ -17,7 +19,7 @@
         placePoints
     } from '@tabletop/mexica'
     import { getGameSession } from '$lib/model/sessionContext.svelte.js'
-    import { BRIDGE_RISE, CELL, type PlanStep } from '$lib/board/view.js'
+    import { BRIDGE_RISE, CELL, LAKE_MARGIN, type PlanStep } from '$lib/board/view.js'
     import type { Point } from '@tabletop/common'
     import { LOOK_URLS } from '$lib/board/lookUrls.js'
     import { BANK_WIDTH, SIDES, surfaceOf, waterworks } from '$lib/board/waterworks.js'
@@ -186,13 +188,19 @@
 
     // The Emperor's commands, in the lake at the bottom right as on the printed board.
     const display = $derived(drawn.display)
-    const DISPLAY = { left: 15.3, top: 10.8, slot: 1.42, columns: 4, rows: 2 }
+    const DISPLAY = { left: 15.3, slot: 1.42, columns: 4, rows: 2 }
+    // As far from the lake's bottom edge on screen as from its right edge, however tilted.
+    const displayTop = $derived.by(() => {
+        const margin = LAKE_MARGIN / CELL
+        const right = BOARD_WIDTH + margin - DISPLAY.left - DISPLAY.slot * DISPLAY.columns
+        return BOARD_HEIGHT + margin - DISPLAY.slot * DISPLAY.rows - right / view.tilt
+    })
     const displayBox = $derived(
         view.planBox(
             DISPLAY.left,
-            DISPLAY.top,
+            displayTop,
             DISPLAY.left + DISPLAY.slot * DISPLAY.columns,
-            DISPLAY.top + DISPLAY.slot * DISPLAY.rows
+            displayTop + DISPLAY.slot * DISPLAY.rows
         )
     )
     const SLOT = DISPLAY.slot * CELL
@@ -208,7 +216,7 @@
     function slotCentre(index: number) {
         return view.at(
             DISPLAY.left + DISPLAY.slot * ((index % DISPLAY.columns) + 0.5),
-            DISPLAY.top + DISPLAY.slot * (Math.floor(index / DISPLAY.columns) + 0.5)
+            displayTop + DISPLAY.slot * (Math.floor(index / DISPLAY.columns) + 0.5)
         )
     }
 
