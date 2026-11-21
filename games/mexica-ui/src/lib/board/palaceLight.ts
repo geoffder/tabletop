@@ -18,6 +18,7 @@ import {
     type Vec
 } from './light.js'
 import { type Coursing, cutStone } from './cutStone.js'
+import type { Block } from './templeShape.js'
 import { PALACE, palaceBounds, palaceParts, type PalacePart } from './palaceShape.js'
 import {
     castRays,
@@ -42,6 +43,8 @@ const STONE = {
 const COURSING: Coursing = { shortest: 10, longest: 16, row: 7, joint: 0.45, round: 0.9 }
 // A step's tread laid in long slabs.
 const TREADS: Coursing = { shortest: 13, longest: 20, row: 12.5, joint: 0.45, round: 0.9 }
+// A step's riser: one rough stone the width of the stair, so no joint chops the steps up.
+const RISERS: Coursing = { shortest: 200, longest: 200, row: 12.5, joint: 0.45, round: 0.9 }
 
 const BRONZE = { light: linear('#d6ab5e'), dark: linear('#6b4b22'), shine: 0.35 }
 const TURQUOISE = { light: linear('#2fb3ad'), dark: linear('#13706e'), grout: linear('#3a3226') }
@@ -101,6 +104,16 @@ function sunRelief(p: Vec): number {
 // The low sloping walls flanking each stair, as on the temples of Tenochtitlan.
 const WALL = { width: 3.2, above: 0.8, foot: 1.6 }
 const SIDE = CELL / 2 - PALACE.inset
+
+// The walls' stone is laid in courses their full height, round the palace's middle.
+const WALL_BLOCK: Block = {
+    x0: -2 * CELL,
+    x1: 2 * CELL,
+    y0: -2 * CELL,
+    y1: 2 * CELL,
+    z0: 0,
+    z1: PALACE.rise + WALL.above
+}
 
 function stairWalls(p: Vec): number {
     const arms: [number, number][] = [
@@ -193,22 +206,25 @@ export function renderPalace(tilt: number, pixels = PALACE_PIXELS): Bitmap {
             const color = mix(tile.color, TURQUOISE.grout, tile.grout * 0.8)
             return [{ color: metal(color, 0.1 * (1 - tile.grout)), alpha: 1 }]
         }
+        const stone = (block: Block, course: number, coursing: Coursing) => {
+            const cut = cutStone(p, normal, block, course, coursing)
+            const bent = cut === undefined ? normal : normalize(add(normal, cut.tip))
+            const color = cut === undefined ? mix(STONE.light, STONE.dark, 0.4) : stoneColor(cut)
+            return { color, bent }
+        }
         if (hit.kind === 'wall') {
-            const color = mix(STONE.light, STONE.dark, clamp(0.4 + tone))
-            return [{ color: scale(color, lit(p, normal, normal, scene)), alpha: 1 }]
+            const { color, bent } = stone(WALL_BLOCK, -2, COURSING)
+            return [{ color: scale(color, lit(p, normal, bent, scene)), alpha: 1 }]
         }
         const part = hit.part
         if (part === undefined) return [{ color: [0, 0, 0], alpha: 0 }]
         const stair = part.material === 'stair'
-        // A step's riser is one smooth stone, in shade under its paler tread, so the stair reads.
-        if (stair && normal[2] <= 0.7) {
-            const riser = scale(mix(STONE.light, STONE.dark, clamp(0.4 + tone)), 0.72)
-            return [{ color: scale(riser, lit(p, normal, normal, scene)), alpha: 1 }]
-        }
-        const cut = cutStone(p, normal, part.block, parts.indexOf(part), stair ? TREADS : COURSING)
-        const bent = cut === undefined ? normal : normalize(add(normal, cut.tip))
-        let color = cut === undefined ? mix(STONE.light, STONE.dark, 0.4) : stoneColor(cut)
-        if (stair) color = mix(color, STONE.light, 0.3)
+        const riser = stair && normal[2] <= 0.7
+        const coursing = riser ? RISERS : stair ? TREADS : COURSING
+        const { bent, color: cut } = stone(part.block, parts.indexOf(part), coursing)
+        // Each step's tread paler and its riser in shade, so the stair reads.
+        let color = cut
+        if (stair) color = riser ? scale(cut, 0.72) : mix(cut, STONE.light, 0.3)
         return [{ color: scale(color, lit(p, normal, bent, scene)), alpha: 1 }]
     }).bitmaps[0]
 }
