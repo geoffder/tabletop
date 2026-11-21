@@ -18,6 +18,8 @@ import {
     MexicaRuntime,
     neighbours,
     cellAt,
+    DISTRICT_SIZES,
+    isLake,
     columnOf,
     rowOf,
     START_CELLS,
@@ -232,39 +234,164 @@ const late = firstFound(
 write('late-game', 'Late game', late)
 console.log(`Late game: ${describe(late.state)}`)
 
-// A founding in the island's far corner from the display, top left, with a tall temple in front
-// of a free square of the district for the token to land behind: the player to move walks there
-// and founds.
-function foundingBehindTemple(state) {
+// Free ground in `district` round no Pilli Mexica, the palace or anything built.
+function freeIn(layout, district) {
+    return district.filter((cell) => layout.isBuildable(cell))
+}
+
+// A square of `district` across the island from the display, in its top left, with a temple of
+// three or more levels on the square in front of it, for a token to drop in behind.
+function behindTemple(state, layout, district) {
+    return freeIn(layout, district).find((square) => {
+        if (columnOf(square) > 8 || rowOf(square) > 6) return false
+        const front = cellAt(columnOf(square), rowOf(square) + 1)
+        return state.temples.some((temple) => temple.cell === front && temple.level >= 3)
+    })
+}
+
+// Three players can found on their turns, in turn order from the player to move: the first
+// across the island from the display, in its top left, behind a tall temple; the second by the display; the
+// third in another district, with the fourth player's Pilli Mexica standing in it as a
+// visitor. The Pilli Mexica are placed and the
+// display stocked to match.
+function foundingRound(state) {
+    const hydrated = new HydratedMexicaGameState(structuredClone(state))
+    for (const player of hydrated.players) player.pilli = undefined
+    const layout = hydrated.layout()
+    const used = new Set(hydrated.districts.map((district) => district.tokenId))
+    const unused = DISTRICT_SIZES.map((_, id) => id).filter((id) => !used.has(id))
+    const open = layout
+        .districts()
+        .filter((district) => layout.tokenIn(district) === undefined && district.length >= 3)
+    const taken = new Set()
+    const tokenFor = (district) =>
+        unused.find((id) => !taken.has(id) && tokenSize(id) === district.length)
+    const far = open.find(
+        (district) => tokenFor(district) !== undefined && behindTemple(hydrated, layout, district)
+    )
+    if (far === undefined) return undefined
+    taken.add(tokenFor(far))
+    const near = open.find(
+        (district) =>
+            district !== far &&
+            freeIn(layout, district).length >= 2 &&
+            tokenFor(district) !== undefined &&
+            district.some((cell) => columnOf(cell) >= 12 && rowOf(cell) >= 7)
+    )
+    if (near === undefined) return undefined
+    taken.add(tokenFor(near))
+    const middle = open.find(
+        (district) =>
+            district !== far &&
+            district !== near &&
+            freeIn(layout, district).length >= 3 &&
+            tokenFor(district) !== undefined
+    )
+    if (middle === undefined) return undefined
+    const farToken = [...taken][0]
+    const nearToken = [...taken][1]
+    const middleToken = tokenFor(middle)
+    taken.add(middleToken)
+
+    const order = hydrated.turnManager.turnOrder
+    const first = order.indexOf(state.activePlayerIds[0])
+    const turns = order.map((_, index) => order[(first + index) % order.length])
+    const behind = behindTemple(hydrated, layout, far)
+    const stand = (playerId, district, avoid = []) => {
+        const cell = freeIn(hydrated.layout(), district).find((square) => !avoid.includes(square))
+        hydrated.getPlayerState(playerId).pilli = cell
+    }
+    stand(turns[0], far, [behind])
+    stand(turns[1], near)
+    stand(turns[2], middle)
+    stand(turns[3], middle)
+
+    const others = unused.filter((id) => !taken.has(id))
+    const display = [farToken, nearToken, ...others.slice(0, 3), middleToken, ...others.slice(3, 5)]
+    hydrated.display = display
+    hydrated.reserve = unused.filter((id) => !display.includes(id))
+    return hydrated.dehydrate()
+}
+
+// The player to move stands where its Pilli Mexica can reach, within its action points, each way
+// of moving by water: a hop between bridges side by side, a canoe ride, a ride hopping over a
+// bridge on the way, and a ride round the island beyond the board's edge.
+function canalRides(state) {
     const hydrated = new HydratedMexicaGameState(structuredClone(state))
     const [playerId] = state.activePlayerIds
-    for (const [cell, move] of hydrated.moves(playerId)) {
-        if (move.cost > 5) continue
-        const after = new HydratedMexicaGameState(structuredClone(state))
-        after.placePilli(playerId, cell)
-        const layout = after.layout()
-        if (after.foundingToken(playerId, layout) === undefined) continue
-        const district = layout.districtOf(cell)
-        if (district === undefined) continue
-        const hidden = district.some((square) => {
-            if (square === cell || !layout.isBuildable(square)) return false
-            if (columnOf(square) > 7 || rowOf(square) > 5) return false
-            const front = cellAt(columnOf(square), rowOf(square) + 1)
-            return after.temples.some((temple) => temple.cell === front && temple.level >= 3)
-        })
-        if (hidden) return true
+    const others = hydrated.players.filter((player) => player.playerId !== playerId)
+    const occupied = new Set(others.map((player) => player.pilli))
+    const ap = hydrated.apAvailable(playerId)
+    for (const start of [...LAND_CELLS].sort((a, b) => a - b)) {
+        if (occupied.has(start)) continue
+        const trial = new HydratedMexicaGameState(structuredClone(hydrated.dehydrate()))
+        trial.getPlayerState(playerId).pilli = start
+        const layout = trial.layout()
+        if (!layout.isEmptyGround(start) && !layout.bridges.has(start)) continue
+        const kinds = new Set()
+        for (const [, move] of trial.moves(playerId)) {
+            if (move.teleport || move.cost > ap) continue
+            let run = 0
+            move.path.forEach((cell, index) => {
+                const last = move.path[index - 1]
+                if (index === 0 || !layout.bridges.has(cell) || !layout.bridges.has(last)) {
+                    run = 0
+                    return
+                }
+                if (areAdjacent(last, cell)) {
+                    kinds.add('hop')
+                    run = 0
+                    return
+                }
+                run++
+                kinds.add('ride')
+                if (run >= 2) kinds.add('over')
+                if (!waterJoins(layout, last, cell)) kinds.add('round')
+            })
+        }
+        if (kinds.size === 4) return trial.dehydrate()
+    }
+    return undefined
+}
+
+// Whether the water on the board joins two bridges, along canals under no other bridge and
+// across the lake.
+function waterJoins(layout, from, to) {
+    const seen = new Set([from])
+    const queue = [from]
+    while (queue.length > 0) {
+        const cell = queue.shift()
+        if (cell === to) return true
+        for (const next of neighbours(cell)) {
+            if (seen.has(next)) continue
+            const afloat =
+                next === to ||
+                isLake(next) ||
+                (layout.canals.has(next) && !layout.bridges.has(next))
+            if (!afloat) continue
+            seen.add(next)
+            queue.push(next)
+        }
     }
     return false
 }
 
-const founding = (() => {
-    for (const players of [4, 3]) {
-        for (let seed = 1; seed < 400; seed++) {
-            const found = playUntil(start(players), seed, foundingBehindTemple)
-            if (found) return found
-        }
+function firstSetUp(players, setUp) {
+    for (let seed = 1; seed < 400; seed++) {
+        let made
+        const found = playUntil(start(players), seed, (state) => {
+            made = setUp(state)
+            return made !== undefined
+        })
+        if (found) return { game: found.game, state: made }
     }
-    throw Error('No seed reached a founding in the far corner')
-})()
+    throw Error(`No seed reached a position for ${setUp.name}`)
+}
+
+const founding = firstSetUp(4, foundingRound)
 write('founding', 'Founding', founding)
 console.log(`Founding: ${describe(founding.state)}`)
+
+const rides = firstSetUp(4, canalRides)
+write('canal-rides', 'Canal rides', rides)
+console.log(`Canal rides: ${describe(rides.state)}`)

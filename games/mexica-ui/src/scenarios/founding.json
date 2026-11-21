@@ -42,10 +42,10 @@
   "activePlayerIds": [
    "player-1"
   ],
-  "createdAt": "2026-11-21T20:49:50.449Z",
+  "createdAt": "2026-11-21T21:16:35.035Z",
   "storage": "remote",
   "category": "standard",
-  "startedAt": "2026-11-21T20:49:50.449Z",
+  "startedAt": "2026-11-21T21:16:35.035Z",
   "progress": {
    "fraction": 0,
    "label": "Period 1 · 8 districts to found"
@@ -53,7 +53,7 @@
  },
  "state": {
   "systemVersion": 3,
-  "id": "1KzQMe3RtGf-kBwjIlPpg",
+  "id": "N82l4tlzKC4fMneVmL7yq",
   "gameId": "scenario-founding",
   "seed": 3367980177,
   "prng": {
@@ -78,28 +78,28 @@
     "color": "blue",
     "score": 0,
     "actionTokens": 0,
-    "pilli": 91
+    "pilli": 63
    },
    {
     "playerId": "player-2",
     "color": "red",
     "score": 0,
     "actionTokens": 0,
-    "pilli": 173
+    "pilli": 122
    },
    {
     "playerId": "player-3",
     "color": "yellow",
-    "score": 0,
+    "score": 4,
     "actionTokens": 0,
-    "pilli": 157
+    "pilli": 127
    },
    {
     "playerId": "player-4",
     "color": "green",
-    "score": 0,
+    "score": 2,
     "actionTokens": 0,
-    "pilli": 176
+    "pilli": 128
    }
   ],
   "machineState": "Acting",
@@ -118,10 +118,10 @@
     "player-4"
    ],
    "turnCounts": {
-    "player-1": 6,
-    "player-2": 6,
-    "player-3": 6,
-    "player-4": 6
+    "player-1": 7,
+    "player-2": 7,
+    "player-3": 7,
+    "player-4": 7
    },
    "seriesKeeps": "latest"
   },
@@ -140,134 +140,82 @@
    },
    {
     "cells": [
-     210
+     42,
+     43
     ]
    },
    {
     "cells": [
-     205,
-     184
+     1
     ]
    },
    {
     "cells": [
-     252,
-     231
-    ]
-   },
-   {
-    "cells": [
-     75,
-     74
-    ]
-   },
-   {
-    "cells": [
-     106,
-     85
-    ]
-   },
-   {
-    "cells": [
-     125
-    ]
-   },
-   {
-    "cells": [
-     242,
-     221
-    ]
-   },
-   {
-    "cells": [
-     64
-    ]
-   },
-   {
-    "cells": [
-     220,
-     199
-    ]
-   },
-   {
-    "cells": [
-     122,
-     121
-    ]
-   },
-   {
-    "cells": [
-     253
-    ]
-   },
-   {
-    "cells": [
-     224,
-     223
-    ]
-   },
-   {
-    "cells": [
-     275,
-     254
-    ]
-   },
-   {
-    "cells": [
-     258,
-     237
-    ]
-   },
-   {
-    "cells": [
-     95
+     278,
+     257
     ]
    },
    {
     "cells": [
      170,
-     191
+     171
     ]
    },
    {
     "cells": [
-     236,
-     235
+     120,
+     121
     ]
    },
    {
     "cells": [
-     65,
-     86
+     243,
+     222
     ]
    },
    {
     "cells": [
-     146,
-     167
+     203
     ]
    },
    {
     "cells": [
-     178
+     31,
+     30
     ]
    },
    {
     "cells": [
-     186,
-     185
+     181,
+     180
     ]
    },
    {
     "cells": [
-     145,
-     144
+     162,
+     163
     ]
    },
    {
     "cells": [
-     94,
-     93
+     262,
+     241
+    ]
+   },
+   {
+    "cells": [
+     7,
+     8
+    ]
+   },
+   {
+    "cells": [
+     201
+    ]
+   },
+   {
+    "cells": [
+     252
     ]
    },
    {
@@ -278,8 +226,54 @@
    },
    {
     "cells": [
-     107,
-     108
+     187,
+     186
+    ]
+   },
+   {
+    "cells": [
+     29,
+     28
+    ]
+   },
+   {
+    "cells": [
+     124
+    ]
+   },
+   {
+    "cells": [
+     240,
+     219
+    ]
+   },
+   {
+    "cells": [
+     50,
+     49
+    ]
+   },
+   {
+    "cells": [
+     23,
+     44
+    ]
+   },
+   {
+    "cells": [
+     275,
+     254
+    ]
+   },
+   {
+    "cells": [
+     24
+    ]
+   },
+   {
+    "cells": [
+     5,
+     26
     ]
    },
    {
@@ -290,83 +284,176 @@
    },
    {
     "cells": [
-     259,
+     239,
      238
     ]
    },
    {
     "cells": [
-     73,
-     72
+     164,
+     165
     ]
    },
    {
     "cells": [
-     24,
-     45
+     261,
+     282
+    ]
+   },
+   {
+    "cells": [
+     236,
+     235
+    ]
+   },
+   {
+    "cells": [
+     47,
+     46
+    ]
+   },
+   {
+    "cells": [
+     150,
+     129
+    ]
+   },
+   {
+    "cells": [
+     214,
+     193
+    ]
+   },
+   {
+    "cells": [
+     106,
+     107
+    ]
+   },
+   {
+    "cells": [
+     68,
+     67
+    ]
+   },
+   {
+    "cells": [
+     125,
+     146
+    ]
+   },
+   {
+    "cells": [
+     108,
+     87
     ]
    }
   ],
   "bridges": [
    {
-    "cell": 119,
-    "axis": "ew"
-   },
-   {
-    "cell": 182,
-    "axis": "ew"
-   },
-   {
-    "cell": 161,
-    "axis": "ew"
-   },
-   {
-    "cell": 108,
+    "cell": 43,
     "axis": "ns"
    },
    {
-    "cell": 140,
+    "cell": 257,
     "axis": "ew"
    },
    {
+    "cell": 170,
+    "axis": "ns"
+   },
+   {
+    "cell": 120,
+    "axis": "ns"
+   },
+   {
     "cell": 97,
+    "axis": "ew"
+   },
+   {
+    "cell": 162,
+    "axis": "ns"
+   },
+   {
+    "cell": 219,
+    "axis": "ew"
+   },
+   {
+    "cell": 239,
+    "axis": "ns"
+   },
+   {
+    "cell": 197,
+    "axis": "ns"
+   },
+   {
+    "cell": 30,
+    "axis": "ns"
+   },
+   {
+    "cell": 254,
     "axis": "ew"
    }
   ],
   "temples": [
    {
-    "cell": 63,
-    "level": 1,
-    "playerId": "player-1"
-   },
-   {
-    "cell": 149,
+    "cell": 177,
     "level": 2,
     "playerId": "player-1"
    },
    {
-    "cell": 165,
+    "cell": 178,
     "level": 1,
+    "playerId": "player-1"
+   },
+   {
+    "cell": 160,
+    "level": 1,
+    "playerId": "player-1"
+   },
+   {
+    "cell": 98,
+    "level": 3,
     "playerId": "player-2"
    },
    {
-    "cell": 177,
-    "level": 1,
+    "cell": 71,
+    "level": 2,
     "playerId": "player-3"
    },
    {
-    "cell": 5,
+    "cell": 143,
     "level": 3,
     "playerId": "player-3"
    },
    {
-    "cell": 255,
+    "cell": 131,
     "level": 1,
     "playerId": "player-3"
    },
    {
-    "cell": 217,
+    "cell": 73,
+    "level": 2,
+    "playerId": "player-1"
+   },
+   {
+    "cell": 6,
     "level": 1,
+    "playerId": "player-1"
+   },
+   {
+    "cell": 276,
+    "level": 4,
+    "playerId": "player-3"
+   },
+   {
+    "cell": 75,
+    "level": 1,
+    "playerId": "player-3"
+   },
+   {
+    "cell": 64,
+    "level": 2,
     "playerId": "player-4"
    },
    {
@@ -375,144 +462,96 @@
     "playerId": "player-4"
    },
    {
-    "cell": 43,
-    "level": 3,
-    "playerId": "player-1"
-   },
-   {
-    "cell": 234,
-    "level": 1,
-    "playerId": "player-1"
-   },
-   {
-    "cell": 277,
-    "level": 3,
-    "playerId": "player-2"
-   },
-   {
-    "cell": 44,
-    "level": 2,
-    "playerId": "player-3"
-   },
-   {
-    "cell": 175,
-    "level": 1,
-    "playerId": "player-3"
-   },
-   {
-    "cell": 276,
-    "level": 3,
-    "playerId": "player-4"
-   },
-   {
-    "cell": 88,
-    "level": 1,
-    "playerId": "player-4"
-   },
-   {
-    "cell": 214,
+    "cell": 253,
     "level": 2,
     "playerId": "player-1"
    },
    {
-    "cell": 141,
-    "level": 1,
-    "playerId": "player-2"
-   },
-   {
-    "cell": 128,
-    "level": 1,
-    "playerId": "player-2"
-   },
-   {
-    "cell": 261,
-    "level": 1,
-    "playerId": "player-4"
-   },
-   {
-    "cell": 138,
+    "cell": 69,
     "level": 4,
+    "playerId": "player-1"
+   },
+   {
+    "cell": 70,
+    "level": 2,
+    "playerId": "player-2"
+   },
+   {
+    "cell": 117,
+    "level": 3,
+    "playerId": "player-1"
+   },
+   {
+    "cell": 216,
+    "level": 3,
+    "playerId": "player-1"
+   },
+   {
+    "cell": 155,
+    "level": 2,
+    "playerId": "player-2"
+   },
+   {
+    "cell": 212,
+    "level": 2,
+    "playerId": "player-2"
+   },
+   {
+    "cell": 223,
+    "level": 2,
     "playerId": "player-4"
    },
    {
     "cell": 137,
     "level": 3,
-    "playerId": "player-1"
-   },
-   {
-    "cell": 215,
-    "level": 2,
     "playerId": "player-2"
    },
    {
-    "cell": 181,
-    "level": 2,
+    "cell": 51,
+    "level": 1,
     "playerId": "player-2"
    },
    {
-    "cell": 256,
-    "level": 4,
-    "playerId": "player-3"
-   },
-   {
-    "cell": 213,
-    "level": 2,
-    "playerId": "player-4"
-   },
-   {
-    "cell": 193,
-    "level": 2,
-    "playerId": "player-4"
-   },
-   {
-    "cell": 162,
-    "level": 2,
-    "playerId": "player-4"
-   },
-   {
-    "cell": 48,
-    "level": 2,
-    "playerId": "player-1"
-   },
-   {
-    "cell": 30,
-    "level": 4,
-    "playerId": "player-1"
-   },
-   {
-    "cell": 22,
-    "level": 4,
+    "cell": 277,
+    "level": 1,
     "playerId": "player-2"
    },
    {
-    "cell": 90,
+    "cell": 184,
     "level": 3,
     "playerId": "player-3"
    },
    {
-    "cell": 148,
+    "cell": 185,
     "level": 2,
     "playerId": "player-3"
    }
   ],
-  "districts": [],
+  "districts": [
+   {
+    "tokenId": 1,
+    "cell": 224
+   },
+   {
+    "tokenId": 5,
+    "cell": 205
+   }
+  ],
   "display": [
-   1,
-   5,
-   7,
    8,
    9,
-   10,
-   12,
-   13
-  ],
-  "reserve": [
    0,
-   2,
    3,
    4,
+   2,
    6,
+   7
+  ],
+  "reserve": [
+   10,
    11,
+   12,
+   13,
    14
   ],
   "period": 1,
