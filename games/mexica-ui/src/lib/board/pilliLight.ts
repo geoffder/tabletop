@@ -467,9 +467,10 @@ type Fan = {
     below: number
     bend: number
 }
-const CROWN_ROOT = HEAD.at[2] + 2.3 - 0.4
+// Both rows rise from the top of the mask's frame, in front of the hood.
+const CROWN_ROOT = HEAD.at[2] + MASK.top - 0.3
 const BACK_FAN: Fan = {
-    centre: [0, -2.0, CROWN_ROOT + 0.15 * 5.4],
+    centre: [0, HEAD.at[1] + 1.3, CROWN_ROOT + 0.15 * 5.4],
     radii: [8.6, 0.9, 5.4],
     lean: 0.35,
     spacing: 0.3,
@@ -478,7 +479,7 @@ const BACK_FAN: Fan = {
     bend: 0.55
 }
 const FRONT_FAN: Fan = {
-    centre: [0, -0.4, CROWN_ROOT + 0.15 * 3.9],
+    centre: [0, HEAD.at[1] + 2.5, CROWN_ROOT + 0.15 * 3.9],
     radii: [6.2, 0.8, 3.9],
     lean: 0.2,
     spacing: 0.36,
