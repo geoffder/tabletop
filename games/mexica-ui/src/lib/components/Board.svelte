@@ -48,8 +48,14 @@
     import { LOOK_OUTLINES } from '$lib/board/lookOutlines.js'
     import { pilliBounds, pilliLook, pilliShineLook, shineOver } from '$lib/board/pilliShape.js'
 
+    // The space the board is fitted into, in screen pixels; the overlaid controls take a strip
+    // of it at the foot.
+    let { space }: { space?: { width: number; height: number } } = $props()
+
     const session = getGameSession()
     const view = $derived(session.view)
+    const CONTROLS = 46
+    const frame = $derived(view.frameWithControls(space, CONTROLS))
 
     const game = $derived(session.gameState)
     const layout = $derived(game.layout())
@@ -206,9 +212,9 @@
 <div class="tap-off" role="presentation" onclick={onTap}>
     <svg
         class="mx-board"
-        viewBox={view.viewBox}
-        width={view.frame.width}
-        height={view.frame.height}
+        viewBox="{frame.x} {frame.y} {frame.width} {frame.height}"
+        width={frame.width}
+        height={frame.height}
         role="group"
         aria-label="The island of Tenochtitlan"
         {@attach animator.attach}

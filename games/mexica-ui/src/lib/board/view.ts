@@ -21,7 +21,6 @@ const LABEL_SIZE = 12
 const LABEL_GAP = 8
 const LABEL_REACH = LABEL_SIZE * 0.9
 const EDGE_MARGIN = 10
-const CONTROLS_ROOM = 34
 
 export type Box = { x: number; y: number; width: number; height: number }
 
@@ -227,9 +226,20 @@ export class BoardView {
             EDGE_MARGIN
         const bottom =
             Math.max(this.depth, ...extents.map((extent) => extent.y + LABEL_REACH / 2)) +
-            EDGE_MARGIN +
-            CONTROLS_ROOM
+            EDGE_MARGIN
         return { x: left, y: top, width: right - left, height: bottom - top }
+    }
+
+    // The frame with room below it for the controls laid over the board's foot, `controls`
+    // screen pixels tall when the board is fitted into `space`: the fewer pixels a board unit
+    // gets, the more units the controls take.
+    frameWithControls(space: { width: number; height: number } | undefined, controls: number): Box {
+        const frame = this.frame
+        if (space === undefined || space.width <= 0 || space.height <= controls) {
+            return { ...frame, height: frame.height + controls }
+        }
+        const scale = Math.min(space.width / frame.width, (space.height - controls) / frame.height)
+        return { ...frame, height: frame.height + controls / scale }
     }
 }
 
