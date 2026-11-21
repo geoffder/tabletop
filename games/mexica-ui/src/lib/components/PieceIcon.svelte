@@ -7,6 +7,7 @@
     import { DESIGN, templeBounds } from '$lib/board/templeShape.js'
     import { TILT, type Box } from '$lib/board/view.js'
     import TempleMarks from './TempleMarks.svelte'
+    import MaskIcon from './MaskIcon.svelte'
 
     // A piece as the board draws it, tilted, fitted to `size` pixels square.
     let {
@@ -50,11 +51,11 @@
         <path d="M-15 -1 q4 -2.5 8 0 t8 0 t8 0 t8 0" class="ripple"></path>
     </svg>
 {:else}
-    <!-- An action token: a painted disc. -->
-    <svg viewBox="-20 -20 40 40" width={size} height={size} aria-hidden="true">
-        <circle r="13" class="token"></circle>
-        <text dy="5.5" text-anchor="middle" class="plus">+1</text>
-    </svg>
+    <!-- An action token: a mask, with the point it adds. -->
+    <div class="token" style:--size="{size}px">
+        <MaskIcon size={size * 0.86} />
+        <span class="plus">+1</span>
+    </div>
 {/if}
 
 <style>
@@ -82,14 +83,23 @@
     }
 
     .token {
-        fill: var(--mx-ap);
-        stroke: rgb(0 0 0 / 0.45);
-        stroke-width: 1.5;
+        width: var(--size);
+        height: var(--size);
+        position: relative;
+        display: grid;
+        place-items: center;
     }
 
     .plus {
-        font-size: 13px;
+        position: absolute;
+        left: -3px;
+        top: -4px;
+        font-size: 11px;
         font-weight: 800;
-        fill: #fff7ea;
+        line-height: 1;
+        color: #2b3680;
+        text-shadow:
+            0 0 2px #fffbf2,
+            0 0 2px #fffbf2;
     }
 </style>

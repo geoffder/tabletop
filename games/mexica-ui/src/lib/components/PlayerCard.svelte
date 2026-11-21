@@ -2,6 +2,7 @@
     import { LEVELS, type HydratedMexicaPlayerState } from '@tabletop/mexica'
     import { getGameSession } from '$lib/model/sessionContext.svelte.js'
     import TempleIcon from './TempleIcon.svelte'
+    import MaskIcon from './MaskIcon.svelte'
 
     let { playerState }: { playerState: HydratedMexicaPlayerState } = $props()
 
@@ -39,7 +40,7 @@
             </span>
         {/each}
         <span class="tally" title="Action tokens">
-            <span class="ap-token"></span><b>{playerState.actionTokens}</b>
+            <MaskIcon size={18} /><b>{playerState.actionTokens}</b>
         </span>
     </div>
 </div>
@@ -91,13 +92,5 @@
         display: inline-flex;
         align-items: center;
         gap: 4px;
-    }
-
-    .ap-token {
-        width: 12px;
-        height: 12px;
-        border-radius: 50%;
-        background: var(--mx-ap);
-        box-shadow: inset 0 0 0 1px rgb(0 0 0 / 0.35);
     }
 </style>

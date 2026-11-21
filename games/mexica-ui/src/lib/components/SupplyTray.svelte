@@ -143,9 +143,15 @@
             0 1px 3px rgb(48 36 22 / 0.22);
     }
 
-    .tool :global(svg) {
+    .tool :global(svg),
+    .tool :global(.token) {
         width: var(--icon);
         height: var(--icon);
+    }
+
+    .tool :global(.token svg) {
+        width: 86%;
+        height: 86%;
     }
 
     .tool.picked {
