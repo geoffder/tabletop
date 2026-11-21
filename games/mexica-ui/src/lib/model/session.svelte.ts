@@ -17,6 +17,7 @@ import {
     FoundDistrict,
     type HydratedMexicaGameState,
     LAND_CELLS,
+    type Layout,
     type Level,
     LEVELS,
     type MexicaGameState,
@@ -166,6 +167,9 @@ export class MexicaGameSession extends GameSession<MexicaGameState, HydratedMexi
         )
     )
 
+    // What stands where in the state shown, gathered once for every rule query it answers.
+    private layout: Layout = $derived(this.gameState.layout())
+
     // Where the Pilli Mexica can go now, and for how much.
     moves: ReadonlyMap<Cell, Move> = $derived.by(() => {
         const playerId = this.me
@@ -173,7 +177,7 @@ export class MexicaGameSession extends GameSession<MexicaGameState, HydratedMexi
         const state = this.gameState
         const ap = state.apAvailable(playerId)
         const moves = new Map<Cell, Move>()
-        for (const [cell, move] of state.moves(playerId)) {
+        for (const [cell, move] of state.moves(playerId, this.layout)) {
             if (move.cost > ap) continue
             if (!state.leavesEveryoneFree(playerId, (s) => s.placePilli(playerId, cell))) continue
             moves.set(cell, move)
@@ -188,7 +192,7 @@ export class MexicaGameSession extends GameSession<MexicaGameState, HydratedMexi
                   (level) =>
                       this.apAvailable >= level &&
                       LAND_CELLS.some((cell) =>
-                          this.gameState.canBuildTemple(this.me ?? '', cell, level)
+                          this.gameState.canBuildTemple(this.me ?? '', cell, level, this.layout)
                       )
               )
     )
@@ -200,8 +204,8 @@ export class MexicaGameSession extends GameSession<MexicaGameState, HydratedMexi
         this.isActing &&
             this.apAvailable >= 1 &&
             this.gameState.bridgesLeft() > 0 &&
-            [...this.gameState.layout().canals].some((cell) =>
-                AXES.some((axis) => this.gameState.canBuildBridge(cell, axis))
+            [...this.layout.canals].some((cell) =>
+                AXES.some((axis) => this.gameState.canBuildBridge(cell, axis, this.layout))
             )
     )
     canMoveBridge: boolean = $derived(
@@ -214,13 +218,14 @@ export class MexicaGameSession extends GameSession<MexicaGameState, HydratedMexi
         const tool = this.tool
         if (!this.isActing || playerId === undefined || tool === undefined) return new Set()
         const state = this.gameState
+        const layout = this.layout
         const free = (change: (s: HydratedMexicaGameState) => void) =>
             state.leavesEveryoneFree(playerId, change)
         if (typeof tool === 'number') {
             return new Set(
                 LAND_CELLS.filter(
                     (cell) =>
-                        state.canBuildTemple(playerId, cell, tool) &&
+                        state.canBuildTemple(playerId, cell, tool, layout) &&
                         free((s) => s.buildTemple(playerId, cell, tool))
                 )
             )
@@ -228,21 +233,22 @@ export class MexicaGameSession extends GameSession<MexicaGameState, HydratedMexi
         if (tool === 'found') {
             return new Set(
                 LAND_CELLS.filter(
-                    (cell) => state.canFound(playerId, cell) && free((s) => s.found(playerId, cell))
+                    (cell) =>
+                        state.canFound(playerId, cell, layout) &&
+                        free((s) => s.found(playerId, cell))
                 )
             )
         }
         if (tool === 'canal') return this.canalTargets(state, playerId)
         if (tool === 'bridge') {
             return new Set(
-                [...state.layout().canals].filter((cell) =>
-                    AXES.some((axis) => state.canBuildBridge(cell, axis))
+                [...layout.canals].filter((cell) =>
+                    AXES.some((axis) => state.canBuildBridge(cell, axis, layout))
                 )
             )
         }
         const moving = this.chosenCell
         if (moving === undefined) {
-            const layout = state.layout()
             return new Set(
                 state.bridges
                     .filter((bridge) => !layout.pillis.has(bridge.cell))
@@ -251,10 +257,10 @@ export class MexicaGameSession extends GameSession<MexicaGameState, HydratedMexi
         }
         const bridgeId = state.bridges.findIndex((bridge) => bridge.cell === moving)
         return new Set(
-            [...state.layout().canals].filter((cell) =>
+            [...layout.canals].filter((cell) =>
                 AXES.some(
                     (axis) =>
-                        state.canMoveBridge(bridgeId, cell, axis) &&
+                        state.canMoveBridge(bridgeId, cell, axis, layout) &&
                         free((s) => s.moveBridge(bridgeId, cell, axis))
                 )
             )
@@ -266,7 +272,7 @@ export class MexicaGameSession extends GameSession<MexicaGameState, HydratedMexi
         const state = this.gameState
         if (this.tool === 'bridge' && this.chosenCell !== undefined) {
             const cell = this.chosenCell
-            return AXES.filter((axis) => state.canBuildBridge(cell, axis))
+            return AXES.filter((axis) => state.canBuildBridge(cell, axis, this.layout))
         }
         if (
             this.tool === 'moveBridge' &&
@@ -275,7 +281,7 @@ export class MexicaGameSession extends GameSession<MexicaGameState, HydratedMexi
         ) {
             const bridgeId = this.bridgeIdAt(this.chosenCell)
             const cell = this.chosenDestination
-            return AXES.filter((axis) => state.canMoveBridge(bridgeId, cell, axis))
+            return AXES.filter((axis) => state.canMoveBridge(bridgeId, cell, axis, this.layout))
         }
         return []
     })
@@ -292,7 +298,7 @@ export class MexicaGameSession extends GameSession<MexicaGameState, HydratedMexi
     }
 
     private canalTargets(state: HydratedMexicaGameState, playerId: string): Set<Cell> {
-        const layout = state.layout()
+        const layout = this.layout
         const diggable = LAND_CELLS.filter((cell) => state.canDigAt(cell, layout))
         const first = this.chosenCell
         const singles = state.singleCanalsLeft() > 0
