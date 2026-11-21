@@ -20,7 +20,7 @@
     import { BRIDGE_RISE, CELL, type PlanStep } from '$lib/board/view.js'
     import type { Point } from '@tabletop/common'
     import { LOOK_URLS } from '$lib/board/lookUrls.js'
-    import { BANK_WIDTH, SIDES, waterworks } from '$lib/board/waterworks.js'
+    import { BANK_WIDTH, SIDES, surfaceOf, waterworks } from '$lib/board/waterworks.js'
     import {
         bridgeLook,
         CANAL_LOOK,
@@ -119,9 +119,17 @@
     const CLIP_OVERLAP = 0.5
 
     // Banks, quays, jetties and the island's shore for the canals dug so far.
-    const works = $derived(waterworks(LAND_CELLS, drawn.canals))
+    const works = $derived(
+        waterworks(
+            LAND_CELLS,
+            drawn.canals,
+            new Set(animator.floods.flatMap((flood) => flood.cells))
+        )
+    )
     const pinches = $derived(pinchesOf(drawn.canals))
     const BANK = BANK_WIDTH
+    // How much of the brick under the water is hidden by it.
+    const WATER_OVER_BANK = 0.82
 
     const playerFill = (playerId?: string) =>
         playerId === undefined ? 'var(--mx-neutral)' : session.playerFill(playerId)
@@ -312,7 +320,37 @@
                         {/each}
                     </g>
                 </mask>
+                <!-- The water standing up its banks, coming in with the water. -->
+                <mask
+                    id="mx-wet-{flood.key}"
+                    maskUnits="userSpaceOnUse"
+                    x={flood.box.x - 8}
+                    y={flood.box.y - 8}
+                    width={flood.box.width + 16}
+                    height={flood.box.height + 16}
+                >
+                    <g filter="url(#mx-goo-{flood.key})">
+                        {#each flood.springs as spring, index (index)}
+                            <circle
+                                cx={spring.x}
+                                cy={spring.y}
+                                r="0"
+                                fill="white"
+                                {@attach animator.spring(flood.key, 'wet', index)}
+                            ></circle>
+                        {/each}
+                    </g>
+                </mask>
+                <clipPath id="mx-wet-clip-{flood.key}">
+                    <path d={surfaceOf(drawn.canals, flood.cells)}></path>
+                </clipPath>
             {/each}
+            <clipPath id="mx-water-surface">
+                <path d={works.surface}></path>
+            </clipPath>
+            <clipPath id="mx-mouth-surface">
+                <path d={works.mouthSurface}></path>
+            </clipPath>
             <clipPath id="mx-land-clip">
                 {#each works.zones as zone (zone.key)}
                     <polygon points={zone.points}></polygon>
@@ -418,12 +456,39 @@
                     class="surface"
                 ></image>
             {/each}
+            <!-- The water standing up the banks, over their feet: under a canal being dug's earth,
+                 so it shows as the water runs in. -->
+            <image
+                href={LOOK_URLS[CANAL_LOOK]}
+                {...PLAN}
+                preserveAspectRatio="none"
+                clip-path="url(#mx-water-surface)"
+                opacity={WATER_OVER_BANK}
+                class="surface"
+            ></image>
+            <image
+                href={LOOK_URLS[LAKE_LOOK]}
+                {...WATERS}
+                preserveAspectRatio="none"
+                clip-path="url(#mx-mouth-surface)"
+                opacity={WATER_OVER_BANK}
+                class="surface"
+            ></image>
             <!-- The earth at the bottom of a canal being dug, which the water runs in over. -->
             {#each animator.floods as flood (flood.key)}
                 <g mask="url(#mx-fill-{flood.key})" class="surface">
                     <path d={flood.footPath} fill="url(#mx-canal-earth)"></path>
                     <path d={flood.footPath} fill="url(#mx-canal-grit)"></path>
                 </g>
+                <image
+                    href={LOOK_URLS[CANAL_LOOK]}
+                    {...PLAN}
+                    preserveAspectRatio="none"
+                    clip-path="url(#mx-wet-clip-{flood.key})"
+                    mask="url(#mx-wet-{flood.key})"
+                    opacity={WATER_OVER_BANK}
+                    class="surface"
+                ></image>
             {/each}
             <!-- The paving over a canal being dug, which runs away to show it. -->
             {#each animator.floods as flood (flood.key)}
