@@ -21,6 +21,7 @@ import {
 import type { MexicaGameSession, MoveInterrupter } from '$lib/model/session.svelte.js'
 import { type Box, type BoardView, CELL } from '$lib/board/view.js'
 import { pilliSpot } from '$lib/board/pilliSpot.js'
+import { BANK_WIDTH } from '$lib/board/waterworks.js'
 import { poseOf, setPose } from './svgPose.js'
 
 // A page load, a sync with the server or a switch of view shows the board as it is, unmoved.
@@ -44,10 +45,10 @@ const WALK = { hop: 0.15, glide: 0.2, height: -7 }
 // placed pieces drop in or lift off.
 const QUICK = 0.18
 const MARK_FADE = 0.15
-// A canal dug is built in from its sides: the paving gives way from the edges to the middle,
-// leaving the brick banks sloping down to bare earth, and then the water wells up through the
-// earth from below, like ground water.
-const FLOOD = { build: 0.32, rise: 0.5 }
+// A canal dug: a pit opens from the middle of the paving down into the earth, its brick walls
+// are built up from the pit's floor outward to the kerbs, and then the water wells up through
+// the earth from below, like ground water.
+const DIG = { pit: 0.28, walls: 0.3, water: 0.42 }
 // The paving over a flooding square reaches this far into the land beside it, over the kerb the
 // canal brings there.
 const KERB_REACH = 3
@@ -67,7 +68,14 @@ export type DrawnBoard = {
 // back, in plan units, with the side the water comes from.
 // A canal tile being dug or filled in: its brick floor covers its squares, and its paving
 // reaches over the kerbs beside them.
-export type Flood = { key: string; cells: readonly Cell[]; box: Box; floor: Box }
+export type Flood = {
+    key: string
+    cells: readonly Cell[]
+    box: Box
+    floor: Box
+    // How wide the bank is on each side: none where the water runs on into a canal or the lake.
+    banks: Record<Side, number>
+}
 type Side = 'n' | 'e' | 's' | 'w'
 
 type Timeline = gsap.core.Timeline
@@ -85,7 +93,7 @@ export class BoardAnimator implements MoveInterrupter {
 
     private readonly parts = new Map<string, Parts>()
     private readonly marks = new Set<SVGElement>()
-    private readonly floodEdges = new Map<string, SVGRectElement>()
+    private readonly floodEdges = new Map<string, SVGPathElement>()
     private readonly floodFloors = new Map<string, SVGGElement>()
     private readonly listener = (step: Step) => this.onGameStateChange(step)
     private timeline: Timeline | undefined
@@ -134,8 +142,8 @@ export class BoardAnimator implements MoveInterrupter {
         }
     }
 
-    // The clip of the paving over a flooding square, which the water wipes away.
-    floodEdge(key: string): Attachment<SVGRectElement> {
+    // The clip of the paving over a canal being dug, which the pit opens up.
+    floodEdge(key: string): Attachment<SVGPathElement> {
         return (node) => {
             this.floodEdges.set(key, node)
             return () => {
@@ -325,81 +333,132 @@ export class BoardAnimator implements MoveInterrupter {
         animationContext.afterAnimations(land)
     }
 
-    // The paving draws in from every side to the tile's middle, leaving the banks and the earth
-    // below them, and then the water wells up through the middle of the earth and spreads out to
-    // the banks. Filled in again, the earth closes over the water and the paving spreads back.
+    // A pit opens from the middle of the paving down into the earth, the brick walls build up
+    // from its floor outward to the kerbs, and the water wells up through the earth in the
+    // middle and spreads to the walls' foot. Filled in again, all three run backwards.
     private flood(flood: Flood, dug: boolean, timeline: Timeline, digging: boolean) {
         const edge = this.floodEdges.get(flood.key)
         const floor = this.floodFloors.get(flood.key)
         if (edge === undefined || floor === undefined) {
-            throw new Error('A flooding canal is drawn before it floods')
+            throw new Error('A dug canal is drawn before it is dug')
         }
-        const { x, y, width, height } = flood.box
-        const whole = { x, y, width, height }
-        const gone = { x: x + width / 2, y: y + height / 2, width: 0, height: 0 }
-        const build = digging ? FLOOD.build : QUICK / 2
-        const rise = digging ? FLOOD.rise : QUICK / 2
-        const water = this.welling(floor, flood.floor)
+        const dig = this.digging(edge, floor, flood)
+        const [pit, walls, water] = digging
+            ? [DIG.pit, DIG.walls, DIG.water]
+            : [QUICK / 3, QUICK / 3, QUICK / 3]
         const immediateRender = true
-        if (dug) {
+        const stages = dug
+            ? [
+                  { key: 'pit', at: 0, duration: pit, ease: 'power1.out' },
+                  { key: 'walls', at: pit, duration: walls, ease: 'power1.inOut' },
+                  { key: 'water', at: pit + walls, duration: water, ease: 'power1.out' }
+              ]
+            : [
+                  { key: 'water', at: 0, duration: water, ease: 'power1.in' },
+                  { key: 'walls', at: water, duration: walls, ease: 'power1.inOut' },
+                  { key: 'pit', at: water + walls, duration: pit, ease: 'power1.in' }
+              ]
+        const [from, to] = dug ? [0, 1] : [1, 0]
+        timeline.set(dig, { pit: from, walls: from, water: from }, 0)
+        for (const stage of stages) {
             timeline.fromTo(
-                edge,
-                { attr: whole },
-                { attr: gone, duration: build, ease: 'power1.in', immediateRender },
-                0
+                dig,
+                { [stage.key]: from },
+                { [stage.key]: to, duration: stage.duration, ease: stage.ease, immediateRender },
+                stage.at
             )
-            timeline.fromTo(
-                water,
-                { reach: 0 },
-                { reach: 1, duration: rise, ease: 'power1.out', immediateRender },
-                build
-            )
-            return
         }
-        timeline.fromTo(
-            water,
-            { reach: 1 },
-            { reach: 0, duration: rise, ease: 'power1.in', immediateRender },
-            0
-        )
-        timeline.fromTo(
-            edge,
-            { attr: gone },
-            { attr: whole, duration: build, ease: 'power1.out', immediateRender },
-            rise
-        )
     }
 
-    // The water in a canal's floor as it wells up: a pool from the floor's middle whose `reach`
-    // grows from nothing to the whole floor, cut out of the floor's paths as it is set.
-    private welling(group: SVGGElement, floor: Box): { reach: number } {
-        const paths = [...group.querySelectorAll('path')]
-        const { x, y, width, height } = floor
-        const outline = `M${x} ${y}H${x + width}V${y + height}H${x}Z`
-        const cx = x + width / 2
-        const cy = y + height / 2
-        let reach = 0
-        const write = () => {
-            if (reach <= 0) {
-                for (const path of paths) path.setAttribute('d', outline)
-                return
-            }
-            const hx = (width / 2 + 2) * reach
-            const hy = (height / 2 + 2) * reach
-            const r = Math.min(hx, hy)
-            const pool =
+    // The shapes of a canal being dug, drawn as its stages are set: the hole in the paving the
+    // pit has opened, the earth not yet bricked, and the pool welling up in the middle. Each
+    // stage runs from 0 to 1.
+    private digging(
+        edge: SVGPathElement,
+        group: SVGGElement,
+        flood: Flood
+    ): { pit: number; walls: number; water: number } {
+        const earth = [...group.querySelectorAll('path')]
+        const stage = { pit: 0, walls: 0, water: 0 }
+        const rect = (x0: number, y0: number, x1: number, y1: number) =>
+            `M${x0} ${y0}H${x1}V${y1}H${x0}Z`
+        const rounded = (cx: number, cy: number, hx: number, hy: number, square = 0) => {
+            const r = Math.min(hx, hy) * (1 - square)
+            return (
                 `M${cx - hx + r} ${cy - hy}H${cx + hx - r}A${r} ${r} 0 0 1 ${cx + hx} ${cy - hy + r}` +
                 `V${cy + hy - r}A${r} ${r} 0 0 1 ${cx + hx - r} ${cy + hy}H${cx - hx + r}` +
-                `A${r} ${r} 0 0 1 ${cx - hx} ${cy + hy - r}V${cy - hy + r}A${r} ${r} 0 0 1 ${cx - hx + r} ${cy - hy}Z`
-            for (const path of paths) path.setAttribute('d', outline + pool)
+                `A${r} ${r} 0 0 1 ${cx - hx} ${cy + hy - r}V${cy - hy + r}` +
+                `A${r} ${r} 0 0 1 ${cx - hx + r} ${cy - hy}Z`
+            )
+        }
+        const { box, floor, banks } = flood
+        const write = () => {
+            // The pit: a hole from the middle of the paving's reach out to all of it.
+            const pit = stage.pit
+            const bx = box.x + box.width / 2
+            const by = box.y + box.height / 2
+            const outline = rect(box.x, box.y, box.x + box.width, box.y + box.height)
+            edge.setAttribute(
+                'd',
+                pit <= 0
+                    ? outline
+                    : outline +
+                          rounded(bx, by, (box.width / 2 + 1) * pit, (box.height / 2 + 1) * pit)
+            )
+            // The earth: the whole floor, less the bricked ring from the walls' foot out to
+            // where they have reached, less the pool.
+            const x0 = floor.x
+            const y0 = floor.y
+            const x1 = floor.x + floor.width
+            const y1 = floor.y + floor.height
+            const built = 1 - stage.walls
+            let shape = rect(x0, y0, x1, y1)
+            if (stage.walls > 0) {
+                shape +=
+                    rect(
+                        x0 + banks.w * built,
+                        y0 + banks.n * built,
+                        x1 - banks.e * built,
+                        y1 - banks.s * built
+                    ) + rect(x0 + banks.w, y0 + banks.n, x1 - banks.e, y1 - banks.s)
+            }
+            if (stage.water > 0) {
+                const fx0 = x0 + banks.w
+                const fy0 = y0 + banks.n
+                const fx1 = x1 - banks.e
+                const fy1 = y1 - banks.s
+                // A round pool at first, its corners filling out to the walls' coves.
+                shape += rounded(
+                    (fx0 + fx1) / 2,
+                    (fy0 + fy1) / 2,
+                    ((fx1 - fx0) / 2 + 3) * stage.water,
+                    ((fy1 - fy0) / 2 + 3) * stage.water,
+                    0.55 * stage.water
+                )
+            }
+            for (const path of earth) path.setAttribute('d', shape)
         }
         write()
         return {
-            get reach() {
-                return reach
+            get pit() {
+                return stage.pit
             },
-            set reach(value: number) {
-                reach = value
+            set pit(value: number) {
+                stage.pit = value
+                write()
+            },
+            get walls() {
+                return stage.walls
+            },
+            set walls(value: number) {
+                stage.walls = value
+                write()
+            },
+            get water() {
+                return stage.water
+            },
+            set water(value: number) {
+                stage.water = value
                 write()
             }
         }
@@ -444,6 +503,12 @@ export class BoardAnimator implements MoveInterrupter {
             key: cells.join('-'),
             cells,
             floor,
+            banks: {
+                n: reach('n') > 0 ? BANK_WIDTH : 0,
+                e: reach('e') > 0 ? BANK_WIDTH : 0,
+                s: reach('s') > 0 ? BANK_WIDTH : 0,
+                w: reach('w') > 0 ? BANK_WIDTH : 0
+            },
             box: {
                 x: floor.x - reach('w'),
                 y: floor.y - reach('n'),
