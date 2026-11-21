@@ -243,15 +243,6 @@
                 <circle cx="3.8" cy="5.1" r="0.5" fill="#76603f" opacity="0.5"></circle>
                 <circle cx="7.9" cy="6.1" r="0.35" fill="#1d150d" opacity="0.5"></circle>
             </pattern>
-            <!-- The canal's own water, to fill water running into a dug canal. -->
-            <pattern
-                id="mx-canal-water"
-                patternUnits="userSpaceOnUse"
-                width={PLAN.width}
-                height={PLAN.height}
-            >
-                <image href={LOOK_URLS[CANAL_LOOK]} {...PLAN} preserveAspectRatio="none"></image>
-            </pattern>
             {#each animator.floods as flood (flood.key)}
                 <!-- Blurred and cut back to a hard edge, discs of water that meet run together. -->
                 <filter
@@ -289,9 +280,35 @@
                         {/each}
                     </g>
                 </mask>
-                <clipPath id="mx-foot-{flood.key}">
-                    <path d={flood.waterPath}></path>
-                </clipPath>
+                <!-- The earth at the bottom of a canal being dug, eaten away by discs that run
+                     together as the water runs in. The water is the canal's own, drawn beneath. -->
+                <mask
+                    id="mx-fill-{flood.key}"
+                    maskUnits="userSpaceOnUse"
+                    x={flood.box.x - 8}
+                    y={flood.box.y - 8}
+                    width={flood.box.width + 16}
+                    height={flood.box.height + 16}
+                >
+                    <rect
+                        x={flood.box.x - 8}
+                        y={flood.box.y - 8}
+                        width={flood.box.width + 16}
+                        height={flood.box.height + 16}
+                        fill="white"
+                    ></rect>
+                    <g filter="url(#mx-goo-{flood.key})">
+                        {#each flood.springs as spring, index (index)}
+                            <circle
+                                cx={spring.x}
+                                cy={spring.y}
+                                r="0"
+                                fill="black"
+                                {@attach animator.spring(flood.key, 'water', index)}
+                            ></circle>
+                        {/each}
+                    </g>
+                </mask>
             {/each}
             <clipPath id="mx-land-clip">
                 {#each works.zones as zone (zone.key)}
@@ -380,23 +397,11 @@
                     class="surface"
                 ></image>
             {/each}
-            <!-- The earth at the bottom of a canal being dug, and the water running into it from
-                 the water beside it. Clipped together, the water's edge has no rim of earth. -->
+            <!-- The earth at the bottom of a canal being dug, which the water runs in over. -->
             {#each animator.floods as flood (flood.key)}
-                <g clip-path="url(#mx-foot-{flood.key})" class="surface">
+                <g mask="url(#mx-fill-{flood.key})" class="surface">
                     <path d={flood.footPath} fill="url(#mx-canal-earth)"></path>
                     <path d={flood.footPath} fill="url(#mx-canal-grit)"></path>
-                    <g filter="url(#mx-goo-{flood.key})">
-                        {#each flood.springs as spring, index (index)}
-                            <circle
-                                cx={spring.x}
-                                cy={spring.y}
-                                r="0"
-                                fill="url(#mx-canal-water)"
-                                {@attach animator.spring(flood.key, 'water', index)}
-                            ></circle>
-                        {/each}
-                    </g>
                 </g>
             {/each}
             <!-- The paving over a canal being dug, which runs away to show it. -->

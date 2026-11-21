@@ -52,10 +52,6 @@ const DIG = { build: 0.3, water: 0.32 }
 // The paving over a flooding square reaches this far into the land beside it, over the kerb the
 // canal brings there.
 const KERB_REACH = 3
-// Where the canal runs on into water already there, its new water reaches this far past the
-// square's edge, over the old; ending on the same line as the earth would leave a hairline of
-// earth showing between the two until the last.
-const WATER_OVERLAP = 1.5
 // The motion waits at most this long for its pieces to be drawn; any longer skips its start.
 const DRAW_WAIT = 0.01
 
@@ -76,8 +72,6 @@ export type Flood = {
     box: Box
     // The walls' foot, rounded where two walls meet in a cove: the earth at the canal's bottom.
     footPath: string
-    // Where the water runs: the foot, and a little past it into the water beside.
-    waterPath: string
     // Where the water runs in from: the middle of each edge it meets water by, or with none, the
     // middle of the floor; and how far a disc from each must reach to fill the foot.
     // `cover` is how far a disc must reach to clear the paving over the whole canal and kerbs.
@@ -511,13 +505,6 @@ export class BoardAnimator implements MoveInterrupter {
             key: cells.join('-'),
             cells,
             footPath: roundedRect(foot.x, foot.y, foot.x + foot.width, foot.y + foot.height, coves),
-            waterPath: roundedRect(
-                foot.x - (banks.w > 0 ? 0 : WATER_OVERLAP),
-                foot.y - (banks.n > 0 ? 0 : WATER_OVERLAP),
-                foot.x + foot.width + (banks.e > 0 ? 0 : WATER_OVERLAP),
-                foot.y + foot.height + (banks.s > 0 ? 0 : WATER_OVERLAP),
-                coves
-            ),
             springs:
                 edges.length > 0
                     ? edges
