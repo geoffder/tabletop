@@ -7,16 +7,14 @@ import {
     type Bitmap,
     clamp,
     dot,
-    fractal,
     linear,
-    noise2,
     mix,
     normalize,
     type Rgb,
     scale,
     type Vec
 } from './light.js'
-import { seededRandom } from './random.js'
+import { type Coursing, type Cut, cutStone, smoothStone } from './cutStone.js'
 import {
     type Block,
     DESIGN,
@@ -42,7 +40,7 @@ import {
 
 export const TEMPLE_PIXELS = 3
 
-const BLOCK = { shortest: 9, longest: 17, slabRow: 6.5, joint: 0.42, round: 0.7 }
+const COURSING: Coursing = { shortest: 9, longest: 17, row: 6.5, joint: 0.42, round: 0.7 }
 
 export type TempleStone = { light: string; dark: string; joint: string; warm: string; cool: string }
 
@@ -148,73 +146,8 @@ function shade(p: Vec, shapes: readonly Shape[], scene: Scene, hollow: Hollow, s
     return scale(base, (0.4 + 0.6 * sun + sky) * occlusion(p, surface, scene) * inside * riser)
 }
 
-const mottle = fractal(noise2(97), 4)
-const pits = fractal(noise2(113), 3)
-const wander = noise2(127)
-const chips = noise2(131)
-
-// Where the blocks of one course start, from the left: lengths drawn from its own seed.
-function blockStarts(seed: number): number[] {
-    const next = seededRandom(seed)
-    const starts = [-40 - next() * BLOCK.longest]
-    while (starts[starts.length - 1] < 40) {
-        const length = BLOCK.shortest + next() * (BLOCK.longest - BLOCK.shortest)
-        starts.push(starts[starts.length - 1] + length)
-    }
-    return starts
-}
-
-const COURSES = new Map<number, number[]>()
-
-function courseStarts(seed: number): number[] {
-    let starts = COURSES.get(seed)
-    if (starts === undefined) {
-        starts = blockStarts(seed)
-        COURSES.set(seed, starts)
-    }
-    return starts
-}
-
-type Cut = { tip: Vec; joint: number; tone: number; hue: number }
-
-// Cut stone in courses of blocks of uneven length: each block's face sits at a slight tilt of
-// its own, is pitted and mottled, has a warmer or cooler cast, and wears unevenly into the
-// joints round it. The stair is smooth stone, so its steps read.
+// The temple's tiers in cut stone; the stair is smooth stone, so its steps read.
 function stoneAt(p: Vec, normal: Vec, shape: Shape): Cut {
-    const onTop = normal[2] > 0.7
-    const sideways = Math.abs(normal[0]) > 0.7
-    if (shape.tier < 0 || (!onTop && !sideways && Math.abs(normal[1]) <= 0.7)) {
-        const tone = shape.tone + (mottle(p[0] * 0.3, p[2] * 0.3) - 0.5) * 0.25
-        return { tip: [0, 0, 0], joint: 0, tone, hue: 0 }
-    }
-    const block = shape.block
-    const uAxis: Vec = sideways ? [0, 1, 0] : [1, 0, 0]
-    const vAxis: Vec = onTop ? [0, 1, 0] : [0, 0, 1]
-    const u = dot(p, uAxis)
-    const v = onTop ? p[1] - block.y0 : p[2] - block.z0
-    const courseHeight = onTop ? BLOCK.slabRow : block.z1 - block.z0
-    const course = Math.floor(v / courseHeight)
-    const seed = (shape.tier + 3) * 7919 + course * 131 + (onTop ? 17 : sideways ? 29 : 0)
-    const starts = courseStarts(seed)
-    let index = 0
-    while (starts[index + 1] <= u) index++
-    const fu = u - starts[index]
-    const length = starts[index + 1] - starts[index]
-    const fv = v - course * courseHeight
-    const draw = seededRandom(seed * 31 + index * 7 + 1)
-    const [r1, r2, r3, r4, r5] = [draw(), draw(), draw(), draw(), draw()]
-    const jitter = (wander(u * 0.35 + seed, v * 0.35) - 0.5) * 0.6
-    const edges = [fu, length - fu, fv, courseHeight - fv].map((edge) => edge + jitter)
-    const toEdge = Math.min(...edges)
-    const out = [scale(uAxis, -1), uAxis, scale(vAxis, -1), vAxis][edges.indexOf(toEdge)]
-    const chipped = chips(u * 0.3, v * 0.3 + seed) > 0.72 ? 1.8 : 1
-    const wear = BLOCK.round * (0.6 + r3 * 0.9) * chipped
-    const roll = toEdge < wear ? (1 - toEdge / wear) ** 2 * 0.85 : 0
-    const joint = clamp(1 - (toEdge - BLOCK.joint / 2) / 0.15)
-    const pit = (du: number, dv: number) => pits(u * 0.9 + du, v * 0.9 + seed + dv)
-    const pitU = (pit(0.4, 0) - pit(-0.4, 0)) * 1.4
-    const pitV = (pit(0, 0.4) - pit(0, -0.4)) * 1.4
-    const tilt = add(scale(uAxis, (r1 - 0.5) * 0.16 + pitU), scale(vAxis, (r2 - 0.5) * 0.16 + pitV))
-    const tone = 0.08 + r4 * 0.5 + (mottle(u * 0.25, v * 0.25 + seed) - 0.5) * 0.5
-    return { tip: add(tilt, scale(out, roll)), joint: joint * 0.9, tone, hue: (r5 - 0.5) * 0.7 }
+    if (shape.tier < 0) return smoothStone(p, shape.tone)
+    return cutStone(p, normal, shape.block, shape.tier, COURSING) ?? smoothStone(p, shape.tone)
 }

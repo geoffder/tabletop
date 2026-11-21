@@ -5,8 +5,8 @@ import { CELL, type Box } from './view.js'
 
 // The Emperor's palace: a cross of dark stone over the five palace spaces, in board units round
 // the emblem's centre (x right, y towards the viewer, z up). Its arms are flat on top, laid in
-// blocks, and step down to the ground at their ends in broad stairs; in the middle a raised
-// square carries the bronze emblem. The cross looks the same from every side, so one image
+// blocks, and step down to the ground at their ends in broad stairs between low walls; in the
+// middle a raised square carries the sun disc. The cross looks the same from every side, so one image
 // serves every turn of the board.
 export const PALACE = {
     inset: 1.5,
@@ -15,7 +15,9 @@ export const PALACE = {
     flat: 36,
     steps: 5,
     centre: { half: 17, rise: 2, top: 13, above: 1.5 },
-    emblem: { radius: 11, depth: 0.6 }
+    emblem: { radius: 11, depth: 0.9, dome: 0.8, relief: 0.5 },
+    // How round the edges of its stone and of its steps are worn.
+    rounds: { stone: 1.2, stair: 0.7 }
 }
 
 export type PalaceMaterial = 'stone' | 'stair'
@@ -33,8 +35,8 @@ function stairTop(along: number): number {
 }
 
 export function palaceParts(): PalacePart[] {
-    const { flat, steps, rise, centre } = PALACE
-    const part = (block: Block, material: PalaceMaterial, round = 0.5) => ({
+    const { flat, steps, rise, centre, rounds } = PALACE
+    const part = (block: Block, material: PalaceMaterial, round = rounds.stone) => ({
         block,
         material,
         round
@@ -59,7 +61,7 @@ export function palaceParts(): PalacePart[] {
         )
     )
         .flat()
-        .map((block) => part(block, 'stair', 0.3))
+        .map((block) => part(block, 'stair', rounds.stair))
     const square = (half: number, top: number) => ({
         x0: -half,
         x1: half,
@@ -77,7 +79,12 @@ export function palaceParts(): PalacePart[] {
 
 // The top of the emblem, where a Pilli Mexica on the middle space stands.
 export const PALACE_TOP =
-    PALACE.rise + PALACE.centre.rise + PALACE.centre.above + PALACE.emblem.depth
+    PALACE.rise +
+    PALACE.centre.rise +
+    PALACE.centre.above +
+    PALACE.emblem.depth +
+    PALACE.emblem.dome +
+    PALACE.emblem.relief
 
 // How high a Pilli Mexica on a palace space stands, as a share of a cell: on the emblem in the
 // middle, part way down the stair on an arm.
