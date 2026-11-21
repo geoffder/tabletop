@@ -1,3 +1,4 @@
+import { isCascadedSystemAction, type GameAction } from '@tabletop/common'
 import {
     GameSession,
     undoableStagedSelection,
@@ -72,6 +73,13 @@ export class WebOfPowerGameSession extends GameSession<
 
     override beforeNewState({ kind }: PresentedTransition): void {
         if (kind === 'view-switch') for (const animator of this.moveInterrupters) animator.abandon()
+    }
+
+    // History steps take each move with the system actions that follow it (the row's refill
+    // closes the turn that took from it, a scoring the draw that ran the deck out), so a step or
+    // a turn's replay ends with its own refill rather than running on into the next player's move.
+    override shouldAutoStepAction(_action: GameAction, next?: GameAction): boolean {
+        return next !== undefined && isCascadedSystemAction(next)
     }
 
     faster: boolean = $derived(fasterVariantFromConfig(this.game.config))

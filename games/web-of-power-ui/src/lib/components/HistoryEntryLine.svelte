@@ -21,11 +21,15 @@
         >{#each turnSegments(entry, brief) as segment, index (index)}{#if segment.kind === 'text'}{segment.text}{:else}<CardChip
                     card={segment.card}
                 />{/if}{/each}</span
-    >{:else}<span
+    >{:else}<!-- Two parts, so the action panel (a wrapping row) puts the scores under the heading
+    when they would not fit beside it, rather than breaking among them. --><span
+        class="whitespace-nowrap"
         ><span class="font-semibold"
             >{entry.kind === 'interim' ? 'Interim scoring' : 'Final scoring'}</span
+        >:</span
+    >{' '}<span
         >{#each pointsByPlayer(entry) as { playerId, points }, index (playerId)}{index === 0
-                ? ': '
-                : ', '}{nameOf(playerId)}
-            {points}{/each}{#if pointsByPlayer(entry).length === 0}: no points{/if}</span
+                ? ''
+                : ', '}<span class="whitespace-nowrap">{nameOf(playerId)} {points}</span>{:else}no
+            points{/each}</span
     >{/if}

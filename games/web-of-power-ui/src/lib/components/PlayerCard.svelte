@@ -2,13 +2,18 @@
     import type { HydratedWebOfPowerPlayerState } from '@tabletop/web-of-power'
     import { getGameSession } from '$lib/model/sessionContext.svelte.js'
     import Piece from './Piece.svelte'
-    import { getCardAnimator, getScoringAnimator } from '$lib/animators/cardAnimatorContext.js'
+    import {
+        getCardAnimator,
+        getPieceAnimator,
+        getScoringAnimator
+    } from '$lib/animators/cardAnimatorContext.js'
 
     let { playerState }: { playerState: HydratedWebOfPowerPlayerState } = $props()
 
     const session = getGameSession()
     const cards = getCardAnimator()
     const scoring = getScoringAnimator()
+    const pieces = getPieceAnimator()
 
     const playerId = $derived(playerState.playerId)
     const isActive = $derived(session.gameState.activePlayerIds.includes(playerId))
@@ -41,16 +46,16 @@
             <svg viewBox="-19 -47 47 49" width="19" height="20" aria-hidden="true">
                 <Piece kind="house" {fill} />
             </svg>
-            <b>{session.gameState.cloistersLeft(playerId)}</b>
+            <b>{pieces?.cloistersLeft(playerId) ?? session.gameState.cloistersLeft(playerId)}</b>
         </span>
         <span class="tally" title="Advisors left">
             <svg viewBox="-10 -27 20 32" width="12" height="19" aria-hidden="true">
                 <Piece kind="peg" {fill} />
             </svg>
-            <b>{session.gameState.advisorsLeft(playerId)}</b>
+            <b>{pieces?.advisorsLeft(playerId) ?? session.gameState.advisorsLeft(playerId)}</b>
         </span>
         <span class="tally" title="Cards in hand">
-            <span class="mini-card" {@attach cards?.place(`player:${playerId}`)}></span><b
+            <span class="mini-card"></span><b
                 >{cards?.table.handCounts.get(playerId) ?? playerState.handCount}</b
             >
         </span>

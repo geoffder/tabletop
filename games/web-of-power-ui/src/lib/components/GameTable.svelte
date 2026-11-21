@@ -19,12 +19,16 @@
     import Board from '$lib/components/Board.svelte'
     import Header from '$lib/components/Header.svelte'
     import ActionPanel from '$lib/components/ActionPanel.svelte'
-    import GameEndPanel from '$lib/components/GameEndPanel.svelte'
     import CardTray from '$lib/components/CardTray.svelte'
     import { WebOfPowerGameSession } from '$lib/model/session.svelte.js'
     import { getGameSession, setGameSession } from '$lib/model/sessionContext.svelte.js'
     import { CardAnimator } from '$lib/animators/cardAnimator.svelte.js'
-    import { setCardAnimator, setScoringAnimator } from '$lib/animators/cardAnimatorContext.js'
+    import {
+        setCardAnimator,
+        setPieceAnimator,
+        setScoringAnimator
+    } from '$lib/animators/cardAnimatorContext.js'
+    import { PieceAnimator } from '$lib/animators/pieceAnimator.svelte.js'
     import { ScoringAnimator } from '$lib/animators/scoringAnimator.svelte.js'
     import Card from '$lib/components/Card.svelte'
     import AlmendraFont from '$lib/fonts/Almendra-Latin.woff2'
@@ -42,6 +46,8 @@
     setCardAnimator(cards)
     // Plays each scoring entry by entry, on the board and the player cards.
     const scoring = new ScoringAnimator(getGameSession())
+    // Places and lifts pieces as moves play; the board draws them and the player cards count them.
+    setPieceAnimator(new PieceAnimator(getGameSession()))
     setScoringAnimator(scoring)
 
     // The shared wrapper exposes full screen only as its dialog becoming modal.
@@ -62,11 +68,7 @@
 {#snippet turnControls()}
     <Header />
     <div class="action-card">
-        {#if gameSession.gameState.result && !gameSession.isViewingHistory}
-            <GameEndPanel />
-        {:else}
-            <ActionPanel />
-        {/if}
+        <ActionPanel />
         <CardTray />
     </div>
 {/snippet}

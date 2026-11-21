@@ -5,6 +5,7 @@
     import HistoryEntryLine from './HistoryEntryLine.svelte'
     import { holdTallest } from './holdTallest.js'
     import { getScoringAnimator } from '$lib/animators/cardAnimatorContext.js'
+    import GameEndPanel from './GameEndPanel.svelte'
 
     const session = getGameSession()
     const scoring = getScoringAnimator()
@@ -29,9 +30,12 @@
 <div class="fit">
     <div class="panel" {@attach holdTallest}>
         {#if scoring?.heading}
-            <span
-                ><b>{scoring.heading}</b>{#if scoring.label}: {scoring.label}{/if}</span
+            <span class="whitespace-nowrap"
+                ><b>{scoring.heading}</b>{#if scoring.label}:{/if}</span
             >
+            {#if scoring.label}<span>{scoring.label}</span>{/if}
+        {:else if session.gameState.result && !session.isViewingHistory}
+            <GameEndPanel />
         {:else if !acting}
             {#if lastEntry}
                 <HistoryEntryLine entry={lastEntry} brief />
@@ -87,7 +91,7 @@
         flex-wrap: wrap;
         align-items: center;
         justify-content: center;
-        gap: 4px 8px;
+        gap: 0 8px;
         min-height: 50px;
         padding: 4px 16px;
         text-align: center;

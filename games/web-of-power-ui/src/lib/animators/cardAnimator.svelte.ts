@@ -26,6 +26,11 @@ const ANIMATED_KINDS: ReadonlySet<TransitionKind> = new Set<TransitionKind>([
 // without an action moves them within QUICK.
 const FLY = { duration: 0.45, stagger: 0.07, ease: 'power2.inOut' }
 const QUICK = 0.18
+// Another player's cards are not followed to their player card. A card they play drops onto its
+// pile like a piece, from RISE card widths up and SCALE times larger (nearer the eye), slowing as
+// it lands, with no bounce; it shows over the first SHOW of the fall. A card they take lifts off
+// the same way in reverse, gathering speed, and goes over the last SHOW of the rise.
+const DROP = { duration: 0.3, rise: 1.2, scale: 1.15, show: 0.3 }
 // Degrees between neighbouring cards in the fanned hand (CardTray draws it so).
 export const FAN_STEP = 8
 
@@ -53,9 +58,12 @@ export type Flier = {
     width: number
 }
 
+// Another player's hand, which the table does not draw.
+const othersHand = (place: CardPlace, me: string | undefined): boolean =>
+    place.kind === 'hand' && place.playerId !== me
+
 // The places on the page cards are drawn at, by name: 'hand:<i>' for a card of the viewer's
-// hand, 'hand' for the hand itself, 'display:<i>', 'deck', 'discard', 'player:<id>' for the cards
-// a player holds as shown on their player card.
+// hand, 'hand' for the hand itself, 'display:<i>', 'deck' and 'discard'.
 const placeName = (place: CardPlace, me: string | undefined): string => {
     switch (place.kind) {
         case 'hand':
@@ -323,21 +331,28 @@ export class CardAnimator implements MoveInterrupter {
         const quick = action === undefined
         const duration = quick ? QUICK : FLY.duration
 
-        // Where every card starts, measured while the table still shows the state it leaves.
-        const starts = moves.map((move) => this.rectOf(placeName(move.from, me)))
+        // Where every card starts, measured while the table still shows the state it leaves: for
+        // a card out of another player's hand, roughly where it lands (it is placed exactly once
+        // the table shows the new state).
+        const starts = moves.map((move) =>
+            othersHand(move.from, me)
+                ? (this.rectOf(placeName(move.to, me)) ?? this.rectOf('deck'))
+                : this.rectOf(placeName(move.from, me))
+        )
         const handBefore = this.rectsOf('hand', before.hand.length)
         const rowBefore = this.rectsOf('display', before.display.length)
         const width = this.cardWidth()
 
         // The hand and the face-up row take their new layout at once: cards that stay slide to
         // their new places, and a card's new place waits, empty, for it to land. A pile keeps a
-        // card that is coming to it until it lands, and gives one up as it leaves.
+        // card that is coming to it until it lands, and gives one up as it leaves. The player
+        // cards count each hand as it is after the move, as its cards start to go.
         this.table = {
             hand: after.hand,
             display: after.display,
             discard: after.discard.length < before.discard.length ? after.discard : before.discard,
             deckCount: Math.min(before.deckCount, after.deckCount),
-            handCounts: before.handCounts
+            handCounts: after.handCounts
         }
         const fliers = moves.flatMap((move, order) => {
             const start = starts[order]
@@ -347,12 +362,10 @@ export class CardAnimator implements MoveInterrupter {
                     id: this.nextId++,
                     card: move.card,
                     flips: move.from.kind === 'deck' && move.card !== undefined,
-                    // A card leaves a player's small card at that card's size, centred on it.
                     left: start.left + start.width / 2 - width / 2,
                     top: start.top + start.height / 2 - (width * 1.5) / 2,
                     width,
-                    move,
-                    start
+                    move
                 }
             ]
         })
@@ -414,6 +427,36 @@ export class CardAnimator implements MoveInterrupter {
             const node = this.flierNodes.get(flier.id)
             if (node === undefined) throw Error('A flying card is drawn before it flies')
             this.tweened.add(node)
+            const at = quick ? 0 : order * FLY.stagger
+            const fade = quick ? QUICK : DROP.duration
+            const rise = width * DROP.rise
+            // Taken by another player: up off its place and away.
+            if (othersHand(flier.move.to, me)) {
+                timeline.fromTo(
+                    node,
+                    { y: 0, scale: 1 },
+                    {
+                        y: -rise,
+                        scale: DROP.scale,
+                        duration: fade,
+                        ease: 'power1.in',
+                        immediateRender: true
+                    },
+                    at
+                )
+                timeline.fromTo(
+                    node,
+                    { opacity: 1 },
+                    {
+                        opacity: 0,
+                        duration: fade * DROP.show,
+                        ease: 'none',
+                        immediateRender: false
+                    },
+                    at + fade * (1 - DROP.show)
+                )
+                return
+            }
             const name = placeName(flier.move.to, me)
             // A card coming to the hand or the row lands on its own place there, kept empty
             // until then.
@@ -424,17 +467,14 @@ export class CardAnimator implements MoveInterrupter {
                     : undefined
             const end = arriving?.getBoundingClientRect() ?? this.rectOf(name)
             if (end === undefined) return
-            const at = quick ? 0 : order * FLY.stagger
+            const travel = othersHand(flier.move.from, me) ? fade : duration
             if (arriving !== undefined) {
                 touched.push(arriving)
                 arriving.style.visibility = 'hidden'
-                timeline.call(() => (arriving.style.visibility = ''), undefined, at + duration)
+                timeline.call(() => (arriving.style.visibility = ''), undefined, at + travel)
             }
             const x = end.left + end.width / 2 - (flier.left + width / 2)
             const y = end.top + end.height / 2 - (flier.top + (width * 1.5) / 2)
-            // A card ends at the size of what it lands on: a small card on a player's card.
-            const scale = Math.min(1, end.width / width)
-            const startScale = Math.min(1, flier.start.width / width)
             // A card drawn face down turns over through the middle of its flight.
             const spin = node.querySelector<HTMLElement>('.spin')
             if (flier.flips && spin !== null) {
@@ -470,16 +510,31 @@ export class CardAnimator implements MoveInterrupter {
                         }
                     },
                     undefined,
-                    at + duration
+                    at + travel
                 )
+            }
+            // Played by another player: drops onto where it lands.
+            if (othersHand(flier.move.from, me)) {
+                timeline.fromTo(
+                    node,
+                    { x, y: y - rise, scale: DROP.scale },
+                    { y, scale: 1, duration: fade, ease: 'power1.out', immediateRender: true },
+                    at
+                )
+                timeline.fromTo(
+                    node,
+                    { opacity: 0 },
+                    { opacity: 1, duration: fade * DROP.show, ease: 'none', immediateRender: true },
+                    at
+                )
+                return
             }
             timeline.fromTo(
                 node,
-                { x: 0, y: 0, scale: startScale, rotation: 0 },
+                { x: 0, y: 0, rotation: 0 },
                 {
                     x,
                     y,
-                    scale,
                     rotation: lands,
                     duration,
                     ease: quick ? 'power1.inOut' : FLY.ease,

@@ -1,5 +1,6 @@
 import { getContext, setContext } from 'svelte'
 import type { CardAnimator } from './cardAnimator.svelte.js'
+import type { PieceAnimator } from './pieceAnimator.svelte.js'
 import type { ScoringAnimator } from './scoringAnimator.svelte.js'
 
 // The table's card animator, for the tray and the player cards to register where cards are drawn.
@@ -23,4 +24,16 @@ export function setScoringAnimator(animator: ScoringAnimator) {
 
 export function getScoringAnimator(): ScoringAnimator | undefined {
     return getContext<ScoringAnimator | undefined>(SCORING_KEY)
+}
+
+// The table's piece animator, for the board to draw the pieces it moves and the player cards to
+// count the pieces left as they go down.
+const PIECE_KEY = Symbol('web-of-power-piece-animator')
+
+export function setPieceAnimator(animator: PieceAnimator) {
+    setContext(PIECE_KEY, animator)
+}
+
+export function getPieceAnimator(): PieceAnimator | undefined {
+    return getContext<PieceAnimator | undefined>(PIECE_KEY)
 }

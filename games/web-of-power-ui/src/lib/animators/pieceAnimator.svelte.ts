@@ -44,6 +44,9 @@ const DRAW_WAIT = 0.01
 type Timeline = gsap.core.Timeline
 type Step = TransitionStep<HydratedWebOfPowerGameState, AnimationContext>
 
+const owned = (pieces: readonly { playerId: string }[], playerId: string) =>
+    pieces.filter((piece) => piece.playerId === playerId).length
+
 // An advisor's node: its country and its place in the order the country's advisors arrived.
 export const advisorKey = (country: Country, index: number) => `${country}:${index}`
 
@@ -58,6 +61,26 @@ export class PieceAnimator implements MoveInterrupter {
         void this.session.gameState
         return new Map<Country, number>()
     })
+
+    // The pieces a player has left as the board draws them: one goes from the count as it
+    // starts to drop, and comes back as it lifts off.
+    cloistersLeft(playerId: string): number {
+        const state = this.session.gameState
+        return (
+            state.cloistersLeft(playerId) +
+            owned(state.cloisters, playerId) -
+            owned(this.cloisters, playerId)
+        )
+    }
+
+    advisorsLeft(playerId: string): number {
+        const state = this.session.gameState
+        return (
+            state.advisorsLeft(playerId) +
+            owned(state.advisors, playerId) -
+            owned(this.advisors, playerId)
+        )
+    }
 
     private readonly houses = new Map<string, SVGGElement>()
     private readonly pegs = new Map<string, SVGGElement>()

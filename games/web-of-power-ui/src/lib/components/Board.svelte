@@ -23,7 +23,7 @@
     } from '$lib/board/mapData.js'
     import { cloisterDrawing } from '$lib/board/pieces.js'
     import { wornTag } from '$lib/board/tags.js'
-    import { getScoringAnimator } from '$lib/animators/cardAnimatorContext.js'
+    import { getPieceAnimator, getScoringAnimator } from '$lib/animators/cardAnimatorContext.js'
     import { roadInk, seaRouteInk } from '$lib/board/roadInk.js'
     import { ISLANDS, MAP_LABELS, MOUNTAINS } from '$lib/board/mapDetails.js'
     import { HOUSE_SPRITE } from '$lib/board/pieceSprites.js'
@@ -84,7 +84,7 @@
     const CHIP = { width: 78, height: 50, step: 86, font: 36 }
 
     // Places and lifts pieces as moves play; the board draws the pieces it is moving.
-    const pieces = new PieceAnimator(session)
+    const pieces = getPieceAnimator() ?? new PieceAnimator(session)
 
     const cloisterAt = $derived(
         new Map(pieces.cloisters.map((cloister) => [cloister.abbey, cloister.playerId]))
