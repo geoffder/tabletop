@@ -45,12 +45,11 @@
         {:else if session.isDrawing}
             <!-- The market and the deck are tapped themselves. -->
             <span
-                >{#if !session.canDrawFaceUp}Draw from the deck{:else if !session.canDrawFromDeck}Draw
-                    {session.cardsToDraw === 1
-                        ? 'a market card'
-                        : `${session.cardsToDraw} market cards`}{:else if session.cardsToDraw === 1}Draw
-                    a market card, or from the deck{:else}Draw {session.cardsToDraw} cards: market cards,
-                    or from the deck{/if}</span
+                >Draw {session.cardsToDraw}: from {session.canDrawFaceUp && session.canDrawFromDeck
+                    ? 'market or deck'
+                    : session.canDrawFaceUp
+                      ? 'market'
+                      : 'deck'}</span
             >
         {:else if session.chosenCards.length > 0}
             <span
