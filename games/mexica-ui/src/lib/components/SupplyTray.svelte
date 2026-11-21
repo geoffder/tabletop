@@ -2,6 +2,7 @@
     import { BASE_AP, LEVELS, type Level } from '@tabletop/mexica'
     import { getGameSession } from '$lib/model/sessionContext.svelte.js'
     import PieceIcon from './PieceIcon.svelte'
+    import MaskIcon from './MaskIcon.svelte'
 
     const session = getGameSession()
 
@@ -19,7 +20,7 @@
     {#if shown}
         <div class="ap" title="Action points left this turn">
             {#each Array.from({ length: BASE_AP }, (_, i) => i) as pip (pip)}
-                <span class="pip" class:spent={pip >= session.apLeft}></span>
+                <MaskIcon spent={pip >= session.apLeft} size={28} />
             {/each}
             {#if tokens > 0}<span class="tokens" title="Action tokens">+{tokens}</span>{/if}
         </div>
@@ -109,26 +110,7 @@
         display: flex;
         align-items: center;
         gap: 6px;
-        min-height: 20px;
-    }
-
-    /* Painted wooden discs, lit from the top left. */
-    .pip {
-        width: 18px;
-        height: 18px;
-        border-radius: 50%;
-        background: radial-gradient(
-            circle at 35% 30%,
-            color-mix(in srgb, var(--mx-ap), #fff 35%),
-            var(--mx-ap) 55%,
-            color-mix(in srgb, var(--mx-ap), #000 30%)
-        );
-        box-shadow: 0 1px 2px rgb(40 20 10 / 0.35);
-    }
-
-    .pip.spent {
-        background: transparent;
-        box-shadow: inset 0 0 0 1.5px rgb(40 30 20 / 0.28);
+        min-height: 30px;
     }
 
     .tokens {

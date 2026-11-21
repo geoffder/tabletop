@@ -72,6 +72,7 @@ export class MexicaGameSession extends GameSession<MexicaGameState, HydratedMexi
     flatBoard: boolean = $derived(this.preferences.values.flatBoard)
     rotatedBoard: boolean = $derived(this.preferences.values.rotatedBoard)
     farSide: boolean = $derived(this.preferences.values.farSide)
+    moveCosts: boolean = $derived(this.preferences.values.moveCosts)
 
     view: BoardView = $derived(
         boardView(this.flatBoard, quarterTurnsOf(this.rotatedBoard, this.farSide))
@@ -102,6 +103,10 @@ export class MexicaGameSession extends GameSession<MexicaGameState, HydratedMexi
 
     toggleFarSide() {
         this.preferences.set({ farSide: !this.farSide })
+    }
+
+    toggleMoveCosts() {
+        this.preferences.set({ moveCosts: !this.moveCosts })
     }
 
     canChooseStart = $derived(this.canAct(ActionType.ChooseStart))

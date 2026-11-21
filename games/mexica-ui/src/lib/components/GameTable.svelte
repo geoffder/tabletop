@@ -147,6 +147,15 @@
                                 </svg>
                             </OverlayToggle>
                             <OverlayToggle
+                                glyph="AP"
+                                label="Move costs"
+                                hint={gameSession.moveCosts
+                                    ? 'Hide what each move costs'
+                                    : 'Show what each move costs on the spaces you can reach'}
+                                pressed={gameSession.moveCosts}
+                                onToggle={() => gameSession.toggleMoveCosts()}
+                            />
+                            <OverlayToggle
                                 glyph="90°"
                                 label="Rotated board"
                                 hint={gameSession.rotatedBoard

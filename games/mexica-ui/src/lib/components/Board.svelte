@@ -332,6 +332,18 @@
                 }}
                 <rect {...tile} rx="2" class="mark-band"></rect>
                 <rect {...tile} rx="2" class="mark"></rect>
+                {#if session.moveCosts && move !== undefined && session.tool === undefined}
+                    <!-- What the move costs, in a badge at the square's far right corner. -->
+                    <circle cx={tile.x + tile.width - 1} cy={tile.y + 1} r="6.5" class="cost-badge"
+                    ></circle>
+                    <text
+                        x={tile.x + tile.width - 1}
+                        y={tile.y + 1}
+                        dy="3.4"
+                        text-anchor="middle"
+                        class="cost-number">{move.cost}</text
+                    >
+                {/if}
             {/if}
         {/each}
         {#each chosen as cell (cell)}
@@ -597,6 +609,20 @@
     .hit.active:focus-visible {
         stroke: var(--mx-mark);
         stroke-width: 2;
+    }
+
+    .cost-badge {
+        fill: #1d2a33;
+        stroke: var(--mx-mark);
+        stroke-width: 1.2;
+        pointer-events: none;
+    }
+
+    .cost-number {
+        font-size: 9.5px;
+        font-weight: 800;
+        fill: #fff;
+        pointer-events: none;
     }
 
     .cost {
