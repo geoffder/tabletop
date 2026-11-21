@@ -230,12 +230,18 @@
                     ></rect>
                 {/each}
             </clipPath>
-            <!-- Courses of tezontle brick, as the banks are laid in. -->
-            <pattern id="mx-canal-floor" patternUnits="userSpaceOnUse" width="8" height="5">
-                <rect width="8" height="5" fill="#7a5545"></rect>
-                <rect x="0.3" y="0.3" width="7.4" height="2" rx="0.4" fill="#8f6350"></rect>
-                <rect x="-3.7" y="2.8" width="7.4" height="2" rx="0.4" fill="#8a5f4c"></rect>
-                <rect x="4.3" y="2.8" width="7.4" height="2" rx="0.4" fill="#936653"></rect>
+            <!-- The bare earth at the bottom of a canal being dug: darker the deeper it lies
+                 towards the middle, and speckled with grit. -->
+            <radialGradient id="mx-canal-earth">
+                <stop offset="0" stop-color="#2f2318"></stop>
+                <stop offset="0.7" stop-color="#46341f"></stop>
+                <stop offset="1" stop-color="#5a4429"></stop>
+            </radialGradient>
+            <pattern id="mx-canal-grit" patternUnits="userSpaceOnUse" width="9" height="7">
+                <circle cx="1.5" cy="1.2" r="0.55" fill="#6f5638" opacity="0.7"></circle>
+                <circle cx="6.2" cy="2.4" r="0.4" fill="#1d150d" opacity="0.6"></circle>
+                <circle cx="3.8" cy="5.1" r="0.5" fill="#76603f" opacity="0.5"></circle>
+                <circle cx="7.9" cy="6.1" r="0.35" fill="#1d150d" opacity="0.5"></circle>
             </pattern>
             {#each animator.floods as flood (flood.key)}
                 <clipPath id="mx-flood-{flood.key}">
@@ -293,15 +299,13 @@
                 clip-path="url(#mx-canal-clip)"
                 class="surface"
             ></image>
-            <!-- The brick floor of a canal being built, under its banks, which the water rises
-                 over. -->
+            <!-- The earth at the bottom of a canal being dug, under its sloping banks, which the
+                 water wells up through. -->
             {#each animator.floods as flood (flood.key)}
-                <path
-                    fill="url(#mx-canal-floor)"
-                    fill-rule="evenodd"
-                    class="surface"
-                    {@attach animator.floodFloor(flood.key)}
-                ></path>
+                <g class="surface" {@attach animator.floodFloor(flood.key)}>
+                    <path fill="url(#mx-canal-earth)" fill-rule="evenodd"></path>
+                    <path fill="url(#mx-canal-grit)" fill-rule="evenodd"></path>
+                </g>
             {/each}
             {#each works.banks as bank (bank.key)}
                 <polygon points={bank.points} fill="url(#mx-slope-{bank.slope})" class="surface"
