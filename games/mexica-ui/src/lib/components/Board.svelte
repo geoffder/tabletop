@@ -32,7 +32,14 @@
     import { templeMark } from '$lib/board/templeMarks.js'
     import TempleMarks from './TempleMarks.svelte'
     import { PLAN } from '$lib/board/plan.js'
-    import { octagon } from '$lib/board/shapes.js'
+    import {
+        TOKEN,
+        TOKEN_INK,
+        TOKEN_ON_BOARD,
+        tokenBounds,
+        tokenFaceLift,
+        tokenLook
+    } from '$lib/board/tokenShape.js'
     import { BRIDGE, bridgeBounds } from '$lib/board/bridgeShape.js'
     import { LOOK_OUTLINES } from '$lib/board/lookOutlines.js'
     import { pilliBounds, pilliLook, pilliShineLook, shineOver } from '$lib/board/pilliShape.js'
@@ -152,6 +159,34 @@
     const landCells = LAND_CELLS
 </script>
 
+<!-- A calpulli token, `radius` to its corners: its size, and below it the points for second
+     and third place. -->
+{#snippet calpulli(centre: Point, tokenId: number, radius: number)}
+    {@const [, second, third] = placePoints(tokenSize(tokenId))}
+    {@const face = -tokenFaceLift(view.tilt)}
+    <g transform="translate({centre.x} {centre.y}) scale({radius / TOKEN.radius})" class="surface">
+        <image
+            href={LOOK_URLS[tokenLook(view.flat)]}
+            {...tokenBounds(view.tilt)}
+            preserveAspectRatio="none"
+        ></image>
+        <text
+            class="token-size"
+            y={face - 6 * view.tilt}
+            dy="5.6"
+            text-anchor="middle"
+            fill={TOKEN_INK}>{tokenSize(tokenId)}</text
+        >
+        <text
+            class="token-points"
+            y={face + 9 * view.tilt}
+            dy="3.5"
+            text-anchor="middle"
+            fill={TOKEN_INK}>{second} · {third}</text
+        >
+    </g>
+{/snippet}
+
 <div class="tap-off" role="presentation" onclick={onTap}>
     <svg
         class="mx-board"
@@ -268,13 +303,7 @@
         {/if}
 
         {#each game.districts as district (district.tokenId)}
-            {@const centre = view.centre(district.cell)}
-            {@const size = tokenSize(district.tokenId)}
-            <polygon points={octagon(view, centre, CELL * 0.4)} class="token-side"></polygon>
-            <polygon points={octagon(view, centre, CELL * 0.4, 3)} class="token"></polygon>
-            <text class="token-size" x={centre.x} y={centre.y - 3} dy="4.6" text-anchor="middle"
-                >{size}</text
-            >
+            {@render calpulli(view.centre(district.cell), district.tokenId, TOKEN_ON_BOARD)}
         {/each}
 
         <!-- Ground marks: where the chosen tool or the Pilli Mexica can go. -->
@@ -405,20 +434,7 @@
                 class="display-frame"
             ></rect>
             {#each display as tokenId, index (tokenId)}
-                {@const centre = slotCentre(index)}
-                {@const [, second, third] = placePoints(tokenSize(tokenId))}
-                <polygon points={octagon(view, centre, SLOT * 0.4)} class="token-side"></polygon>
-                <polygon points={octagon(view, centre, SLOT * 0.4, 3)} class="token"></polygon>
-                <text class="token-size" x={centre.x} y={centre.y - 6} dy="4.6" text-anchor="middle"
-                    >{tokenSize(tokenId)}</text
-                >
-                <text
-                    class="token-points"
-                    x={centre.x}
-                    y={centre.y + 6}
-                    dy="2.8"
-                    text-anchor="middle">{second} · {third}</text
-                >
+                {@render calpulli(slotCentre(index), tokenId, TOKEN.radius)}
             {/each}
         </g>
 
@@ -512,26 +528,15 @@
         pointer-events: none;
     }
 
-    .token-side {
-        fill: var(--mx-token-side);
-    }
-
-    .token {
-        fill: var(--mx-token);
-        stroke: var(--mx-token-side);
-        stroke-width: 0.8;
-    }
-
     .token-size {
-        font-size: 13px;
+        font-size: 16px;
         font-weight: 700;
-        fill: var(--mx-token-ink);
         pointer-events: none;
     }
 
     .token-points {
-        font-size: 8px;
-        fill: var(--mx-token-ink);
+        font-size: 10px;
+        font-weight: 600;
         pointer-events: none;
     }
 
