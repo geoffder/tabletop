@@ -147,9 +147,23 @@ export function waterworks(landCells: readonly Cell[], canals: ReadonlySet<Cell>
         }
     }
     const grounds = landCells.map(spotOf).filter((spot) => island.ground(spot))
+    // Open lake beside the water, where brick may round a corner of land between two waters.
+    const open: Spot[] = []
+    for (const spot of waters) {
+        for (const side of SIDES) {
+            const near = plus(spot, STEP[side])
+            if (island.lake(near) && !island.water(near) && !seen.has(keyOf(near))) {
+                seen.add(keyOf(near))
+                open.push(near)
+            }
+        }
+    }
     return {
         banks: waters.flatMap((spot) => banksOf(island, spot)),
-        curves: waters.flatMap((spot) => curvesOf(island, spot)),
+        curves: [
+            ...waters.flatMap((spot) => curvesOf(island, spot)),
+            ...open.flatMap((spot) => curvesOf(island, spot, false))
+        ],
         spills: spillsOf(island, grounds),
         kerbs: grounds.flatMap((spot) => kerbsOf(island, spot)),
         joins: waters.flatMap((spot) => joinsOf(island, spot)),
@@ -185,8 +199,9 @@ function banksOf(island: Island, spot: Spot): Bank[] {
 
 // A curve of bank in the corner of a water square wherever the water runs on past both sides
 // of that corner but the square across the corner is land, its corner jutting into the water;
-// and a cove wherever the square meets land on both sides of a corner.
-function curvesOf(island: Island, spot: Spot): Curve[] {
+// and a cove wherever the square meets land on both sides of a corner. A square of open lake,
+// not `banked`, takes only the curve: round land between a canal's mouth and another's, say.
+function curvesOf(island: Island, spot: Spot, banked = true): Curve[] {
     const at = (corner: SlopeCorner, up: SlopeSide, beside: SlopeSide, bend: Curve['bend']) => {
         const size = bend === 'inside' ? BANK_WIDTH + COVE_TOE : BANK_WIDTH
         return {
@@ -202,7 +217,9 @@ function curvesOf(island: Island, spot: Spot): Curve[] {
         const across = plus(spot, plus(STEP[up], STEP[beside]))
         const above = plus(spot, STEP[up])
         const aside = plus(spot, STEP[beside])
-        if (island.ground(above) && island.ground(aside)) return [at(corner, up, beside, 'inside')]
+        if (banked && island.ground(above) && island.ground(aside)) {
+            return [at(corner, up, beside, 'inside')]
+        }
         if (island.water(above) && island.water(aside) && island.ground(across)) {
             return [at(corner, up, beside, 'outside')]
         }
@@ -212,14 +229,13 @@ function curvesOf(island: Island, spot: Spot): Curve[] {
 
 // Wherever a square's shore on the lake is cut short, by a canal or a canal's mouth beside it,
 // its rocks slide over the cut and down the brick there, so the stone runs into the brick
-// rather than stopping at it.
+// rather than stopping at it. The lake past the board's edge is lake like any other.
 function spillsOf(island: Island, grounds: readonly Spot[]): Spill[] {
     const spills: Spill[] = []
     for (const spot of grounds) {
         for (const side of SIDES) {
             const host = plus(spot, STEP[side])
-            if (island.cell(host) === undefined || !island.lake(host) || island.mouth(host))
-                continue
+            if (!island.lake(host) || island.mouth(host)) continue
             for (const end of ENDS[side]) {
                 const beside = plus(spot, STEP[end])
                 const across = plus(host, STEP[end])
