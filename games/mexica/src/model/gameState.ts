@@ -209,8 +209,8 @@ export class HydratedMexicaGameState
         return BRIDGE_COUNT - this.bridges.length
     }
 
-    canBuildBridge(cell: number, axis: Axis): boolean {
-        return isCell(cell) && this.bridgesLeft() > 0 && this.layout().bridgeFits(cell, axis)
+    canBuildBridge(cell: number, axis: Axis, layout: Layout = this.layout()): boolean {
+        return isCell(cell) && this.bridgesLeft() > 0 && layout.bridgeFits(cell, axis)
     }
 
     buildBridge(cell: Cell, axis: Axis) {
@@ -218,10 +218,14 @@ export class HydratedMexicaGameState
     }
 
     // Only once every bridge is built, and only a bridge nobody stands on.
-    canMoveBridge(bridgeId: number, cell: number, axis: Axis): boolean {
+    canMoveBridge(
+        bridgeId: number,
+        cell: number,
+        axis: Axis,
+        layout: Layout = this.layout()
+    ): boolean {
         const bridge = this.bridges.at(bridgeId)
         if (bridge === undefined || this.bridgesLeft() > 0 || !isCell(cell)) return false
-        const layout = this.layout()
         return !layout.pillis.has(bridge.cell) && layout.bridgeFits(cell, axis)
     }
 
@@ -248,9 +252,13 @@ export class HydratedMexicaGameState
         return layout.bridges.has(cell) ? undefined : layout.districtOf(cell)
     }
 
-    canBuildTemple(playerId: string, cell: number, level: Level): boolean {
+    canBuildTemple(
+        playerId: string,
+        cell: number,
+        level: Level,
+        layout: Layout = this.layout()
+    ): boolean {
         if (this.templesLeft(playerId, level) <= 0) return false
-        const layout = this.layout()
         const district = this.pilliDistrict(playerId, layout)
         return district !== undefined && layout.isBuildable(cell) && district.includes(cell)
     }
@@ -268,8 +276,7 @@ export class HydratedMexicaGameState
         return this.display.find((tokenId) => tokenSize(tokenId) === district.length)
     }
 
-    canFound(playerId: string, cell: number): boolean {
-        const layout = this.layout()
+    canFound(playerId: string, cell: number, layout: Layout = this.layout()): boolean {
         if (this.foundingToken(playerId, layout) === undefined) return false
         const district = this.pilliDistrict(playerId, layout)
         return district !== undefined && district.includes(cell) && layout.isBuildable(cell)
