@@ -246,6 +246,39 @@
     // it reaches every free square, so it stays quieter than a walk's spot.
     const TELEPORT_DOT = { radius: 2.4, edge: 0.35, fill: 0.85 }
 
+    // A founding's squares, marked in the calpulli token's shape, `radius` to its corners.
+    const FOUNDING_MARK = 18
+
+    // The edge of the district a temple can go in, along the sides of its squares that face out.
+    const districtEdge = $derived.by(() => {
+        const cells = session.templeDistrict
+        const inside = new Set(cells.map((cell) => `${columnOf(cell)},${rowOf(cell)}`))
+        const has = (c: number, r: number) => inside.has(`${c},${r}`)
+        const at = (c: number, r: number) => {
+            const p = view.at(c, r)
+            return `${p.x.toFixed(2)} ${p.y.toFixed(2)}`
+        }
+        const sides: string[] = []
+        for (const cell of cells) {
+            const [c, r] = [columnOf(cell), rowOf(cell)]
+            if (!has(c, r - 1)) sides.push(`M ${at(c, r)} L ${at(c + 1, r)}`)
+            if (!has(c, r + 1)) sides.push(`M ${at(c, r + 1)} L ${at(c + 1, r + 1)}`)
+            if (!has(c - 1, r)) sides.push(`M ${at(c, r)} L ${at(c, r + 1)}`)
+            if (!has(c + 1, r)) sides.push(`M ${at(c + 1, r)} L ${at(c + 1, r + 1)}`)
+        }
+        return sides.join(' ')
+    })
+
+    // An octagon `r` to its corners round the origin, lying on the ground, flat sides square to
+    // the board, as a calpulli token lies.
+    function octagonPath(r: number): string {
+        const points = Array.from({ length: 8 }, (_, k) => {
+            const angle = Math.PI / 8 + (k * Math.PI) / 4
+            return `${(r * Math.cos(angle)).toFixed(2)} ${(r * Math.sin(angle) * view.tilt).toFixed(2)}`
+        })
+        return `M${points.join('L')}Z`
+    }
+
     // A walk's spot, in board units.
     const WALK_SPOT = 6
 
@@ -372,7 +405,18 @@
                     ></path>
                 {/each}
             {/each}
-        {:else if move !== undefined && session.tool === undefined}
+        {:else if session.tool === 'found'}
+            {@const c = view.centre(cell)}
+            <g transform="translate({c.x} {c.y - markLift(cell)})">
+                {#each ['under', 'over'] as layer (layer)}
+                    <path
+                        d={octagonPath(FOUNDING_MARK)}
+                        class="walk {layer}"
+                        {@attach animator.mark()}
+                    ></path>
+                {/each}
+            </g>
+        {:else if (move !== undefined && session.tool === undefined) || session.canChooseStart}
             <!-- Walks are many and reach onto bridges, where a wash would not show: a spot. -->
             {#each ['under', 'over'] as layer (layer)}
                 <ellipse
@@ -384,8 +428,20 @@
                     {@attach animator.mark()}
                 ></ellipse>
             {/each}
-        {:else if session.tool === 'canal'}
-            <!-- A canal's squares are many: a wash alone, so the board stays readable. -->
+        {:else if session.tool === 'moveBridge' && layout.bridges.has(cell)}
+            {@const bridge = layout.bridges.get(cell)}
+            {#if bridge !== undefined}
+                {#each ['under', 'over'] as layer (layer)}
+                    <path
+                        d={spanOutline(cell, bridge.axis)}
+                        class="span {layer}"
+                        {@attach animator.mark()}
+                    ></path>
+                {/each}
+            {/if}
+        {:else if session.tool === 'canal' || typeof session.tool === 'number'}
+            <!-- A canal's or a temple's squares are many: a wash alone, so the board stays
+                 readable. -->
             <rect {...tile} rx="2" class="wash" {@attach animator.mark()}></rect>
         {:else}
             <rect {...tile} rx="2" class="mark-band" {@attach animator.mark()}></rect>
@@ -428,14 +484,28 @@
 <!-- A square already chosen. -->
 {#snippet chosenMark(cell: Cell)}
     {@const box = view.cellBox(cell)}
-    {@const tile = {
-        x: box.x + 3,
-        y: box.y + 3 * view.tilt - markLift(cell),
-        width: box.width - 6,
-        height: box.height - 6 * view.tilt
-    }}
-    <rect {...tile} rx="2" class="mark-band" {@attach animator.mark()}></rect>
-    <rect {...tile} rx="2" class="chosen" {@attach animator.mark()}></rect>
+    {@const bridge = layout.bridges.get(cell)}
+    {@const axes = bridge !== undefined ? [bridge.axis] : session.axisChoices}
+    {#if session.tool === 'bridge' || session.tool === 'moveBridge'}
+        {#each axes as axis (axis)}
+            {#each ['under', 'over'] as layer (layer)}
+                <path
+                    d={spanOutline(cell, axis)}
+                    class="span chosen-span {layer}"
+                    {@attach animator.mark()}
+                ></path>
+            {/each}
+        {/each}
+    {:else}
+        {@const tile = {
+            x: box.x + 3,
+            y: box.y + 3 * view.tilt - markLift(cell),
+            width: box.width - 6,
+            height: box.height - 6 * view.tilt
+        }}
+        <rect {...tile} rx="2" class="mark-band" {@attach animator.mark()}></rect>
+        <rect {...tile} rx="2" class="chosen" {@attach animator.mark()}></rect>
+    {/if}
 {/snippet}
 
 <!-- A calpulli token, `radius` to its corners: its size, and below it the points for second
@@ -801,6 +871,12 @@
         {#each chosen.filter((cell) => !decks.has(cell) && canalStart?.cell !== cell) as cell (cell)}
             {@render chosenMark(cell)}
         {/each}
+        {#if districtEdge !== ''}
+            <g class="district-edge" {@attach animator.mark()}>
+                <path d={districtEdge} class="under"></path>
+                <path d={districtEdge} class="over"></path>
+            </g>
+        {/if}
         {#if canalStart !== undefined}
             <g class="canal-arrows" {@attach animator.mark()}>
                 {#each ['under', 'over'] as layer (layer)}
@@ -1284,6 +1360,31 @@
 
     .teleport.over {
         fill: var(--mx-mark);
+    }
+
+    .span.chosen-span.under {
+        fill: rgb(94 240 255 / 0.42);
+        stroke-width: 5;
+    }
+
+    .span.chosen-span.over {
+        stroke-width: 3;
+    }
+
+    .district-edge {
+        fill: none;
+        stroke-linecap: round;
+        pointer-events: none;
+    }
+
+    .district-edge .under {
+        stroke: rgb(0 0 0 / 0.85);
+        stroke-width: 4.2;
+    }
+
+    .district-edge .over {
+        stroke: var(--mx-mark);
+        stroke-width: 2.4;
     }
 
     .wash {

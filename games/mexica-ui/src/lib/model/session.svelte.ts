@@ -297,6 +297,13 @@ export class MexicaGameSession extends GameSession<MexicaGameState, HydratedMexi
         return []
     })
 
+    // The district a picked-up temple can go anywhere free in: the Pilli Mexica's.
+    templeDistrict: readonly Cell[] = $derived(
+        typeof this.tool === 'number' && this.me !== undefined
+            ? (this.gameState.pilliDistrict(this.me, this.layout) ?? [])
+            : []
+    )
+
     // The ways a bridge could run on a canal square the picked-up bridge can go to.
     spanAxes(cell: Cell): readonly Axis[] {
         const state = this.gameState
