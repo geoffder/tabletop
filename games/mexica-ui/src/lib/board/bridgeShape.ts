@@ -8,7 +8,7 @@ import { BRIDGE_RISE, CELL, type Box } from './view.js'
 // rails.
 
 export const BRIDGE = {
-    reach: 0.62 * CELL,
+    reach: 0.52 * CELL,
     // Wide enough that a Pilli Mexica's robe stands clear inside the rails.
     half: 0.355 * CELL,
     deck: BRIDGE_RISE * CELL
