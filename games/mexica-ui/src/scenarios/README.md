@@ -1,7 +1,7 @@
 # Mexica scenarios
 
 The dev harness lists these under **Scenarios**; loading one again starts it over.
-`scripts/build-scenarios.mjs` writes Founding, Canal rides, Ruled out, First scoring and Final scoring (it plays bot games, so rerunning
+`scripts/build-scenarios.mjs` writes Founding, Canal rides, Jump over, Ruled out, First scoring and Final scoring (it plays bot games, so rerunning
 it also rewrites Middle game and Late game; restore those with `git checkout` unless they are
 meant to change). `src/lib/model/scenarioFiles.spec.ts` checks every file.
 
@@ -37,6 +37,17 @@ way of moving by water is a choice:
 - **H13**: the water joins only round the island, so the canoe paddles off the board's east
   edge and back on at the south, near H14, before the Pilli lands on H13.
 - Undo after any ride: the Pilli slides straight back to Q8.
+
+## Jump over
+
+Canal rides again, with Alice's Pilli Mexica moved onto the bridge at O6, so the bridge can be
+passed under but not stopped on.
+
+- **N7**: the canoe slides out from under Q8, the Pilli hops in, and as the canoe passes under O6
+  the Pilli jumps high enough to clear Alice's headdress, drawn in front of her as it comes down
+  on the near side, lands in the canoe again and hops up onto N7.
+- O6 is not offered as a place to stop.
+- Undo: the Pilli slides straight back to Q8.
 
 ## Ruled out
 

@@ -70,6 +70,24 @@ describe('the scenarios the harness offers', () => {
         expect(legs.filter(([from, to]) => !areAdjacent(from, to)).length).toBeGreaterThan(2)
     })
 
+    it('Jump over rides under a bridge another Pilli Mexica stands on', () => {
+        const state = scenario('jump-over')
+        const [playerId] = state.activePlayerIds
+        const layout = state.layout()
+        const ap = state.apAvailable(playerId)
+        const others = new Set(
+            state.players
+                .filter((player) => player.playerId !== playerId)
+                .map((player) => player.pilli)
+        )
+        const under = [...state.moves(playerId).values()]
+            .filter((move) => !move.teleport && move.cost <= ap)
+            .flatMap((move) => move.path.slice(1, -1))
+            .filter((cell) => layout.bridges.has(cell) && others.has(cell))
+        expect(under.length).toBeGreaterThan(0)
+        expect(state.moves(playerId).has(under[0])).toBe(false)
+    })
+
     it('Ruled out loses both 4s from the display once Carol builds a 3-level temple at F1', () => {
         const state = scenario('ruled-out')
         const [playerId] = state.activePlayerIds

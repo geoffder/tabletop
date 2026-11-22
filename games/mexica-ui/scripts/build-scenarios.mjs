@@ -354,6 +354,37 @@ function canalRides(state) {
     return undefined
 }
 
+// Canal rides with another player's Pilli Mexica standing on a bridge the ride passes under, so
+// the riding Pilli Mexica has to jump over it.
+function jumpOver(state) {
+    const hydrated = new HydratedMexicaGameState(structuredClone(state))
+    const [playerId] = state.activePlayerIds
+    const layout = hydrated.layout()
+    const ap = hydrated.apAvailable(playerId)
+    const passed = [...hydrated.moves(playerId).values()]
+        .filter((move) => !move.teleport && move.cost <= ap)
+        .flatMap((move) =>
+            move.path.slice(1, -1).filter((cell, index) => {
+                const [last, next] = [move.path[index], move.path[index + 2]]
+                return (
+                    layout.bridges.has(cell) &&
+                    layout.bridges.has(last) &&
+                    layout.bridges.has(next) &&
+                    !areAdjacent(last, cell) &&
+                    !areAdjacent(cell, next)
+                )
+            })
+        )
+    const bridge = passed.sort((a, b) => a - b)[0]
+    if (bridge === undefined) throw Error('No ride in Canal rides passes under a bridge')
+    const other = hydrated.players.find(
+        (player) => player.playerId !== playerId && !layout.bridges.has(player.pilli)
+    )
+    if (other === undefined) throw Error('No other Pilli Mexica can move onto the bridge')
+    hydrated.getPlayerState(other.playerId).pilli = bridge
+    return hydrated.dehydrate()
+}
+
 // Whether the water on the board joins two bridges, along canals under no other bridge and
 // across the lake.
 function waterJoins(layout, from, to) {
@@ -395,6 +426,10 @@ console.log(`Founding: ${describe(founding.state)}`)
 const rides = firstSetUp(4, canalRides)
 write('canal-rides', 'Canal rides', rides)
 console.log(`Canal rides: ${describe(rides.state)}`)
+
+const jump = { game: rides.game, state: jumpOver(rides.state) }
+write('jump-over', 'Jump over', jump)
+console.log(`Jump over: ${describe(jump.state)}`)
 
 // The first turn's start where one action of the player's, not a founding, leaves a token on
 // the display that no district can take any more.

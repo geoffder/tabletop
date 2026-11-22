@@ -69,8 +69,10 @@ const WALK = { hop: 0.15, glide: 0.2, height: -7 }
 // `cell` seconds a square, at least `least`; at a bridge on the way the canoe passes under while
 // the Pilli hops over the deck, `over` above it, and lands in the canoe again; at the last
 // bridge the Pilli hops up onto the deck and the canoe slides back under. Longer than a bridge
-// is wide, it fades as it goes under. The canoe waits `off` of a square short of each end
-// bridge's middle, and the Pilli rides `sink` lower than it stands on the ground.
+// is wide, it fades as it goes under. Over a bridge another Pilli Mexica stands on, the Pilli
+// jumps clear of its headdress, `over` above it, taking off and landing `jump` squares either
+// side instead of `pass`. The canoe waits `off` of a square short of each end bridge's middle,
+// and the Pilli rides `sink` lower than it stands on the ground.
 const BOAT = {
     cell: 0.17,
     least: 0.45,
@@ -78,6 +80,8 @@ const BOAT = {
     show: 0.16,
     off: 0.62,
     over: 7,
+    pass: 0.8,
+    jump: 1.3,
     sink: 3,
     emerge: 0.3
 }
@@ -1048,7 +1052,9 @@ export class BoardAnimator implements MoveInterrupter {
                 this.clipped.delete(body)
             }
         }
-        const water = this.session.gameState.layout().canals
+        const { canals: water, pillis: standing } = this.session.gameState.layout()
+        const sink = BOAT.sink * view.tilt
+        const deck = view.lift(BRIDGE_RISE)
         const stretches = stretchesOf(stops, water, decks).map((stretch) => {
             const points = stretch.cells.map((cell) => view.centre(cell))
             if (stretch.fromOutside) points.unshift(beyondEdge(view, stretch.cells[0]))
@@ -1056,13 +1062,19 @@ export class BoardAnimator implements MoveInterrupter {
                 points.push(beyondEdge(view, stretch.cells[stretch.cells.length - 1]))
             const course = courseOf(points)
             const offset = stretch.fromOutside ? 1 : 0
-            const passed = stretch.cells.flatMap((cell, index) =>
-                stops.slice(1, -1).includes(cell) ? [course.at[index + offset]] : []
-            )
+            const passed = stretch.cells.flatMap((cell, index) => {
+                if (!stops.slice(1, -1).includes(cell)) return []
+                const manned = standing.has(cell)
+                return [
+                    {
+                        at: course.at[index + offset],
+                        reach: (manned ? BOAT.jump : BOAT.pass) * CELL,
+                        height: deck + sink + BOAT.over + (manned ? view.lift(PILLI_HEIGHT) : 0)
+                    }
+                ]
+            })
             return { ...stretch, course, offset, passed }
         })
-        const sink = BOAT.sink * view.tilt
-        const deck = view.lift(BRIDGE_RISE)
         const wholePose = poseOf(whole)
         const bodyPose = poseOf(body)
         const place = (course: Course, distance: number) => {
@@ -1155,9 +1167,9 @@ export class BoardAnimator implements MoveInterrupter {
                         wholePose.y = point.y + sink - start.y
                         let over = 0
                         for (const bridge of stretch.passed) {
-                            const u = (travel.distance - bridge + CELL * 0.8) / (CELL * 1.6)
-                            if (u > 0 && u < 1)
-                                over = Math.sin(Math.PI * u) * (deck + sink + BOAT.over)
+                            const u =
+                                (travel.distance - bridge.at + bridge.reach) / (2 * bridge.reach)
+                            if (u > 0 && u < 1) over = Math.sin(Math.PI * u) * bridge.height
                         }
                         bodyPose.y = -over
                         aboardShown(over === 0)

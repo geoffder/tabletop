@@ -93,7 +93,8 @@
     const decks = $derived(new Set(drawn.bridges.map((bridge) => bridge.cell)))
 
     // Everything standing on the board, far rows first so nearer pieces stand in front. A
-    // walking Pilli Mexica is drawn in the order of the square it is crossing into.
+    // walking Pilli Mexica is drawn in the order of the square it is crossing into, and in front
+    // of one standing there, which it can only be jumping over.
     const raised: Raised[] = $derived.by(() => {
         const pieces: Raised[] = [
             ...drawn.bridges.map((bridge) => ({
@@ -126,10 +127,13 @@
             piece.kind === 'pilli'
                 ? (animator.walking.get(piece.playerId) ?? piece.cell)
                 : piece.cell
+        const walkingRank = (piece: Raised) =>
+            piece.kind === 'pilli' && animator.walking.has(piece.playerId) ? 1 : 0
         return pieces.sort(
             (a, b) =>
                 view.centre(drawnAt(a)).y - view.centre(drawnAt(b)).y ||
-                order[a.kind] - order[b.kind]
+                order[a.kind] - order[b.kind] ||
+                walkingRank(a) - walkingRank(b)
         )
     })
     const keyOf = (piece: Raised) =>
