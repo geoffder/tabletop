@@ -123,14 +123,14 @@
                 pieces.push({ kind: 'bridgeFront', cell: bridge.cell })
             }
         }
-        // A choice on a bridge lies on its deck, in front of the bridge behind it.
+        // A choice on a bridge lies over the whole bridge, its near rail too, so it shows whole.
         for (const cell of choosable) {
             if (decks.has(cell)) pieces.push({ kind: 'mark', cell, chosen: false })
         }
         for (const cell of chosen) {
             if (decks.has(cell)) pieces.push({ kind: 'mark', cell, chosen: true })
         }
-        const order = { bridge: 0, mark: 1, temple: 2, pilli: 3, bridgeFront: 4 }
+        const order = { bridge: 0, temple: 1, pilli: 2, bridgeFront: 3, mark: 4 }
         const drawnAt = (piece: Raised) =>
             piece.kind === 'pilli'
                 ? (animator.walking.get(piece.playerId) ?? piece.cell)
