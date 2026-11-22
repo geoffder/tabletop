@@ -189,8 +189,19 @@
     // The canal's first square, which a second tap digs alone or lets go of.
     const retaps = $derived(session.tool === 'canal' ? session.chosenCell : undefined)
 
+    // The bridge picked up to move, held a little above its canal instead of marked.
+    const heldBridge = $derived(
+        session.tool === 'moveBridge' &&
+            session.chosenCell !== undefined &&
+            layout.bridges.has(session.chosenCell)
+            ? session.chosenCell
+            : undefined
+    )
+
     const chosen = $derived(
-        [session.chosenCell, session.chosenDestination].filter((cell) => cell !== undefined)
+        [session.chosenCell, session.chosenDestination].filter(
+            (cell): cell is Cell => cell !== undefined && cell !== heldBridge
+        )
     )
 
     // The canal's chosen first square and the neighbours that finish a double with it.
@@ -908,21 +919,27 @@
                         ></ellipse>
                     </g>
                     <g {@attach animator.piece(`bridge-${piece.cell}`, 'body')}>
-                        <image
-                            href={LOOK_URLS[bridgeLook(axis, view.flat, across ? 'back' : 'whole')]}
-                            {...bridgeBounds(axis, view.tilt)}
-                            preserveAspectRatio="none"
-                        ></image>
+                        <g class="holdable" class:held={heldBridge === piece.cell}>
+                            <image
+                                href={LOOK_URLS[
+                                    bridgeLook(axis, view.flat, across ? 'back' : 'whole')
+                                ]}
+                                {...bridgeBounds(axis, view.tilt)}
+                                preserveAspectRatio="none"
+                            ></image>
+                        </g>
                     </g>
                 </g>
             {:else if piece.kind === 'bridgeFront'}
                 <g transform="translate({centre.x} {centre.y})" class="piece">
                     <g {@attach animator.piece(`bridge-${piece.cell}`, 'front')}>
-                        <image
-                            href={LOOK_URLS[bridgeLook(Axis.EastWest, view.flat, 'front')]}
-                            {...bridgeBounds(Axis.EastWest, view.tilt)}
-                            preserveAspectRatio="none"
-                        ></image>
+                        <g class="holdable" class:held={heldBridge === piece.cell}>
+                            <image
+                                href={LOOK_URLS[bridgeLook(Axis.EastWest, view.flat, 'front')]}
+                                {...bridgeBounds(Axis.EastWest, view.tilt)}
+                                preserveAspectRatio="none"
+                            ></image>
+                        </g>
                     </g>
                 </g>
             {:else if piece.kind === 'mark'}
@@ -1385,6 +1402,17 @@
     .district-edge .over {
         stroke: var(--mx-mark);
         stroke-width: 2.4;
+    }
+
+    .holdable {
+        transition:
+            transform 0.15s ease-out,
+            opacity 0.15s ease-out;
+    }
+
+    .holdable.held {
+        transform: translateY(-10px);
+        opacity: 0.65;
     }
 
     .wash {
