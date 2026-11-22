@@ -43,7 +43,7 @@
         {/each}
         <span class="tally" title="Action tokens">
             <span class="mask" {@attach flights?.cardMask(playerId)}><MaskIcon size={22} /></span><b
-                >{playerState.actionTokens}</b
+                class="tokens">{playerState.actionTokens}</b
             >
         </span>
     </div>
@@ -100,6 +100,17 @@
         display: inline-flex;
         align-items: center;
         gap: 2px;
+    }
+
+    /* Every digit as wide as any other, so no tally moves as its count changes; the tokens,
+       which can reach 12, keep room for a second digit after the first rather than before it. */
+    .tally b {
+        min-width: 1ch;
+        font-variant-numeric: tabular-nums;
+    }
+
+    .tally b.tokens {
+        min-width: 2ch;
     }
 
     /* On a narrow card the pieces shrink and the score drops its word, so all five tallies fit. */
