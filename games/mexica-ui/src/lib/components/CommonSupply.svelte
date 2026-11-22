@@ -21,12 +21,13 @@
 
     const session = getGameSession()
     const game = $derived(session.gameState)
-    // Each with how far it reaches either side of its centre, as a share of `size`.
+    // Each with where its count sits, right of its centre as a share of `size`: at the piece's
+    // right end, clear of the piece where it is short.
     const pieces = $derived([
-        { kind: 'single', count: game.singleCanalsLeft(), title: 'Single canals', half: 0.31 },
-        { kind: 'double', count: game.doubleCanalsLeft(), title: 'Double canals', half: 0.62 },
-        { kind: 'bridge', count: game.bridgesLeft(), title: 'Bridges', half: 0.35 },
-        { kind: 'token', count: game.tokenSupply(), title: 'Action tokens', half: 0.45 }
+        { kind: 'single', count: game.singleCanalsLeft(), title: 'Single canals', badgeAt: 0.42 },
+        { kind: 'double', count: game.doubleCanalsLeft(), title: 'Double canals', badgeAt: 0.62 },
+        { kind: 'bridge', count: game.bridgesLeft(), title: 'Bridges', badgeAt: 0.5 },
+        { kind: 'token', count: game.tokenSupply(), title: 'Action tokens', badgeAt: 0.3 }
     ])
     const bridge = bridgeBounds(Axis.EastWest, TILT)
 </script>
@@ -69,7 +70,7 @@
         <g transform="translate({-size / 2} {-size / 2})">
             <MaskIcon size={size * 0.9} />
         </g>
-        <text x={-size / 2 + 1} y={-size / 2 + 6} class="plus">+1</text>
+        <text x={-size / 2 - 4} y={size / 2 - 6} class="plus">+1</text>
     {/if}
 {/snippet}
 
@@ -82,13 +83,13 @@
         rx="8"
         class="frame"
     ></rect>
-    {#each pieces as { kind, count, title, half }, index (kind)}
+    {#each pieces as { kind, count, title, badgeAt }, index (kind)}
         {@const at = centres[index]}
         <g transform="translate({at.x} {at.y})" class:out={count === 0}>
             <title>{title} left: {count}</title>
             {@render piece(kind)}
             <!-- The count at the piece's top right, free to stand out of the frame. -->
-            <g transform="translate({half * size * 0.65} {-size / 2 + 4 * badge}) scale({badge})">
+            <g transform="translate({badgeAt * size} {-size / 2 + 4 * badge}) scale({badge})">
                 <rect x="-11" y="-10" width="22" height="20" rx="10" class="badge"></rect>
                 <text y={13 * 0.35} class="count">{count}</text>
             </g>
@@ -130,12 +131,12 @@
     }
 
     .plus {
-        font-size: 11px;
+        font-size: 17px;
         font-weight: 800;
         fill: #2b3680;
         paint-order: stroke;
         stroke: #fff8ec;
-        stroke-width: 2.5;
+        stroke-width: 3.5;
     }
 
     .badge {

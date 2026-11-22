@@ -230,7 +230,7 @@
     // The pieces everyone draws on, in the lake at the bottom right, as far from its bottom
     // edge on screen as from its right edge. Each piece's slot fits the piece, as a share of
     // `slot`, so the frame keeps off the land.
-    const SUPPLY = { scale: 1.4, slots: [0.6, 1, 0.85, 0.9] }
+    const SUPPLY = { scale: 1.4, slots: [0.72, 1.1, 0.95, 0.95] }
     const SUPPLY_SLOT = DISPLAY.slot * SUPPLY.scale
     const supply = $derived.by(() => {
         const spans = SUPPLY.slots.map((share) => share * SUPPLY_SLOT)
