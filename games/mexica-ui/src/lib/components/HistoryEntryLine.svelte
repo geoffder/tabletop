@@ -2,7 +2,7 @@
     import { CalledGameDescription } from '@tabletop/frontend-components'
     import { tokenSize } from '@tabletop/mexica'
     import { pointsByPlayer, type HistoryEntry } from '$lib/history/historyEntries.js'
-    import { turnSegments } from '$lib/history/entryText.js'
+    import { turnSegments, withdrawnText } from '$lib/history/entryText.js'
     import { getGameSession } from '$lib/model/sessionContext.svelte.js'
 
     let { entry, brief = false }: { entry: HistoryEntry; brief?: boolean } = $props()
@@ -22,8 +22,7 @@
                     class="font-semibold">{nameOf(segment.playerId)}</span
                 >{/if}{/each}</span
     >{:else if entry.kind === 'withdrawn'}<span
-        >The Emperor withdrew the {entry.tokenIds.map((id) => `${tokenSize(id)}`).join(', ')}-space
-        {entry.tokenIds.length === 1 ? 'district' : 'districts'}: none can be founded</span
+        >{withdrawnText(entry.tokenIds.map((id) => tokenSize(id)))}</span
     >{:else}<span
         ><span class="font-semibold">{entry.period === 1 ? 'First scoring' : 'Final scoring'}</span
         >{#each pointsByPlayer(entry) as { playerId, points }, index (playerId)}{index === 0

@@ -61,3 +61,34 @@ function stepSegments(step: Step, brief: boolean): Segment[] {
 export function palaceText(count: number): string {
     return `${count === 1 ? 'a Pilli Mexica' : `${count} Pilli Mexica`} in the palace, +${PALACE_BONUS} each`
 }
+
+const COUNTS = ['', 'a', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight']
+
+// The districts the Emperor withdrew, by size and how many of each: "two 4-space districts",
+// "an 8-space district and a 10-space district", and what that means for founding them.
+export function withdrawnText(sizes: readonly number[]): string {
+    const counts = new Map<number, number>()
+    for (const size of [...sizes].sort((a, b) => a - b)) {
+        counts.set(size, (counts.get(size) ?? 0) + 1)
+    }
+    const groups = [...counts].map(([size, count]) => {
+        const many = count > 1
+        const number = many
+            ? (COUNTS[count] ?? String(count))
+            : /^(8|11|18)$/.test(String(size))
+              ? 'an'
+              : 'a'
+        return `${number} ${size}-space ${many ? 'districts' : 'district'}`
+    })
+    const listed =
+        groups.length === 1
+            ? groups[0]
+            : `${groups.slice(0, -1).join(', ')} and ${groups[groups.length - 1]}`
+    const fate =
+        sizes.length === 1
+            ? 'it can no longer be founded'
+            : sizes.length === 2
+              ? 'neither can be founded'
+              : 'none can be founded'
+    return `The Emperor withdrew ${listed}: ${fate}`
+}
