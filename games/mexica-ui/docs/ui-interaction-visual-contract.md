@@ -67,23 +67,23 @@ Keyboard: every marked square, bridge, canal square and the founding token is a 
 
 ## 7. Regression Checklist
 
-To be exercised in the verification pass; `tests/` will mark the automated ones.
+`tests/` covers the ones marked †; the rest are exercised by hand in the verification pass. Actionless steps end within 0.2 s, a canal's within 0.4 s (drain, then the paving closes), each plus at most 0.01 s waiting for the board to draw (`undo-timing.spec.ts`).
 
-| Scenario                                                  | Intent         | Expected                                                                                                                  | Automated |
-| --------------------------------------------------------- | -------------- | ------------------------------------------------------------------------------------------------------------------------- | --------- |
-| New game: choose a start square                           | choose_start   | Free palace squares marked; the figure drops in on the one chosen                                                         | manual    |
-| Middle game: move the Pilli Mexica                        | move_pilli     | Reachable squares marked; Move costs adds badges; it walks the route; marks fade as it starts                             | manual    |
-| Middle game: ride a canoe (Canal rides)                   | move_pilli     | Canoe slides out, the figure rides, hops over bridges, steps onto the end bridge                                          | manual    |
-| Pick canal, choose a square, then a neighbour             | dig_canal      | First square `chosen`, only finishing neighbours marked; the canal floods; the canal tool stays picked while another fits | manual    |
-| Pick canal, tap off the marks                             | dig_canal      | Lets go; moves come back                                                                                                  | manual    |
-| Pick bridge on a crossing canal                           | build_bridge   | Square `chosen`, panel asks ↕ / ↔; choosing one builds it                                                                 | manual    |
-| Move a bridge (none left)                                 | move_bridge    | Free bridges marked; then destinations; a bridge with a Pilli Mexica on it is not offered                                 | manual    |
-| Build a temple                                            | build_temple   | Level's squares marked; the temple drops in; any action tokens it spends fly back to the supply                           | manual    |
-| Found a district (Founding)                               | found_district | Token ringed; pressed, `chosen`; the token flies to the square; "+N" rises over scoring figures; cards count up           | manual    |
-| Undo a staged choice, then the move                       | Undo           | Undo pops the latest stage first, then takes back the move within 0.2 s; nothing chosen afterwards                        | manual    |
-| History to the beginning and back                         | History View   | Pieces slide straight to their places within 0.2 s; no marks; the tray hidden, the board unmoved                          | manual    |
-| A view toggle mid-move                                    | —              | The move lands at once and the board re-lays                                                                              | manual    |
-| Phones at 390, 375, 320: your turn, waiting, History View | —              | Board's y equal within the game column in all three (the harness's own history bar aside)                                 | manual    |
+| Scenario                                                  | Intent         | Expected                                                                                                                  | Automated                                 |
+| --------------------------------------------------------- | -------------- | ------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------- |
+| New game: choose a start square                           | choose_start   | Free palace squares marked; the figure drops in on the one chosen                                                         | manual                                    |
+| Middle game: move the Pilli Mexica                        | move_pilli     | Reachable squares marked; Move costs adds badges; it walks the route; marks fade as it starts                             | † `table.spec.ts`, `motion.spec.ts`       |
+| Middle game: ride a canoe (Canal rides)                   | move_pilli     | Canoe slides out, the figure rides, hops over bridges, steps onto the end bridge                                          | † `motion.spec.ts` (no offset matrix)     |
+| Pick canal, choose a square, then a neighbour             | dig_canal      | First square `chosen`, only finishing neighbours marked; the canal floods; the canal tool stays picked while another fits | † `table.spec.ts`                         |
+| Pick canal, tap off the marks                             | dig_canal      | Lets go; moves come back                                                                                                  | † `table.spec.ts`                         |
+| Pick bridge on a crossing canal                           | build_bridge   | Square `chosen`, panel asks ↕ / ↔; choosing one builds it                                                                 | manual                                    |
+| Move a bridge (none left)                                 | move_bridge    | Free bridges marked; then destinations; a bridge with a Pilli Mexica on it is not offered                                 | manual                                    |
+| Build a temple                                            | build_temple   | Level's squares marked; the temple drops in; any action tokens it spends fly back to the supply                           | † `table.spec.ts`                         |
+| Found a district (Founding)                               | found_district | Token ringed; pressed, `chosen`; the token flies to the square; "+N" rises over scoring figures; cards count up           | † `table.spec.ts`, `motion.spec.ts`       |
+| Undo a staged choice, then the move                       | Undo           | Undo pops the latest stage first, then takes back the move within 0.2 s; nothing chosen afterwards                        | † `table.spec.ts`, `undo-timing.spec.ts`  |
+| History to the beginning and back                         | History View   | Pieces slide straight to their places within 0.2 s; no marks; the tray hidden, the board unmoved                          | † `undo-timing.spec.ts`, `motion.spec.ts` |
+| A view toggle mid-move                                    | —              | The move lands at once and the board re-lays                                                                              | manual                                    |
+| Phones at 390, 375, 320: your turn, waiting, History View | —              | Board's y equal within the game column in all three (the harness's own history bar aside)                                 | manual                                    |
 
 ## 8. Change Rules
 
