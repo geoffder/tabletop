@@ -3,6 +3,7 @@
     import { getGameSession } from '$lib/model/sessionContext.svelte.js'
     import { historyEntries } from '$lib/history/historyEntries.js'
     import HistoryEntryLine from './HistoryEntryLine.svelte'
+    import GameEndPanel from './GameEndPanel.svelte'
     import { holdTallest } from './holdTallest.js'
 
     const session = getGameSession()
@@ -14,6 +15,7 @@
     const foundingSize = $derived(
         session.foundingToken === undefined ? undefined : tokenSize(session.foundingToken)
     )
+    const ended = $derived(session.gameState.result !== undefined && !session.isViewingHistory)
     const tool = $derived(session.tool)
     const singles = $derived(session.gameState.singleCanalsLeft())
     const AXIS_NAMES: Record<Axis, string> = {
@@ -26,9 +28,12 @@
     <button type="button" class="inline" onclick={() => session.endTurn()}>End turn</button>
 {/snippet}
 
-<!-- One row: the last move while you wait, the prompt on your turn. -->
-<div class="panel" {@attach holdTallest}>
-    {#if !acting}
+<!-- One row: the last move while you wait, the prompt on your turn, the winner at the end. Held at
+     its tallest, so the board stays put as the game ends. -->
+<div class="panel" class:ended {@attach holdTallest}>
+    {#if ended}
+        <GameEndPanel />
+    {:else if !acting}
         {#if lastEntry}
             <HistoryEntryLine entry={lastEntry} brief />
         {:else}
@@ -85,6 +90,11 @@
 </div>
 
 <style>
+    /* The ending fills the card, the tray gone from under it. */
+    .panel.ended {
+        flex: 1;
+    }
+
     .panel {
         display: flex;
         flex-wrap: wrap;

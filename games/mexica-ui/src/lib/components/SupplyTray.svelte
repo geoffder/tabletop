@@ -8,6 +8,7 @@
 
     const me = $derived(session.myPlayer?.id)
     const game = $derived(session.gameState)
+    const ended = $derived(session.gameState.result !== undefined && !session.isViewingHistory)
     const shown = $derived(me !== undefined && game.machineState === 'Acting')
     const tokens = $derived(me === undefined ? 0 : game.getPlayerState(me).actionTokens)
     const fill = $derived(me === undefined ? '#888' : session.playerFill(me))
@@ -15,77 +16,75 @@
     const usable = (level: Level) => session.templeLevels.includes(level)
 </script>
 
-<!-- Always room for the tray, so the board stays put between turns. -->
-<div class="tray" class:hidden={!shown}>
-    {#if shown}
-        <div class="ap" title="Action points left this turn">
-            {#each Array.from({ length: BASE_AP }, (_, i) => i) as pip (pip)}
-                <MaskIcon spent={pip >= session.apLeft} size={28} />
-            {/each}
-            {#if tokens > 0}<span class="tokens" title="Action tokens">+{tokens}</span>{/if}
-        </div>
-        <div class="tools">
-            {#each LEVELS as level (level)}
-                <button
-                    type="button"
-                    class="tool"
-                    class:picked={session.tool === level}
-                    disabled={!usable(level)}
-                    title={`${level}-level temple (${level} AP)`}
-                    onclick={() => session.pickTool(level)}
-                >
-                    <PieceIcon piece={level} {fill} size={34} />
-                    <span class="count">{left(level)}</span>
-                </button>
-            {/each}
+<!-- Always drawn, hidden when it is not your turn, so the board stays put between turns. -->
+<div class="tray" class:hidden={!shown} class:gone={ended} inert={!shown} aria-hidden={!shown}>
+    <div class="ap" title="Action points left this turn">
+        {#each Array.from({ length: BASE_AP }, (_, i) => i) as pip (pip)}
+            <MaskIcon spent={pip >= session.apLeft} size={28} />
+        {/each}
+        {#if tokens > 0}<span class="tokens" title="Action tokens">+{tokens}</span>{/if}
+    </div>
+    <div class="tools">
+        {#each LEVELS as level (level)}
             <button
                 type="button"
                 class="tool"
-                class:picked={session.tool === 'canal'}
-                disabled={!session.canDig}
-                title="Canal (1 AP)"
-                onclick={() => session.pickTool('canal')}
+                class:picked={session.tool === level}
+                disabled={!usable(level)}
+                title={`${level}-level temple (${level} AP)`}
+                onclick={() => session.pickTool(level)}
             >
-                <PieceIcon piece="canal" {fill} size={34} />
-                <span class="count">{game.singleCanalsLeft() + game.doubleCanalsLeft()}</span>
+                <PieceIcon piece={level} {fill} size={34} />
+                <span class="count">{left(level)}</span>
             </button>
-            {#if game.bridgesLeft() > 0}
-                <button
-                    type="button"
-                    class="tool"
-                    class:picked={session.tool === 'bridge'}
-                    disabled={!session.canBuildBridge}
-                    title="Bridge (1 AP)"
-                    onclick={() => session.pickTool('bridge')}
-                >
-                    <PieceIcon piece="bridge" {fill} size={34} />
-                    <span class="count">{game.bridgesLeft()}</span>
-                </button>
-            {:else}
-                <button
-                    type="button"
-                    class="tool"
-                    class:picked={session.tool === 'moveBridge'}
-                    disabled={!session.canMoveBridge}
-                    title="Move a bridge (1 AP)"
-                    onclick={() => session.pickTool('moveBridge')}
-                >
-                    <PieceIcon piece="bridge" {fill} size={34} />
-                    <span class="count">↷</span>
-                </button>
-            {/if}
+        {/each}
+        <button
+            type="button"
+            class="tool"
+            class:picked={session.tool === 'canal'}
+            disabled={!session.canDig}
+            title="Canal (1 AP)"
+            onclick={() => session.pickTool('canal')}
+        >
+            <PieceIcon piece="canal" {fill} size={34} />
+            <span class="count">{game.singleCanalsLeft() + game.doubleCanalsLeft()}</span>
+        </button>
+        {#if game.bridgesLeft() > 0}
             <button
                 type="button"
                 class="tool"
-                disabled={!session.canTakeToken}
-                title="Take an action token (1 AP now, 1 AP later)"
-                onclick={() => session.takeToken()}
+                class:picked={session.tool === 'bridge'}
+                disabled={!session.canBuildBridge}
+                title="Bridge (1 AP)"
+                onclick={() => session.pickTool('bridge')}
             >
-                <PieceIcon piece="token" {fill} size={34} />
-                <span class="count">{game.tokenSupply()}</span>
+                <PieceIcon piece="bridge" {fill} size={34} />
+                <span class="count">{game.bridgesLeft()}</span>
             </button>
-        </div>
-    {/if}
+        {:else}
+            <button
+                type="button"
+                class="tool"
+                class:picked={session.tool === 'moveBridge'}
+                disabled={!session.canMoveBridge}
+                title="Move a bridge (1 AP)"
+                onclick={() => session.pickTool('moveBridge')}
+            >
+                <PieceIcon piece="bridge" {fill} size={34} />
+                <span class="count">↷</span>
+            </button>
+        {/if}
+        <button
+            type="button"
+            class="tool"
+            disabled={!session.canTakeToken}
+            title="Take an action token (1 AP now, 1 AP later)"
+            onclick={() => session.takeToken()}
+        >
+            <PieceIcon piece="token" {fill} size={34} />
+            <span class="count">{game.tokenSupply()}</span>
+        </button>
+    </div>
 </div>
 
 <style>
@@ -103,7 +102,11 @@
 
     .tray.hidden {
         visibility: hidden;
-        min-height: calc(var(--tile) + 34px);
+    }
+
+    /* At the game's end the ending takes the tray's room. */
+    .tray.gone {
+        display: none;
     }
 
     .ap {

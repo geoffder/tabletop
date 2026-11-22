@@ -16,7 +16,7 @@
     import Board from '$lib/components/Board.svelte'
     import Header from '$lib/components/Header.svelte'
     import ActionPanel from '$lib/components/ActionPanel.svelte'
-    import GameEndPanel from '$lib/components/GameEndPanel.svelte'
+    import { holdTallest } from '$lib/components/holdTallest.js'
     import SupplyTray from '$lib/components/SupplyTray.svelte'
     import MaskIcon from '$lib/components/MaskIcon.svelte'
     import { setTokenFlights, TokenFlights } from '$lib/animators/tokenFlights.svelte.js'
@@ -57,12 +57,9 @@
 
 {#snippet turnControls()}
     <Header />
-    <div class="action-card">
-        {#if gameSession.gameState.result && !gameSession.isViewingHistory}
-            <GameEndPanel />
-        {:else}
-            <ActionPanel />
-        {/if}
+    <!-- Held at its tallest, so the card keeps its height when the tray gives way to the ending. -->
+    <div class="action-card" {@attach holdTallest}>
+        <ActionPanel />
         <SupplyTray />
     </div>
 {/snippet}
@@ -275,6 +272,8 @@
     }
 
     .action-card {
+        display: flex;
+        flex-direction: column;
         margin: 0 8px;
         border-radius: 12px;
         background: var(--mx-panel);
