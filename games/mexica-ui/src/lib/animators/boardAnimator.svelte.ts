@@ -85,10 +85,11 @@ const CLOSE_UP = { at: 0.2, duration: 0.35 }
 // Points a founding earns rise as "+N" over each scoring player's Pilli Mexica, `above` its head,
 // by `rise` over `duration`, while the cards count the scores up.
 const GAIN = { duration: 1.2, rise: -14, above: -16 }
-// At a period's end the districts score one after another, `step` apart and all within `within`:
+// At a period's end the districts score one after another, smallest first, `step` apart and all
+// within `within`:
 // each shows its awards as chips in the players' colours that rise by `rise` and fade over
 // `duration`; then the second period's tokens drop onto the display together.
-const SCORING = { step: 0.3, within: 2.2, duration: 1.1, rise: -12 }
+const SCORING = { step: 0.7, within: 7, duration: 1.5, rise: -12 }
 // A token no district can take any more breaks in two along a jagged crack: the halves drift
 // `apart` either way, sink `drop`, tip `tilt` degrees and fade out over `duration`, and the
 // display closes up behind them at `closeAt`.
@@ -149,10 +150,12 @@ type Step = TransitionStep<HydratedMexicaGameState, AnimationContext>
 // Points earned, rising over a player's Pilli Mexica at (x, y) on screen.
 export type Gain = { playerId: string; points: number; x: number; y: number }
 
-// A district scored at a period's end: its awards, shown at (x, y) on screen over `anchor`.
+// A district scored at a period's end, `size` spaces: its awards, shown at (x, y) on screen over
+// `anchor`.
 export type Scoring = {
     key: string
     anchor: Cell
+    size: number
     x: number
     y: number
     awards: { playerId: string; points: number }[]
@@ -652,8 +655,8 @@ export class BoardAnimator implements MoveInterrupter {
         })
     }
 
-    // The districts a period's end scored, top to bottom of the board: each over its token, or an
-    // unfounded one over its middle square.
+    // The districts a period's end scored, smallest first and then top to bottom of the board:
+    // each over its token, or an unfounded one over its middle square.
     private scoringsOf(
         from: HydratedMexicaGameState,
         districts: readonly DistrictScore[]
@@ -678,6 +681,7 @@ export class BoardAnimator implements MoveInterrupter {
             return {
                 key: `scoring-${score.cell}`,
                 anchor,
+                size: score.size,
                 x: at.x,
                 y: at.y - CELL * 0.3 * view.tilt,
                 awards: score.awards.map((award) => ({
@@ -687,7 +691,10 @@ export class BoardAnimator implements MoveInterrupter {
             }
         })
         return scorings.sort(
-            (a, b) => rowOf(a.anchor) - rowOf(b.anchor) || columnOf(a.anchor) - columnOf(b.anchor)
+            (a, b) =>
+                a.size - b.size ||
+                rowOf(a.anchor) - rowOf(b.anchor) ||
+                columnOf(a.anchor) - columnOf(b.anchor)
         )
     }
 

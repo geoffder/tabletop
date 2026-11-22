@@ -52,8 +52,7 @@ the only district left that can take a 4 is up at F1.
 Four players at the end of the first period: every district token is founded and a player has
 built all their temples, and the last player in turn order is to move.
 
-- **End turn**: the period scores. Each founded district in turn, top of the board to the
-  bottom, shows its awards as chips in the players' colours rising over its token; a Pilli
+- **End turn**: the period scores. Each founded district in turn, smallest first, shows its awards as chips in the players' colours rising over its token; a Pilli
   Mexica on a starting space gets **+5** over its head; the cards count the scores up. Then the
   second period's tokens drop onto the display together, and any that no district can take
   break apart.
@@ -63,4 +62,4 @@ built all their temples, and the last player in turn order is to move.
 Four players at the end of the second period, the last player to move.
 
 - **End turn**: the game ends. Founded districts score over their tokens and unfounded ones over
-  their middle square, one after another, and the cards count up to the final scores.
+  their middle square, one after another from the smallest to the largest, and the cards count up to the final scores.
