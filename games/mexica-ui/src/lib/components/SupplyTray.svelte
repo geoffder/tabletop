@@ -1,8 +1,8 @@
 <script lang="ts">
-    import { LEVELS, type Level } from '@tabletop/mexica'
+    import { BASE_AP, LEVELS, type Level } from '@tabletop/mexica'
     import { getGameSession } from '$lib/model/sessionContext.svelte.js'
     import PieceIcon from './PieceIcon.svelte'
-    import ActionPoints from './ActionPoints.svelte'
+    import MaskIcon from './MaskIcon.svelte'
 
     const session = getGameSession()
 
@@ -10,6 +10,7 @@
     const game = $derived(session.gameState)
     const ended = $derived(session.gameState.result !== undefined && !session.isViewingHistory)
     const shown = $derived(me !== undefined && game.machineState === 'Acting')
+    const tokens = $derived(me === undefined ? 0 : game.getPlayerState(me).actionTokens)
     const fill = $derived(me === undefined ? '#888' : session.playerFill(me))
     const left = (level: Level) => (me === undefined ? 0 : game.templesLeft(me, level))
     const usable = (level: Level) => session.templeLevels.includes(level)
@@ -17,9 +18,11 @@
 
 <!-- Always drawn, hidden when it is not your turn, so the board stays put between turns. -->
 <div class="tray" class:hidden={!shown} class:gone={ended} inert={!shown} aria-hidden={!shown}>
-    <!-- On a phone the header carries these. -->
-    <div class="ap">
-        <ActionPoints size={34} />
+    <div class="ap" title="Action points left this turn">
+        {#each Array.from({ length: BASE_AP }, (_, i) => i) as pip (pip)}
+            <MaskIcon spent={pip >= session.apLeft} size={34} />
+        {/each}
+        {#if tokens > 0}<span class="tokens" title="Action tokens">+{tokens}</span>{/if}
     </div>
     <div class="tools">
         {#each LEVELS as level (level)}
@@ -109,14 +112,14 @@
     .ap {
         display: flex;
         align-items: center;
+        gap: 6px;
         min-height: 36px;
-        font-size: 16px;
     }
 
-    @media (max-width: 639px) {
-        .ap {
-            display: none;
-        }
+    .tokens {
+        margin-left: 4px;
+        font-weight: 800;
+        font-size: 16px;
     }
 
     .tools {

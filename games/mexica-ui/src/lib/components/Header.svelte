@@ -1,7 +1,6 @@
 <script lang="ts">
     import { fade } from 'svelte/transition'
     import { getGameSession } from '$lib/model/sessionContext.svelte.js'
-    import ActionPoints from './ActionPoints.svelte'
 
     const session = getGameSession()
     // Full screen draws a second header in its dialog; each anchors its own guide.
@@ -9,17 +8,11 @@
     const headerId = `mx-header-${uid}`
 
     const currentTurnPlayerId = $derived(session.gameState.turnManager.currentTurn()?.playerId)
-    // The supply tray's action points, which a phone's card has no room for.
-    const pointsShown = $derived(
-        session.myPlayer !== undefined &&
-            session.gameState.machineState === 'Acting' &&
-            !(session.gameState.result !== undefined && !session.isViewingHistory)
-    )
 </script>
 
 <div
     id={headerId}
-    class="relative flex h-[44px] items-center justify-between px-4 whitespace-nowrap tracking-[0.08em] text-(--mx-table-ink) max-sm:h-[30px] max-sm:px-1 max-sm:tracking-[0.04em]"
+    class="relative flex h-[44px] items-center justify-between px-4 tracking-[0.08em] text-(--mx-table-ink) max-sm:h-[30px] max-sm:px-1"
 >
     <div class="header-grid grid text-[18px] max-sm:text-[14px]">
         {#if session.isViewingHistory}
@@ -47,9 +40,6 @@
         {/if}
     </div>
 
-    <div class="points sm:hidden" class:hidden={!pointsShown} aria-hidden={!pointsShown}>
-        <ActionPoints size={16} />
-    </div>
     <div class="flex items-center gap-x-2">
         <div class="header-grid grid text-[18px] max-sm:text-[14px]">
             {#if session.hasLocalSelection || session.undoableAction}
@@ -64,11 +54,6 @@
 <style>
     .header-grid > * {
         grid-area: 1 / 1;
-    }
-
-    .points {
-        --ap-gap: 1px;
-        font-size: 14px;
     }
 
     .header-button {

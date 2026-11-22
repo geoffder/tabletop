@@ -23,7 +23,7 @@ Keyboard: every marked square, bridge, canal square and the founding token is a 
 
 - **Choice marks** (`choiceMark` / `chosenMark` in `Board.svelte`): drawn at the height of the square's top (`markLift`: a bridge's deck or the palace); on the ground they come after the surface and before the pieces; on a deck they join the pieces' depth order after the bridge's near rail, so they show whole and a nearer figure still covers them. Every mark is registered with the animator (`animator.mark()`) and fades as a move starts.
 - **Pieces** (temples, bridges, Pilli Mexica, calpulli tokens, the palace): pre-rendered looks from `scripts/render-looks.mjs`; a Pilli Mexica is its outline filled with the owner's colour under an image of its light. Never carry interaction state.
-- **Supply tray** (`SupplyTray.svelte`): always drawn and hidden (`visibility`, `inert`) when it is not the viewer's turn, so the board stays put; gone at the game's end, where the ending takes its room. On a phone (under 640px) the action points move to the header (`ActionPoints.svelte` in `Header.svelte`), the card keeping only the tools.
+- **Supply tray** (`SupplyTray.svelte`): always drawn and hidden (`visibility`, `inert`) when it is not the viewer's turn, so the board stays put; gone at the game's end, where the ending takes its room.
 - **Action card height** (`holdTallest`): the action card and the panel inside it keep the tallest height they have reached at the current width, so a prompt that wraps, or the ending replacing the tray, does not move the board.
 - **View toggles** (overlay, bottom right of the board): A1 coordinates, Flat board, Move costs, Rotated board (90°), Far side; all title preferences. Every one but Move costs re-lays the board.
 
@@ -97,4 +97,4 @@ When touching interactive visuals:
 ## 9. Status
 
 - Interactive visual system status: `Initial`
-- Last updated for interaction change: first contract, after the phone layout (action points in the header on phones)
+- Last updated for interaction change: first contract
