@@ -3,10 +3,12 @@
     import { getGameSession } from '$lib/model/sessionContext.svelte.js'
     import PieceIcon from './PieceIcon.svelte'
     import MaskIcon from './MaskIcon.svelte'
+    import { getTokenFlights } from '$lib/animators/tokenFlights.svelte.js'
 
     let { playerState }: { playerState: HydratedMexicaPlayerState } = $props()
 
     const session = getGameSession()
+    const flights = getTokenFlights()
 
     const playerId = $derived(playerState.playerId)
     const isActive = $derived(session.gameState.activePlayerIds.includes(playerId))
@@ -40,12 +42,18 @@
             </span>
         {/each}
         <span class="tally" title="Action tokens">
-            <MaskIcon size={22} /><b>{playerState.actionTokens}</b>
+            <span class="mask" {@attach flights?.cardMask(playerId)}><MaskIcon size={22} /></span><b
+                >{playerState.actionTokens}</b
+            >
         </span>
     </div>
 </div>
 
 <style>
+    .mask {
+        display: inline-flex;
+    }
+
     .card {
         border-radius: 12px;
         background: var(--mx-panel);

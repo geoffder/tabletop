@@ -18,15 +18,19 @@
     import ActionPanel from '$lib/components/ActionPanel.svelte'
     import GameEndPanel from '$lib/components/GameEndPanel.svelte'
     import SupplyTray from '$lib/components/SupplyTray.svelte'
+    import MaskIcon from '$lib/components/MaskIcon.svelte'
+    import { setTokenFlights, TokenFlights } from '$lib/animators/tokenFlights.svelte.js'
     import OverlayToggle from '$lib/components/OverlayToggle.svelte'
     import { zoomLimits } from '$lib/board/zoom.js'
     import { MexicaGameSession } from '$lib/model/session.svelte.js'
-    import { setGameSession } from '$lib/model/sessionContext.svelte.js'
+    import { getGameSession, setGameSession } from '$lib/model/sessionContext.svelte.js'
 
     let { gameSession }: { gameSession: GameSession<MexicaGameState, HydratedMexicaGameState> } =
         $props()
     assert(gameSession instanceof MexicaGameSession, 'Mexica needs its own game session')
     setGameSession(gameSession)
+    const tokenFlights = new TokenFlights(getGameSession())
+    setTokenFlights(tokenFlights)
 
     const zoom = $derived(zoomLimits(devicePixelRatio.current ?? 1))
 
@@ -61,6 +65,12 @@
 {/snippet}
 
 <div class="mx-table">
+    <!-- Action tokens flying between the supply tray on the board and the players' cards. -->
+    <div class="fliers" aria-hidden="true" {@attach tokenFlights.attach}>
+        {#each tokenFlights.fliers as flier (flier.id)}
+            <div class="flier" {@attach tokenFlights.flier(flier.id)}><MaskIcon size={40} /></div>
+        {/each}
+    </div>
     <DefaultTableLayout>
         {#snippet mobileControlsContent()}
             <!-- Faded controls in a colour that still shows on the panels. -->
@@ -234,6 +244,26 @@
             width: 260px;
             min-width: 260px;
         }
+    }
+
+    .fliers {
+        position: fixed;
+        inset: 0;
+        z-index: 40;
+        pointer-events: none;
+        overflow: hidden;
+    }
+
+    .flier {
+        position: absolute;
+        left: 0;
+        top: 0;
+        will-change: transform;
+    }
+
+    .flier :global(svg) {
+        width: 100%;
+        height: 100%;
     }
 
     .action-card {

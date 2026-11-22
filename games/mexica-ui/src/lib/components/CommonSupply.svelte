@@ -7,6 +7,7 @@
     import { TILT, type Box } from '$lib/board/view.js'
     import { getGameSession } from '$lib/model/sessionContext.svelte.js'
     import MaskIcon from './MaskIcon.svelte'
+    import { getTokenFlights } from '$lib/animators/tokenFlights.svelte.js'
 
     // The pieces every player draws on and how many are left, so anyone can see on any turn
     // what remains: single and double canals, bridges and action tokens, each at its centre in
@@ -20,6 +21,7 @@
     }: { frame: Box; centres: Point[]; size: number; badge: number } = $props()
 
     const session = getGameSession()
+    const flights = getTokenFlights()
     const game = $derived(session.gameState)
     // Each with where its count sits, right of its centre as a share of `size`: at the piece's
     // right end, clear of the piece where it is short.
@@ -67,7 +69,7 @@
             {/each}
         </svg>
     {:else}
-        <g transform="translate({-size / 2} {-size / 2})">
+        <g transform="translate({-size / 2} {-size / 2})" {@attach flights?.supplyMask}>
             <MaskIcon size={size * 0.9} />
         </g>
         <text x={-size / 2 - 4} y={size / 2 - 6} class="plus">+1</text>
