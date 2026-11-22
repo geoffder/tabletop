@@ -242,6 +242,13 @@
         return `M ${onSpan(cell, axis, -reach, -half)} L ${onSpan(cell, axis, reach, -half)} L ${onSpan(cell, axis, reach, half)} L ${onSpan(cell, axis, -reach, half)} Z`
     }
 
+    // A 5-point teleport's dot, in board units, and the opacities of its dark edge and its fill:
+    // it reaches every free square, so it stays quieter than a walk's spot.
+    const TELEPORT_DOT = { radius: 2.4, edge: 0.35, fill: 0.85 }
+
+    // A walk's spot, in board units.
+    const WALK_SPOT = 6
+
     let hovered: Cell | undefined = $state()
 
     function onKey(event: KeyboardEvent, cell: Cell) {
@@ -365,6 +372,18 @@
                     ></path>
                 {/each}
             {/each}
+        {:else if move !== undefined && session.tool === undefined}
+            <!-- Walks are many and reach onto bridges, where a wash would not show: a spot. -->
+            {#each ['under', 'over'] as layer (layer)}
+                <ellipse
+                    cx={tile.x + tile.width / 2}
+                    cy={tile.y + tile.height / 2}
+                    rx={WALK_SPOT}
+                    ry={WALK_SPOT * view.tilt}
+                    class="walk {layer}"
+                    {@attach animator.mark()}
+                ></ellipse>
+            {/each}
         {:else if session.tool === 'canal'}
             <!-- A canal's squares are many: a wash alone, so the board stays readable. -->
             <rect {...tile} rx="2" class="wash" {@attach animator.mark()}></rect>
@@ -390,6 +409,19 @@
                 {@attach animator.mark()}>{move.cost}</text
             >
         {/if}
+    {:else}
+        {@const c = view.centre(cell)}
+        {#each ['under', 'over'] as layer (layer)}
+            <ellipse
+                cx={c.x}
+                cy={c.y - markLift(cell)}
+                rx={TELEPORT_DOT.radius}
+                ry={TELEPORT_DOT.radius * view.tilt}
+                class="teleport {layer}"
+                style:opacity={layer === 'under' ? TELEPORT_DOT.edge : TELEPORT_DOT.fill}
+                {@attach animator.mark()}
+            ></ellipse>
+        {/each}
     {/if}
 {/snippet}
 
@@ -1222,6 +1254,36 @@
 
     .span.under {
         fill: rgb(94 240 255 / 0.22);
+    }
+
+    .walk {
+        pointer-events: none;
+    }
+
+    .walk.under {
+        fill: rgb(94 240 255 / 0.22);
+        stroke: rgb(0 0 0 / 0.85);
+        stroke-width: 3.4;
+    }
+
+    .walk.over {
+        fill: none;
+        stroke: var(--mx-mark);
+        stroke-width: 1.7;
+    }
+
+    .teleport {
+        pointer-events: none;
+    }
+
+    .teleport.under {
+        fill: none;
+        stroke: #000;
+        stroke-width: 2.2;
+    }
+
+    .teleport.over {
+        fill: var(--mx-mark);
     }
 
     .wash {
