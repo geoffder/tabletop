@@ -36,16 +36,27 @@ export const PALACE_PIXELS = 3
 const STONE = {
     light: linear('#a1a6ad'),
     dark: linear('#646a73'),
-    joint: linear('#3f434a'),
     warm: linear('#a59d92'),
     cool: linear('#8f9aa8')
 }
-const COURSING: Coursing = { shortest: 10, longest: 16, row: 7, joint: 0.45, round: 0.9 }
-// A step's tread laid in long slabs.
-const TREADS: Coursing = { shortest: 13, longest: 20, row: 12.5, joint: 0.45, round: 0.9 }
-// Rough stone with no joints, for the steps' risers and the stair walls: blocks longer than
-// the palace, so no joint chops them up.
-const ROUGH: Coursing = { shortest: 300, longest: 300, row: 300, joint: 0.45, round: 0.9 }
+
+// How the joints between its blocks show: `joint` their colour, `weight` how far they take it
+// on, `width` how wide they are and `round` how far the blocks' edges are worn into them;
+// `vary` how far each block's shade and tilt stray from the rest.
+export type PalaceJoints = {
+    joint: string
+    weight: number
+    width: number
+    round: number
+    vary: number
+}
+export const PALACE_JOINTS: PalaceJoints = {
+    joint: '#3f434a',
+    weight: 0.35,
+    width: 0.3,
+    round: 0.4,
+    vary: 0.3
+}
 
 const BRONZE = { light: linear('#d6ab5e'), dark: linear('#6b4b22'), shine: 0.35 }
 const TURQUOISE = { light: linear('#2fb3ad'), dark: linear('#13706e'), grout: linear('#3a3226') }
@@ -148,10 +159,10 @@ function lit(p: Vec, normal: Vec, bent: Vec, scene: Scene): number {
     return (0.4 + 0.6 * sunLight + sky) * occlusion(p, normal, scene)
 }
 
-function stoneColor(cut: { tone: number; hue: number; joint: number }): Rgb {
+function stoneColor(cut: { tone: number; hue: number; joint: number }, joint: Rgb): Rgb {
     const body = mix(STONE.light, STONE.dark, clamp(cut.tone))
     const cast = mix(body, cut.hue > 0 ? STONE.warm : STONE.cool, Math.abs(cut.hue))
-    return mix(cast, STONE.joint, cut.joint)
+    return mix(cast, joint, cut.joint)
 }
 
 // Turquoise laid as a mosaic of small irregular tesserae in dark grout.
@@ -169,8 +180,16 @@ function mosaic(x: number, y: number): { color: Rgb; grout: number } {
     }
 }
 
-export function renderPalace(tilt: number, pixels = PALACE_PIXELS): Bitmap {
+export function renderPalace(tilt: number, joints = PALACE_JOINTS, pixels = PALACE_PIXELS): Bitmap {
     const parts = palaceParts()
+    const { width: joint, round } = joints
+    const coursing: Coursing = { shortest: 10, longest: 16, row: 7, joint, round }
+    // A step's tread laid in long slabs.
+    const treads: Coursing = { shortest: 13, longest: 20, row: 12.5, joint, round }
+    // Rough stone with no joints, for the steps' risers and the stair walls: blocks longer than
+    // the palace, so no joint chops them up.
+    const rough: Coursing = { shortest: 300, longest: 300, row: 300, joint, round }
+    const jointColor = mix(STONE.dark, linear(joints.joint), joints.weight)
     const nearest = (p: Vec): Hit => {
         let hit: Hit = { distance: disc(p), kind: 'disc' }
         const relief = sunRelief(p)
@@ -207,22 +226,28 @@ export function renderPalace(tilt: number, pixels = PALACE_PIXELS): Bitmap {
             const color = mix(tile.color, TURQUOISE.grout, tile.grout * 0.8)
             return [{ color: metal(color, 0.1 * (1 - tile.grout)), alpha: 1 }]
         }
-        const stone = (block: Block, course: number, coursing: Coursing) => {
-            const cut = cutStone(p, normal, block, course, coursing)
+        const stone = (block: Block, course: number, laid: Coursing) => {
+            const laidCut = cutStone(p, normal, block, course, laid)
+            const cut = laidCut && {
+                ...laidCut,
+                tone: 0.33 + (laidCut.tone - 0.33) * joints.vary,
+                tip: scale(laidCut.tip, joints.vary)
+            }
             const bent = cut === undefined ? normal : normalize(add(normal, cut.tip))
-            const color = cut === undefined ? mix(STONE.light, STONE.dark, 0.4) : stoneColor(cut)
+            const color =
+                cut === undefined ? mix(STONE.light, STONE.dark, 0.4) : stoneColor(cut, jointColor)
             return { color, bent }
         }
         if (hit.kind === 'wall') {
-            const { color, bent } = stone(WALL_BLOCK, -2, ROUGH)
+            const { color, bent } = stone(WALL_BLOCK, -2, rough)
             return [{ color: scale(color, lit(p, normal, bent, scene)), alpha: 1 }]
         }
         const part = hit.part
         if (part === undefined) return [{ color: [0, 0, 0], alpha: 0 }]
         const stair = part.material === 'stair'
         const riser = stair && normal[2] <= 0.7
-        const coursing = riser ? ROUGH : stair ? TREADS : COURSING
-        const { bent, color: cut } = stone(part.block, parts.indexOf(part), coursing)
+        const laid = riser ? rough : stair ? treads : coursing
+        const { bent, color: cut } = stone(part.block, parts.indexOf(part), laid)
         // Each step's tread paler and its riser in shade, so the stair reads.
         let color = cut
         if (stair) color = riser ? scale(cut, 0.72) : mix(cut, STONE.light, 0.3)
