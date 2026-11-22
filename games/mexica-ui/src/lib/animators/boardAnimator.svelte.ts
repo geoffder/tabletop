@@ -31,7 +31,7 @@ import type { MexicaGameSession, MoveInterrupter } from '$lib/model/session.svel
 import type { Point } from '@tabletop/common'
 import { type Box, type BoardView, BRIDGE_RISE, CELL } from '$lib/board/view.js'
 import { pilliSpot } from '$lib/board/pilliSpot.js'
-import { TOKEN, TOKEN_ON_BOARD } from '$lib/board/tokenShape.js'
+import { TOKEN_ON_BOARD, TOKEN_ON_DISPLAY } from '$lib/board/tokenShape.js'
 import { COVE_TOE } from '$lib/board/looks.js'
 import { BANK_WIDTH } from '$lib/board/waterworks.js'
 import { poseOf, setPose } from './svgPose.js'
@@ -73,7 +73,7 @@ const BOAT = {
 // The display closing up behind a token that leaves, once it has lifted off.
 const CLOSE_UP = { at: 0.2, duration: 0.35 }
 // How much bigger the display shows a token than the board does.
-const TOKEN_ON_DISPLAY = TOKEN.radius / TOKEN_ON_BOARD
+const DISPLAY_SCALE = TOKEN_ON_DISPLAY / TOKEN_ON_BOARD
 // A step without an action ends within QUICK: pieces slide straight to where they end, and
 // placed pieces drop in or lift off.
 const QUICK = 0.18
@@ -940,7 +940,7 @@ export class BoardAnimator implements MoveInterrupter {
         timeline.set(this.partsOf(shown, touched).body, { opacity: 0 }, 0)
         timeline.fromTo(
             poseOf(body),
-            { x: start.x - end.x, y: start.y - end.y, scale: TOKEN_ON_DISPLAY },
+            { x: start.x - end.x, y: start.y - end.y, scale: DISPLAY_SCALE },
             { x: 0, y: 0, scale: 1, duration: QUICK, ease: 'power1.inOut' },
             0
         )
@@ -959,7 +959,7 @@ export class BoardAnimator implements MoveInterrupter {
             {
                 x: end.x - start.x,
                 y: end.y - start.y,
-                scale: TOKEN_ON_DISPLAY,
+                scale: DISPLAY_SCALE,
                 duration: QUICK,
                 ease: 'power1.inOut'
             },

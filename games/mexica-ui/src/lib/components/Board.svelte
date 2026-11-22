@@ -52,6 +52,8 @@
         TOKEN,
         TOKEN_INK,
         TOKEN_ON_BOARD,
+        TOKEN_ON_DISPLAY,
+        DISPLAY_SLOT,
         tokenBounds,
         tokenFaceLift,
         tokenLook
@@ -197,10 +199,14 @@
     // The Emperor's commands, in the lake at the top right, as far from its top edge on screen
     // as from its right edge, however tilted.
     const display = $derived(drawn.display)
-    const DISPLAY = { left: 15.3, slot: 1.42, columns: 4, rows: 2 }
     // How far the trays keep from the lake's right edge, in plan columns.
-    const TRAY_RIGHT =
-        BOARD_WIDTH + LAKE_MARGIN / CELL - DISPLAY.left - DISPLAY.slot * DISPLAY.columns
+    const TRAY_RIGHT = 0.37
+    const DISPLAY = {
+        left: BOARD_WIDTH + LAKE_MARGIN / CELL - TRAY_RIGHT - DISPLAY_SLOT * 4,
+        slot: DISPLAY_SLOT,
+        columns: 4,
+        rows: 2
+    }
     const displayTop = $derived(-LAKE_MARGIN / CELL + TRAY_RIGHT / view.tilt)
     const displayBox = $derived(
         view.planBox(
@@ -210,10 +216,9 @@
             displayTop + DISPLAY.slot * DISPLAY.rows
         )
     )
-    const SLOT = DISPLAY.slot * CELL
     // An octagon round a token on the display, on the ground, flat sides square to the board.
     const foundingRing = $derived.by(() => {
-        const r = (TOKEN.radius + 4) / Math.cos(Math.PI / 8)
+        const r = (TOKEN_ON_DISPLAY + 4) / Math.cos(Math.PI / 8)
         const points = Array.from({ length: 8 }, (_, k) => {
             const angle = Math.PI / 8 + (k * Math.PI) / 4
             return `${r * Math.cos(angle)} ${r * Math.sin(angle) * view.tilt}`
@@ -231,7 +236,7 @@
     // edge on screen as from its right edge. Each piece's slot fits the piece, as a share of
     // `slot`, so the frame keeps off the land.
     const SUPPLY = { scale: 1.4, slots: [0.72, 1.1, 0.95, 0.95] }
-    const SUPPLY_SLOT = DISPLAY.slot * SUPPLY.scale
+    const SUPPLY_SLOT = 1.42 * SUPPLY.scale
     const supply = $derived.by(() => {
         const spans = SUPPLY.slots.map((share) => share * SUPPLY_SLOT)
         const width = spans.reduce((sum, span) => sum + span, 0)
@@ -806,7 +811,7 @@
                 {/if}
                 <g transform="translate({at.x} {at.y})">
                     <g {@attach animator.piece(`display-${tokenId}`, 'body')}>
-                        {@render calpulli({ x: 0, y: 0 }, tokenId, TOKEN.radius)}
+                        {@render calpulli({ x: 0, y: 0 }, tokenId, TOKEN_ON_DISPLAY)}
                     </g>
                 </g>
             {/each}

@@ -9,6 +9,10 @@ export const TOKEN_INK = '#3b2708'
 // A founded district's token on the board, `radius` to its corners.
 export const TOKEN_ON_BOARD = 0.5 * CELL
 
+// The Emperor's display: each slot's side in squares, and a token on it, `radius` to its corners.
+export const DISPLAY_SLOT = 1.5
+export const TOKEN_ON_DISPLAY = 0.4 * DISPLAY_SLOT * CELL
+
 export const TOKEN = {
     radius: 0.4 * 1.42 * CELL,
     height: 3.6,
