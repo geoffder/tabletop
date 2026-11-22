@@ -2,6 +2,7 @@
     import { assert } from '@tabletop/common'
     import { CalledGameEnding } from '@tabletop/frontend-components'
     import { getGameSession } from '$lib/model/sessionContext.svelte.js'
+    import SourceIcon from './SourceIcon.svelte'
     import {
         scoreBreakdown,
         type ScoreSources,
@@ -29,12 +30,12 @@
             ranking.map((player) => player.playerId)
         )
     )
-    const LABELS: Record<keyof ScoreSources, { long: string; short: string }> = {
-        founding: { long: 'Founding', short: 'Found' },
-        firstPeriod: { long: 'Period 1', short: 'P1' },
-        finalFounded: { long: 'Period 2', short: 'P2' },
-        finalUnfounded: { long: 'Unfounded', short: 'Unf.' },
-        palace: { long: 'Palace', short: 'Pal.' }
+    const LABELS: Record<keyof ScoreSources, { long: string }> = {
+        founding: { long: 'Founding' },
+        firstPeriod: { long: 'Districts at the first period’s end' },
+        finalFounded: { long: 'Founded districts at the game’s end' },
+        finalUnfounded: { long: 'Unfounded districts at the game’s end' },
+        palace: { long: 'Palace' }
     }
     const shown = $derived(
         SOURCES.filter((source) => [...breakdown.values()].some((sources) => sources[source] > 0))
@@ -70,9 +71,9 @@
                 <tr>
                     <th></th>
                     {#each shown as source (source)}
-                        <th
-                            ><span class="long">{LABELS[source].long}</span><span class="short"
-                                >{LABELS[source].short}</span
+                        <th class="source" title={LABELS[source].long}
+                            ><SourceIcon {source} /><span class="sr-only"
+                                >{LABELS[source].long}</span
                             ></th
                         >
                     {/each}
@@ -92,7 +93,7 @@
                             ></span><span class="who">{nameOf(player.playerId)}</span>
                         </th>
                         {#each shown as source (source)}
-                            <td>{sourcesOf(player.playerId)[source]}</td>
+                            <td class="source">{sourcesOf(player.playerId)[source]}</td>
                         {/each}
                         {#if anyEarlier}<td>{earlierOf(player.playerId)}</td>{/if}
                         <td class="total">{player.score}</td>
@@ -141,6 +142,10 @@
         font-weight: 600;
         color: var(--mx-ink-quiet);
         border-bottom: 1px solid var(--mx-panel-rule);
+    }
+
+    .breakdown .source {
+        text-align: center;
     }
 
     .breakdown .name {
