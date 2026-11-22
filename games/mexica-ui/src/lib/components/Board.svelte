@@ -225,6 +225,23 @@
         return `M ${at(sx, sy)} L ${at(tx, ty)} M ${at(tx - ux * w - uy * w, ty - uy * w + ux * w)} L ${at(tx, ty)} L ${at(tx - ux * w + uy * w, ty - uy * w - ux * w)}`
     }
 
+    // A point on a canal square, `along` the way a bridge would run and `across` it, in board
+    // units from its middle.
+    function onSpan(cell: Cell, axis: Axis, along: number, across: number) {
+        const ew = axis === Axis.EastWest
+        const dc = (ew ? along : across) / CELL
+        const dr = (ew ? across : along) / CELL
+        const p = view.at(columnOf(cell) + 0.5 + dc, rowOf(cell) + 0.5 + dr)
+        return `${p.x} ${p.y - markLift(cell)}`
+    }
+
+    // Where a bridge would stand on a canal square, spanning it from bank to bank.
+    function spanOutline(cell: Cell, axis: Axis): string {
+        const reach = BRIDGE.reach
+        const half = BRIDGE.half * 0.75
+        return `M ${onSpan(cell, axis, -reach, -half)} L ${onSpan(cell, axis, reach, -half)} L ${onSpan(cell, axis, reach, half)} L ${onSpan(cell, axis, -reach, half)} Z`
+    }
+
     let hovered: Cell | undefined = $state()
 
     function onKey(event: KeyboardEvent, cell: Cell) {
@@ -340,7 +357,15 @@
             width: box.width - 8,
             height: box.height - 8 * view.tilt
         }}
-        {#if session.tool === 'canal'}
+        {@const axes = session.spanAxes(cell)}
+        {#if axes.length > 0}
+            {#each axes as axis (axis)}
+                {#each ['under', 'over'] as layer (layer)}
+                    <path d={spanOutline(cell, axis)} class="span {layer}" {@attach animator.mark()}
+                    ></path>
+                {/each}
+            {/each}
+        {:else if session.tool === 'canal'}
             <!-- A canal's squares are many: a wash alone, so the board stays readable. -->
             <rect {...tile} rx="2" class="wash" {@attach animator.mark()}></rect>
         {:else}
@@ -1176,6 +1201,27 @@
     .canal-arrows .over {
         stroke: var(--mx-mark);
         stroke-width: 2.4;
+    }
+
+    .span {
+        fill: none;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+        pointer-events: none;
+    }
+
+    .span.under {
+        stroke: rgb(0 0 0 / 0.85);
+        stroke-width: 4.2;
+    }
+
+    .span.over {
+        stroke: var(--mx-mark);
+        stroke-width: 2.4;
+    }
+
+    .span.under {
+        fill: rgb(94 240 255 / 0.22);
     }
 
     .wash {

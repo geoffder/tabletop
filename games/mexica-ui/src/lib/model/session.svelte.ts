@@ -297,6 +297,19 @@ export class MexicaGameSession extends GameSession<MexicaGameState, HydratedMexi
         return []
     })
 
+    // The ways a bridge could run on a canal square the picked-up bridge can go to.
+    spanAxes(cell: Cell): readonly Axis[] {
+        const state = this.gameState
+        if (this.tool === 'bridge') {
+            return AXES.filter((axis) => state.canBuildBridge(cell, axis, this.layout))
+        }
+        if (this.tool === 'moveBridge' && this.chosenCell !== undefined) {
+            const bridgeId = this.bridgeIdAt(this.chosenCell)
+            return AXES.filter((axis) => state.canMoveBridge(bridgeId, cell, axis, this.layout))
+        }
+        return []
+    }
+
     private canAct(type: ActionType): boolean {
         return !this.isViewingHistory && this.isMyTurn && this.validActionTypes.includes(type)
     }
