@@ -428,3 +428,18 @@ function firstRuledOut(players) {
 const ruled = firstRuledOut(4)
 write('ruled-out', 'Ruled out', ruled)
 console.log(`Ruled out: ${describe(ruled.state)}, by ${JSON.stringify(ruled.action)}`)
+
+// The last turn of a period: its districts are founded and a player has built every temple, and
+// the last player in turn order is to move, so ending the turn scores the period.
+const lastTurnOf = (period) => (state) =>
+    state.period === period &&
+    new HydratedMexicaGameState(structuredClone(state)).periodComplete() &&
+    state.activePlayerIds[0] === state.turnManager.turnOrder.at(-1)
+
+const firstScoring = firstFound(4, 1, lastTurnOf(1))
+write('first-scoring', 'First scoring', firstScoring)
+console.log(`First scoring: ${describe(firstScoring.state)}`)
+
+const finalScoring = firstFound(4, 1, lastTurnOf(2))
+write('final-scoring', 'Final scoring', finalScoring)
+console.log(`Final scoring: ${describe(finalScoring.state)}`)

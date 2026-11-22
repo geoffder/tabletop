@@ -21,6 +21,9 @@ import {
     isLake,
     isLand,
     isMovePilli,
+    isScorePeriod,
+    type DistrictScore,
+    PALACE_BONUS,
     neighbour,
     neighbours,
     rowOf,
@@ -82,6 +85,10 @@ const CLOSE_UP = { at: 0.2, duration: 0.35 }
 // Points a founding earns rise as "+N" over each scoring player's Pilli Mexica, `above` its head,
 // by `rise` over `duration`, while the cards count the scores up.
 const GAIN = { duration: 1.2, rise: -14, above: -16 }
+// At a period's end the districts score one after another, `step` apart and all within `within`:
+// each shows its awards as chips in the players' colours that rise by `rise` and fade over
+// `duration`; then the second period's tokens drop onto the display together.
+const SCORING = { step: 0.3, within: 2.2, duration: 1.1, rise: -12 }
 // A token no district can take any more breaks in two along a jagged crack: the halves drift
 // `apart` either way, sink `drop`, tip `tilt` degrees and fade out over `duration`, and the
 // display closes up behind them at `closeAt`.
@@ -142,6 +149,15 @@ type Step = TransitionStep<HydratedMexicaGameState, AnimationContext>
 // Points earned, rising over a player's Pilli Mexica at (x, y) on screen.
 export type Gain = { playerId: string; points: number; x: number; y: number }
 
+// A district scored at a period's end: its awards, shown at (x, y) on screen over `anchor`.
+export type Scoring = {
+    key: string
+    anchor: Cell
+    x: number
+    y: number
+    awards: { playerId: string; points: number }[]
+}
+
 export const BREAK_SIDES = ['left', 'right'] as const
 export type BreakSide = (typeof BREAK_SIDES)[number]
 
@@ -178,6 +194,8 @@ export class BoardAnimator implements MoveInterrupter {
     // Where each walking Pilli Mexica has got to, for the order the board draws in.
     walking: ReadonlyMap<string, Cell> = $state.raw(new Map())
     floods: readonly Flood[] = $state.raw([])
+    // The districts a period's end scores, each with its awards, shown over the district.
+    scorings: readonly Scoring[] = $state.raw([])
     // Points a founding earned, shown over the scoring players' Pilli Mexica.
     gains: readonly Gain[] = $state.raw([])
     // Display tokens ruled out by this move, drawn as two halves while they break apart.
@@ -190,6 +208,7 @@ export class BoardAnimator implements MoveInterrupter {
     private readonly parts = new Map<string, Parts>()
     private readonly halves = new Map<string, SVGGElement>()
     private readonly gainNodes = new Map<string, SVGGElement>()
+    private readonly scoringNodes = new Map<string, SVGGElement>()
     private readonly marks = new Set<SVGElement>()
     private readonly springNodes = new Map<string, SVGCircleElement>()
     private readonly floodPavings = new Map<string, SVGImageElement>()
@@ -304,6 +323,7 @@ export class BoardAnimator implements MoveInterrupter {
             this.flights = []
             this.breaking = []
             this.gains = []
+            this.scorings = []
             throw error
         }
     }
@@ -350,6 +370,7 @@ export class BoardAnimator implements MoveInterrupter {
         if (
             founded.length + unfounded.length === 0 &&
             withdrawn.length + arriving.length === 0 &&
+            !(action !== undefined && isScorePeriod(action)) &&
             dug.length + filled.length === 0 &&
             temples.added.length + temples.removed.length === 0 &&
             bridges.added.length + bridges.removed.length === 0 &&
@@ -370,7 +391,14 @@ export class BoardAnimator implements MoveInterrupter {
         const flying = [...(quick ? founded : []), ...unfounded]
         this.flights = flying
         this.breaking = quick ? [] : withdrawn
-        this.gains = quick || founded.length === 0 ? [] : this.gainsOf(from, to, after)
+        const scored = !quick && isScorePeriod(action) ? action.metadata : undefined
+        this.scorings = scored === undefined ? [] : this.scoringsOf(from, scored.districts)
+        this.gains =
+            scored !== undefined
+                ? this.palaceGains(scored.palace, after)
+                : quick || founded.length === 0
+                  ? []
+                  : this.gainsOf(from, to, after)
         this.drawn = {
             districts: after.districts.filter((district) => !flying.includes(district)),
             display: before.display.length >= after.display.length ? before.display : after.display,
@@ -476,9 +504,45 @@ export class BoardAnimator implements MoveInterrupter {
                 this.breakApart(tokenId, timeline)
             }
         }
+        const step = Math.min(SCORING.step, SCORING.within / Math.max(this.scorings.length, 1))
+        this.scorings.forEach((scoring, index) => {
+            const node = this.scoringNodes.get(scoring.key)
+            if (node === undefined) return
+            const at = index * step
+            timeline.fromTo(
+                poseOf(node),
+                { y: 0 },
+                { y: SCORING.rise, duration: SCORING.duration, ease: 'power1.out' },
+                at
+            )
+            timeline.fromTo(
+                node,
+                { opacity: 0 },
+                {
+                    keyframes: { opacity: [0, 1, 1, 1, 0], easeEach: 'none' },
+                    duration: SCORING.duration,
+                    ease: 'none'
+                },
+                at
+            )
+        })
+        // The second period's tokens drop in together once the districts have scored.
+        const arriveAt =
+            this.scorings.length > 0
+                ? (this.scorings.length - 1) * step + SCORING.duration * 0.6
+                : 0
         for (const tokenId of arriving) {
-            const { body } = this.partsOf(`display-${tokenId}`, touched)
-            timeline.fromTo(body, { opacity: 0 }, { opacity: 1, duration: QUICK, ease: 'none' }, 0)
+            if (quick) {
+                const { body } = this.partsOf(`display-${tokenId}`, touched)
+                timeline.fromTo(
+                    body,
+                    { opacity: 0 },
+                    { opacity: 1, duration: QUICK, ease: 'none' },
+                    0
+                )
+            } else {
+                this.drop(`display-${tokenId}`, timeline, touched, DROP.fall, true, arriveAt)
+            }
         }
         // The tokens left on the display close up behind one that leaves, and open up for one
         // put back.
@@ -555,6 +619,7 @@ export class BoardAnimator implements MoveInterrupter {
             this.flights = []
             this.breaking = []
             this.gains = []
+            this.scorings = []
             for (const node of touched) {
                 setPose(node, { x: 0, y: 0, scale: 1 })
                 gsap.set(node, { opacity: 1 })
@@ -583,11 +648,75 @@ export class BoardAnimator implements MoveInterrupter {
             const pilli = after.pillis.find((other) => other.playerId === player.playerId)
             if (points <= 0 || pilli === undefined) return []
             const spot = pilliSpot(view, pilli.cell, bridges)
-            const head = view.flat
-                ? CELL * 0.45
-                : view.lift(PILLI_HEIGHT) + PILLI_DEPTH * CELL * view.tilt
-            return [{ playerId: player.playerId, points, x: spot.x, y: spot.y - head - GAIN.above }]
+            return [{ playerId: player.playerId, points, x: spot.x, y: spot.y - this.headOf(view) }]
         })
+    }
+
+    // The districts a period's end scored, top to bottom of the board: each over its token, or an
+    // unfounded one over its middle square.
+    private scoringsOf(
+        from: HydratedMexicaGameState,
+        districts: readonly DistrictScore[]
+    ): Scoring[] {
+        const view = this.view()
+        const layout = from.layout()
+        const all = layout.districts()
+        const scorings = districts.map((score) => {
+            const founded = from.districts.find((district) => district.tokenId === score.tokenId)
+            const cells = all.find((district) => district.includes(score.cell)) ?? [score.cell]
+            const middle = (values: number[]) => values.reduce((a, b) => a + b, 0) / values.length
+            const row = middle(cells.map(rowOf))
+            const column = middle(cells.map(columnOf))
+            const anchor =
+                founded?.cell ??
+                [...cells].sort(
+                    (a, b) =>
+                        Math.hypot(rowOf(a) - row, columnOf(a) - column) -
+                        Math.hypot(rowOf(b) - row, columnOf(b) - column)
+                )[0]
+            const at = view.centre(anchor)
+            return {
+                key: `scoring-${score.cell}`,
+                anchor,
+                x: at.x,
+                y: at.y - CELL * 0.3 * view.tilt,
+                awards: score.awards.map((award) => ({
+                    playerId: award.playerId,
+                    points: award.points
+                }))
+            }
+        })
+        return scorings.sort(
+            (a, b) => rowOf(a.anchor) - rowOf(b.anchor) || columnOf(a.anchor) - columnOf(b.anchor)
+        )
+    }
+
+    // The palace's bonus over each Pilli Mexica that stood on a starting space.
+    private palaceGains(playerIds: readonly string[], after: DrawnBoard): Gain[] {
+        const view = this.view()
+        const bridges = new Set(after.bridges.map((bridge) => bridge.cell))
+        return playerIds.flatMap((playerId) => {
+            const pilli = after.pillis.find((other) => other.playerId === playerId)
+            if (pilli === undefined) return []
+            const spot = pilliSpot(view, pilli.cell, bridges)
+            return [{ playerId, points: PALACE_BONUS, x: spot.x, y: spot.y - this.headOf(view) }]
+        })
+    }
+
+    private headOf(view: BoardView): number {
+        return (
+            (view.flat ? CELL * 0.45 : view.lift(PILLI_HEIGHT) + PILLI_DEPTH * CELL * view.tilt) +
+            GAIN.above
+        )
+    }
+
+    scoring(key: string): Attachment<SVGGElement> {
+        return (node) => {
+            this.scoringNodes.set(key, node)
+            return () => {
+                if (this.scoringNodes.get(key) === node) this.scoringNodes.delete(key)
+            }
+        }
     }
 
     // The "+N" over a player's Pilli Mexica.

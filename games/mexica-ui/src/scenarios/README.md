@@ -1,7 +1,7 @@
 # Mexica scenarios
 
 The dev harness lists these under **Scenarios**; loading one again starts it over.
-`scripts/build-scenarios.mjs` writes Founding, Canal rides and Ruled out (it plays bot games, so rerunning
+`scripts/build-scenarios.mjs` writes Founding, Canal rides, Ruled out, First scoring and Final scoring (it plays bot games, so rerunning
 it also rewrites Middle game and Late game; restore those with `git checkout` unless they are
 meant to change). `src/lib/model/scenarioFiles.spec.ts` checks every file.
 
@@ -46,3 +46,21 @@ the only district left that can take a 4 is up at F1.
 - Pick the **3-level temple** and choose **F1**: no district can take a 4 any more, so both 4s
   crack in two, the halves drifting apart and fading.
 - Undo: the temple lifts off and both 4s fade back onto the display.
+
+## First scoring
+
+Four players at the end of the first period: every district token is founded and a player has
+built all their temples, and the last player in turn order is to move.
+
+- **End turn**: the period scores. Each founded district in turn, top of the board to the
+  bottom, shows its awards as chips in the players' colours rising over its token; a Pilli
+  Mexica on a starting space gets **+5** over its head; the cards count the scores up. Then the
+  second period's tokens drop onto the display together, and any that no district can take
+  break apart.
+
+## Final scoring
+
+Four players at the end of the second period, the last player to move.
+
+- **End turn**: the game ends. Founded districts score over their tokens and unfounded ones over
+  their middle square, one after another, and the cards count up to the final scores.

@@ -80,4 +80,14 @@ describe('the scenarios the harness offers', () => {
         state.buildTemple(playerId, f1, 3)
         expect(state.impossibleTokens()).toEqual(state.display)
     })
+
+    it.each([
+        ['first-scoring', 1],
+        ['final-scoring', 2]
+    ])('%s ends period %i when its last player ends the turn', (name, period) => {
+        const state = scenario(name)
+        expect(state.period).toBe(period)
+        expect(state.periodComplete()).toBe(true)
+        expect(state.activePlayerIds).toEqual([state.turnManager.turnOrder.at(-1)])
+    })
 })

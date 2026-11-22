@@ -275,6 +275,9 @@
         return `M${edge} -60${CRACK.map(([x, y]) => `L${x} ${y}`).join('')}L${edge} 60Z`
     }
 
+    // A district's award at a period's end, in board units.
+    const CHIP = { width: 34, height: 22, text: 17 }
+
     // The "+N" a founding's points rise as, in board units.
     const GAIN_SIZE = 22
 
@@ -883,6 +886,33 @@
             </g>
         {/each}
 
+        <!-- A period's end: each district's awards as chips in the players' colours. -->
+        {#each animator.scorings as scoring (scoring.key)}
+            <g transform="translate({scoring.x} {scoring.y})" class="surface">
+                <g {@attach animator.scoring(scoring.key)} opacity="0">
+                    {#each scoring.awards as award, index (award.playerId)}
+                        {@const x = (index - (scoring.awards.length - 1) / 2) * (CHIP.width + 3)}
+                        <rect
+                            x={x - CHIP.width / 2}
+                            y={-CHIP.height / 2}
+                            width={CHIP.width}
+                            height={CHIP.height}
+                            rx={CHIP.height / 2}
+                            fill={session.playerFill(award.playerId)}
+                            class="chip"
+                        ></rect>
+                        <text
+                            {x}
+                            dy={CHIP.text * 0.35}
+                            font-size={CHIP.text}
+                            fill={session.playerInk(award.playerId)}
+                            class="chip-points">+{award.points}</text
+                        >
+                    {/each}
+                </g>
+            </g>
+        {/each}
+
         <!-- Points a founding earned, rising over the scoring players' Pilli Mexica. -->
         {#each animator.gains as gain (gain.playerId)}
             <g transform="translate({gain.x} {gain.y})" class="surface">
@@ -998,6 +1028,16 @@
         font-size: 10px;
         font-weight: 600;
         pointer-events: none;
+    }
+
+    .chip {
+        stroke: #1c1712;
+        stroke-width: 1.4;
+    }
+
+    .chip-points {
+        font-weight: 800;
+        text-anchor: middle;
     }
 
     .gain {
