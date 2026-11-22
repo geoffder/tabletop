@@ -64,31 +64,21 @@ export function palaceText(count: number): string {
 
 const COUNTS = ['', 'a', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight']
 
-// The districts the Emperor withdrew, how many of each size, smallest first, sharing one noun:
-// "two 4-space districts", "a 3-, two 4-, and an 8-space districts", and what that means for
-// founding them.
+// The districts the Emperor withdrew, and what that means for founding them: one size as "two
+// 4-space districts", mixed sizes counted first, "four districts, of 3, 4, 4 and 8 spaces".
 export function withdrawnText(sizes: readonly number[]): string {
-    const counts = new Map<number, number>()
-    for (const size of [...sizes].sort((a, b) => a - b)) {
-        counts.set(size, (counts.get(size) ?? 0) + 1)
-    }
-    const groups = [...counts].map(([size, count]) => {
-        const number =
-            count > 1 ? (COUNTS[count] ?? String(count)) : [8, 11, 18].includes(size) ? 'an' : 'a'
-        return `${number} ${size}-`
-    })
-    const listed =
-        groups.length === 1
-            ? groups[0]
-            : groups.length === 2
-              ? `${groups[0]} and ${groups[1]}`
-              : `${groups.slice(0, -1).join(', ')}, and ${groups[groups.length - 1]}`
-    const noun = sizes.length === 1 ? 'district' : 'districts'
-    const fate =
-        sizes.length === 1
-            ? 'it can no longer be founded'
-            : sizes.length === 2
-              ? 'neither can be founded'
-              : 'none can be founded'
-    return `The Emperor withdrew ${listed}space ${noun}: ${fate}`
+    const sorted = [...sizes].sort((a, b) => a - b)
+    const many = sorted.length > 1
+    const howMany = many ? (COUNTS[sorted.length] ?? String(sorted.length)) : ''
+    const listed = sorted.every((size) => size === sorted[0])
+        ? many
+            ? `${howMany} ${sorted[0]}-space districts`
+            : `${[8, 11, 18].includes(sorted[0]) ? 'an' : 'a'} ${sorted[0]}-space district`
+        : `${howMany} districts, of ${sorted.slice(0, -1).join(', ')} and ${sorted.at(-1)} spaces`
+    const fate = !many
+        ? 'it can no longer be founded'
+        : sorted.length === 2
+          ? 'neither can be founded'
+          : 'none can be founded'
+    return `The Emperor withdrew ${listed}: ${fate}`
 }
