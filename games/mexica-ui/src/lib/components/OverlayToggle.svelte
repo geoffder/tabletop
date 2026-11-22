@@ -77,6 +77,17 @@
             var(--mx-panel-shadow);
     }
 
+    /* Five fit beside the zoom bar on a 320 px phone. */
+    @media (max-width: 400px) {
+        .toggle {
+            padding: 3px 2px;
+        }
+
+        .glyph {
+            padding: 1px 3px;
+        }
+    }
+
     /* Only where a pointer really hovers: on touch, a tap would leave the hover stuck on. */
     @media (hover: hover) {
         .toggle:hover {

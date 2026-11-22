@@ -140,7 +140,7 @@
                     <Board space={{ width: spaceWidth, height: spaceHeight - 8 }} />
                     {#snippet overlay()}
                         <div
-                            class="pointer-events-auto absolute right-3 bottom-2 z-10 flex items-center gap-1.5"
+                            class="pointer-events-auto absolute right-3 bottom-2 z-10 flex items-center gap-1.5 max-[400px]:right-2 max-[400px]:gap-1"
                         >
                             <OverlayToggle
                                 glyph="A1"
