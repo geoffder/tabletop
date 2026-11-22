@@ -71,7 +71,8 @@ const WALK = { hop: 0.15, glide: 0.2, height: -7 }
 // bridge the Pilli hops up onto the deck and the canoe slides back under. Longer than a bridge
 // is wide, it fades as it goes under. Over a bridge another Pilli Mexica stands on, the Pilli
 // jumps clear of its headdress, `over` above it, taking off and landing `jump` squares either
-// side instead of `pass`. The canoe waits `off` of a square short of each end bridge's middle,
+// side instead of `pass`; with the next bridge within `leap` squares, it lands on that deck
+// instead and, riding on, hops down into the canoe beyond it. The canoe waits `off` of a square short of each end bridge's middle,
 // and the Pilli rides `sink` lower than it stands on the ground.
 const BOAT = {
     cell: 0.17,
@@ -82,6 +83,7 @@ const BOAT = {
     over: 7,
     pass: 0.8,
     jump: 1.3,
+    leap: 2.5,
     sink: 3,
     emerge: 0.3
 }
@@ -1062,19 +1064,18 @@ export class BoardAnimator implements MoveInterrupter {
                 points.push(beyondEdge(view, stretch.cells[stretch.cells.length - 1]))
             const course = courseOf(points)
             const offset = stretch.fromOutside ? 1 : 0
-            const passed = stretch.cells.flatMap((cell, index) => {
-                if (!stops.slice(1, -1).includes(cell)) return []
-                const manned = standing.has(cell)
-                return [
-                    {
-                        at: course.at[index + offset],
-                        reach: (manned ? BOAT.jump : BOAT.pass) * CELL,
-                        height: deck + sink + BOAT.over + (manned ? view.lift(PILLI_HEIGHT) : 0)
-                    }
-                ]
-            })
+            const passed = stretch.cells.flatMap((cell, index) =>
+                stops.slice(1, -1).includes(cell)
+                    ? [{ at: course.at[index + offset], manned: standing.has(cell) }]
+                    : []
+            )
             return { ...stretch, course, offset, passed }
         })
+        const heights: Heights = {
+            deck: deck + sink,
+            over: deck + sink + BOAT.over,
+            jump: deck + sink + BOAT.over + view.lift(PILLI_HEIGHT)
+        }
         const wholePose = poseOf(whole)
         const bodyPose = poseOf(body)
         const place = (course: Course, distance: number) => {
@@ -1101,6 +1102,10 @@ export class BoardAnimator implements MoveInterrupter {
             const last = index === stretches.length - 1 ? length - BOAT.off * CELL : length
             return last > first ? { first, last } : { first: length / 2, last: length / 2 }
         })
+        const end = pilliSpot(view, stops[stops.length - 1], decks)
+        const lastStretch = stretches[stretches.length - 1]
+        const landsAt = ends[ends.length - 1].last
+        const leapsAshore = liftOver(landsAt, lastStretch.passed, landsAt, heights).toDeck === 1
         // The canoe slides out from under the first bridge, the Pilli hops down into it.
         const outset = stretches[0].course
         const board = outset.pointAt(ends[0].first).point
@@ -1163,16 +1168,18 @@ export class BoardAnimator implements MoveInterrupter {
                                 : 'none',
                     onUpdate: () => {
                         const point = place(course, travel.distance)
-                        wholePose.x = point.x - start.x
-                        wholePose.y = point.y + sink - start.y
-                        let over = 0
-                        for (const bridge of stretch.passed) {
-                            const u =
-                                (travel.distance - bridge.at + bridge.reach) / (2 * bridge.reach)
-                            if (u > 0 && u < 1) over = Math.sin(Math.PI * u) * bridge.height
-                        }
-                        bodyPose.y = -over
-                        aboardShown(over === 0)
+                        const { lift, toDeck } = liftOver(
+                            travel.distance,
+                            stretch.passed,
+                            index === stretches.length - 1 ? last : undefined,
+                            heights
+                        )
+                        const x = point.x - start.x
+                        const y = point.y + sink - start.y
+                        wholePose.x = x + (end.x - start.x - x) * toDeck
+                        wholePose.y = y + (end.y - start.y - y) * toDeck
+                        bodyPose.y = toDeck * heights.deck - lift
+                        aboardShown(lift === 0)
                         const near = course.squareAt(travel.distance) - stretch.offset
                         const cell =
                             stretch.cells[Math.max(0, Math.min(stretch.cells.length - 1, near))]
@@ -1210,22 +1217,23 @@ export class BoardAnimator implements MoveInterrupter {
             },
             under
         )
-        const end = pilliSpot(view, stops[stops.length - 1], decks)
-        timeline.to(
-            wholePose,
-            { x: end.x - start.x, y: end.y - start.y, duration: BOAT.hop, ease: 'none' },
-            landing
-        )
-        timeline.to(
-            bodyPose,
-            { y: WALK.height - deck, duration: BOAT.hop / 2, ease: 'power1.out' },
-            landing
-        )
-        timeline.to(
-            bodyPose,
-            { y: 0, duration: BOAT.hop / 2, ease: 'power1.in' },
-            landing + BOAT.hop / 2
-        )
+        if (!leapsAshore) {
+            timeline.to(
+                wholePose,
+                { x: end.x - start.x, y: end.y - start.y, duration: BOAT.hop, ease: 'none' },
+                landing
+            )
+            timeline.to(
+                bodyPose,
+                { y: WALK.height - deck, duration: BOAT.hop / 2, ease: 'power1.out' },
+                landing
+            )
+            timeline.to(
+                bodyPose,
+                { y: 0, duration: BOAT.hop / 2, ease: 'power1.in' },
+                landing + BOAT.hop / 2
+            )
+        }
         timeline.to(
             boat,
             { opacity: 0, duration: BOAT.emerge * 0.6, ease: 'none' },
@@ -1488,6 +1496,73 @@ type Stretch = { cells: Cell[]; fromOutside: boolean; toOutside: boolean }
 const OUTSIDE = -1
 const ROUND_ISLAND = 12
 const LAKE_CELLS = Array.from({ length: CELL_COUNT }, (_, cell) => cell).filter(isLake)
+
+interface Hurdle {
+    // How far along the stretch the bridge stands.
+    at: number
+    // Whether another Pilli Mexica stands on it.
+    manned: boolean
+}
+
+// Heights over the canoe: the deck of a bridge, the top of the hop over an empty one and of the
+// jump over one with a Pilli Mexica on it.
+interface Heights {
+    deck: number
+    over: number
+    jump: number
+}
+
+// How high the riding Pilli Mexica is lifted over its canoe `distance` along a stretch, and how
+// far (0 to 1) it has moved from the canoe towards the last bridge's deck, where the canoe stops
+// at `landing`.
+function liftOver(
+    distance: number,
+    hurdles: readonly Hurdle[],
+    landing: number | undefined,
+    heights: Heights
+): { lift: number; toDeck: number } {
+    const quarter = (u: number) => Math.sin((Math.PI / 2) * u)
+    let skip = -1
+    for (const [index, hurdle] of hurdles.entries()) {
+        if (index === skip) continue
+        const next = hurdles[index + 1]?.at ?? landing
+        const leaps = hurdle.manned && next !== undefined && next - hurdle.at <= BOAT.leap * CELL
+        if (!leaps) {
+            const reach = (hurdle.manned ? BOAT.jump : BOAT.pass) * CELL
+            const u = (distance - hurdle.at + reach) / (2 * reach)
+            if (u > 0 && u < 1)
+                return {
+                    lift: Math.sin(Math.PI * u) * (hurdle.manned ? heights.jump : heights.over),
+                    toDeck: 0
+                }
+            continue
+        }
+        // Over the Pilli Mexica and down onto the next deck.
+        const rising = hurdle.at - BOAT.jump * CELL
+        const ashore = index === hurdles.length - 1
+        const toDeck = ashore ? Math.max(0, Math.min(1, (distance - rising) / (next - rising))) : 0
+        if (distance > rising && distance <= hurdle.at)
+            return {
+                lift: heights.jump * quarter((distance - rising) / (hurdle.at - rising)),
+                toDeck
+            }
+        if (distance > hurdle.at && distance <= next)
+            return {
+                lift:
+                    heights.deck +
+                    (heights.jump - heights.deck) *
+                        quarter(1 - (distance - hurdle.at) / (next - hurdle.at)),
+                toDeck
+            }
+        if (ashore) return { lift: distance > next ? heights.deck : 0, toDeck }
+        // Riding on: down off the far side of the deck into the canoe.
+        const off = BOAT.pass * CELL
+        if (distance > next && distance < next + off)
+            return { lift: heights.deck * quarter(1 - (distance - next) / off), toDeck: 0 }
+        skip = index + 1
+    }
+    return { lift: 0, toDeck: 0 }
+}
 
 function stretchesOf(
     stops: readonly Cell[],

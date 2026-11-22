@@ -1,7 +1,7 @@
 # Mexica scenarios
 
 The dev harness lists these under **Scenarios**; loading one again starts it over.
-`scripts/build-scenarios.mjs` writes Founding, Canal rides, Jump over, Ruled out, First scoring and Final scoring (it plays bot games, so rerunning
+`scripts/build-scenarios.mjs` writes Founding, Canal rides, Jump over, Jump into canoe, Ruled out, First scoring and Final scoring (it plays bot games, so rerunning
 it also rewrites Middle game and Late game; restore those with `git checkout` unless they are
 meant to change). `src/lib/model/scenarioFiles.spec.ts` checks every file.
 
@@ -43,11 +43,22 @@ way of moving by water is a choice:
 Canal rides again, with Alice's Pilli Mexica moved onto the bridge at O6, so the bridge can be
 passed under but not stopped on.
 
-- **N7**: the canoe slides out from under Q8, the Pilli hops in, and as the canoe passes under O6
-  the Pilli jumps high enough to clear Alice's headdress, drawn in front of her as it comes down
-  on the near side, lands in the canoe again and hops up onto N7.
+- **N7**: the canoe slides out from under Q8, the Pilli hops in and is paddled round through the
+  lake. As the canoe passes under O6 the Pilli jumps high enough to clear Alice's headdress and,
+  N7 being close, comes straight down onto N7's deck without touching the canoe again, which
+  slides on under N7.
 - O6 is not offered as a place to stop.
 - Undo: the Pilli slides straight back to Q8.
+
+## Jump into canoe
+
+Four players in the first period, Bob to move from the bridge at N5, with Alice's Pilli Mexica
+moved onto the bridge at O7 and the next bridge, M10, a long way on by water.
+
+- **M10**: the canoe slides out from under N5, the Pilli hops in, jumps clear over Alice as the
+  canoe passes under O7, comes back down into the canoe beyond her bridge and rides on to M10.
+- O7 is not offered as a place to stop.
+- Undo: the Pilli slides straight back to N5.
 
 ## Ruled out
 

@@ -1,0 +1,357 @@
+{
+    "game": {
+        "id": "scenario-jump-into-canoe",
+        "isPublic": false,
+        "status": "started",
+        "typeId": "mexica",
+        "deleted": false,
+        "name": "Jump into canoe",
+        "ownerId": "owner",
+        "players": [
+            {
+                "id": "player-1",
+                "name": "Alice",
+                "isHuman": true,
+                "status": "joined"
+            },
+            {
+                "id": "player-2",
+                "name": "Bob",
+                "isHuman": true,
+                "status": "joined"
+            },
+            {
+                "id": "player-3",
+                "name": "Carol",
+                "isHuman": true,
+                "status": "joined"
+            },
+            {
+                "id": "player-4",
+                "name": "Dan",
+                "isHuman": true,
+                "status": "joined"
+            }
+        ],
+        "config": {
+            "neutralTemples": true
+        },
+        "hotseat": false,
+        "winningPlayerIds": [],
+        "seed": 3367980177,
+        "activePlayerIds": ["player-2"],
+        "createdAt": "2026-11-22T18:55:59.281Z",
+        "storage": "remote",
+        "category": "standard",
+        "startedAt": "2026-11-22T18:55:59.281Z",
+        "progress": {
+            "fraction": 0,
+            "label": "Period 1 · 8 districts to found"
+        }
+    },
+    "state": {
+        "systemVersion": 3,
+        "id": "yYvbFiMwLeLIVBlFcMGoC",
+        "gameId": "scenario-jump-into-canoe",
+        "seed": 3367980177,
+        "prng": {
+            "seed": 3367980177,
+            "invocations": 20
+        },
+        "protectedPrng": {
+            "algorithm": "chacha20-v1",
+            "seed": "033aacbe6212a2c9bee0cb5c71682e564dd13d1188be676e6f5a533a83f821c3",
+            "invocations": 0
+        },
+        "masterSeed": "0123456789abcdef0123456789abcdef",
+        "activePlayerIds": ["player-2"],
+        "winningPlayerIds": [],
+        "actionCount": 0,
+        "actionChecksum": 0,
+        "players": [
+            {
+                "playerId": "player-1",
+                "color": "blue",
+                "score": 0,
+                "actionTokens": 0,
+                "pilli": 140
+            },
+            {
+                "playerId": "player-2",
+                "color": "red",
+                "score": 0,
+                "actionTokens": 0,
+                "pilli": 97
+            },
+            {
+                "playerId": "player-3",
+                "color": "yellow",
+                "score": 0,
+                "actionTokens": 0,
+                "pilli": 155
+            },
+            {
+                "playerId": "player-4",
+                "color": "green",
+                "score": 0,
+                "actionTokens": 0,
+                "pilli": 154
+            }
+        ],
+        "machineState": "Acting",
+        "turnManager": {
+            "series": [
+                {
+                    "type": "turn",
+                    "playerId": "player-2",
+                    "start": 0
+                }
+            ],
+            "turnOrder": ["player-1", "player-2", "player-3", "player-4"],
+            "turnCounts": {
+                "player-1": 6,
+                "player-2": 5,
+                "player-3": 5,
+                "player-4": 5
+            },
+            "seriesKeeps": "latest"
+        },
+        "canals": [
+            {
+                "cells": [119, 140]
+            },
+            {
+                "cells": [161, 182]
+            },
+            {
+                "cells": [162, 183]
+            },
+            {
+                "cells": [63]
+            },
+            {
+                "cells": [231, 210]
+            },
+            {
+                "cells": [85, 64]
+            },
+            {
+                "cells": [163, 184]
+            },
+            {
+                "cells": [127, 106]
+            },
+            {
+                "cells": [205]
+            },
+            {
+                "cells": [224, 203]
+            },
+            {
+                "cells": [262, 241]
+            },
+            {
+                "cells": [118, 97]
+            },
+            {
+                "cells": [190]
+            },
+            {
+                "cells": [220, 199]
+            },
+            {
+                "cells": [243]
+            },
+            {
+                "cells": [240, 239]
+            },
+            {
+                "cells": [202, 201]
+            },
+            {
+                "cells": [124]
+            },
+            {
+                "cells": [181]
+            },
+            {
+                "cells": [125, 146]
+            }
+        ],
+        "bridges": [
+            {
+                "cell": 140,
+                "axis": "ew"
+            },
+            {
+                "cell": 97,
+                "axis": "ew"
+            },
+            {
+                "cell": 201,
+                "axis": "ns"
+            }
+        ],
+        "temples": [
+            {
+                "cell": 130,
+                "level": 2,
+                "playerId": "player-1"
+            },
+            {
+                "cell": 42,
+                "level": 1,
+                "playerId": "player-1"
+            },
+            {
+                "cell": 31,
+                "level": 1,
+                "playerId": "player-1"
+            },
+            {
+                "cell": 218,
+                "level": 1,
+                "playerId": "player-1"
+            },
+            {
+                "cell": 187,
+                "level": 4,
+                "playerId": "player-2"
+            },
+            {
+                "cell": 142,
+                "level": 1,
+                "playerId": "player-2"
+            },
+            {
+                "cell": 180,
+                "level": 4,
+                "playerId": "player-3"
+            },
+            {
+                "cell": 87,
+                "level": 1,
+                "playerId": "player-3"
+            },
+            {
+                "cell": 9,
+                "level": 2,
+                "playerId": "player-4"
+            },
+            {
+                "cell": 275,
+                "level": 2,
+                "playerId": "player-1"
+            },
+            {
+                "cell": 150,
+                "level": 3,
+                "playerId": "player-1"
+            },
+            {
+                "cell": 145,
+                "level": 3,
+                "playerId": "player-2"
+            },
+            {
+                "cell": 282,
+                "level": 3,
+                "playerId": "player-2"
+            },
+            {
+                "cell": 30,
+                "level": 2,
+                "playerId": "player-3"
+            },
+            {
+                "cell": 8,
+                "level": 2,
+                "playerId": "player-3"
+            },
+            {
+                "cell": 211,
+                "level": 3,
+                "playerId": "player-1"
+            },
+            {
+                "cell": 68,
+                "level": 2,
+                "playerId": "player-1"
+            },
+            {
+                "cell": 91,
+                "level": 1,
+                "playerId": "player-2"
+            },
+            {
+                "cell": 49,
+                "level": 2,
+                "playerId": "player-2"
+            },
+            {
+                "cell": 6,
+                "level": 1,
+                "playerId": "player-2"
+            },
+            {
+                "cell": 196,
+                "level": 2,
+                "playerId": "player-2"
+            },
+            {
+                "cell": 253,
+                "level": 3,
+                "playerId": "player-3"
+            },
+            {
+                "cell": 115,
+                "level": 2,
+                "playerId": "player-3"
+            },
+            {
+                "cell": 114,
+                "level": 4,
+                "playerId": "player-4"
+            },
+            {
+                "cell": 108,
+                "level": 1,
+                "playerId": "player-4"
+            },
+            {
+                "cell": 90,
+                "level": 4,
+                "playerId": "player-1"
+            },
+            {
+                "cell": 149,
+                "level": 2,
+                "playerId": "player-2"
+            },
+            {
+                "cell": 111,
+                "level": 3,
+                "playerId": "player-3"
+            },
+            {
+                "cell": 232,
+                "level": 1,
+                "playerId": "player-3"
+            },
+            {
+                "cell": 234,
+                "level": 1,
+                "playerId": "player-3"
+            }
+        ],
+        "districts": [],
+        "display": [1, 5, 7, 8, 9, 10, 12, 13],
+        "reserve": [0, 2, 3, 4, 6, 11, 14],
+        "period": 1,
+        "apLeft": 6,
+        "tokensTaken": 0,
+        "acted": false,
+        "idleTurns": 0
+    },
+    "actions": []
+}

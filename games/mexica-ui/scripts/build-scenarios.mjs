@@ -385,6 +385,66 @@ function jumpOver(state) {
     return hydrated.dehydrate()
 }
 
+// A ride from bridge to bridge under a bridge between, with another player's Pilli Mexica moved
+// onto it, and far enough on to the next bridge that the riding Pilli Mexica jumps over it back
+// into the canoe.
+function jumpIntoCanoe(state) {
+    const hydrated = new HydratedMexicaGameState(structuredClone(state))
+    const [playerId] = state.activePlayerIds
+    const ap = hydrated.apAvailable(playerId)
+    const others = hydrated.players.filter((player) => player.playerId !== playerId)
+    const occupied = new Set(others.map((player) => player.pilli))
+    let best
+    for (const start of [...hydrated.layout().bridges.keys()].sort((a, b) => a - b)) {
+        if (occupied.has(start)) continue
+        const trial = new HydratedMexicaGameState(structuredClone(hydrated.dehydrate()))
+        trial.getPlayerState(playerId).pilli = start
+        const layout = trial.layout()
+        for (const [to, move] of trial.moves(playerId)) {
+            if (move.teleport || move.cost > ap) continue
+            move.path.slice(1, -1).forEach((cell, index) => {
+                const [last, next] = [move.path[index], move.path[index + 2]]
+                if (![last, cell, next].every((stop) => layout.bridges.has(stop))) return
+                const there = waterSteps(layout, last, cell)
+                const on = waterSteps(layout, cell, next)
+                if (there === undefined || on === undefined || there < 3 || on < 4) return
+                if (best === undefined || there + on < best.length) {
+                    best = { start, cell, to, length: there + on }
+                }
+            })
+        }
+    }
+    if (best === undefined) return undefined
+    const jumped = new HydratedMexicaGameState(structuredClone(hydrated.dehydrate()))
+    jumped.getPlayerState(playerId).pilli = best.start
+    const layout = jumped.layout()
+    const other = others.find((player) => !layout.bridges.has(player.pilli))
+    if (other === undefined) return undefined
+    jumped.getPlayerState(other.playerId).pilli = best.cell
+    return jumped.dehydrate()
+}
+
+// The squares of water from one bridge to the next across canals under no other bridge and the
+// lake, or undefined when they join only round the island.
+function waterSteps(layout, from, to) {
+    const steps = new Map([[from, 0]])
+    const queue = [from]
+    while (queue.length > 0) {
+        const cell = queue.shift()
+        if (cell === to) return steps.get(cell)
+        for (const next of neighbours(cell)) {
+            const afloat =
+                next === to ||
+                isLake(next) ||
+                (layout.canals.has(next) && !layout.bridges.has(next))
+            if (steps.has(next) || !afloat) continue
+            steps.set(next, steps.get(cell) + 1)
+            queue.push(next)
+        }
+    }
+    return undefined
+}
+
 // Whether the water on the board joins two bridges, along canals under no other bridge and
 // across the lake.
 function waterJoins(layout, from, to) {
@@ -430,6 +490,10 @@ console.log(`Canal rides: ${describe(rides.state)}`)
 const jump = { game: rides.game, state: jumpOver(rides.state) }
 write('jump-over', 'Jump over', jump)
 console.log(`Jump over: ${describe(jump.state)}`)
+
+const intoCanoe = firstSetUp(4, jumpIntoCanoe)
+write('jump-into-canoe', 'Jump into canoe', intoCanoe)
+console.log(`Jump into canoe: ${describe(intoCanoe.state)}`)
 
 // The first turn's start where one action of the player's, not a founding, leaves a token on
 // the display that no district can take any more.
