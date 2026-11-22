@@ -25,13 +25,16 @@
 
 {#if typeof piece === 'number'}
     {@const box = templeBounds(4, TILT)}
+    {@const mark = templeMark(piece, TILT)}
     <svg viewBox={square(box)} width={size} height={size} aria-hidden="true">
+        <!-- Traced as on the board: the stroke under the stone shows only its outer half. -->
+        <path d={mark.path} class="trace"></path>
         <image
             href={LOOK_URLS[templeLook(piece, false)]}
             {...templeBounds(piece, TILT)}
             preserveAspectRatio="none"
         ></image>
-        <TempleMarks mark={templeMark(piece, TILT)} stair={DESIGN.stair} {fill} />
+        <TempleMarks {mark} stair={DESIGN.stair} {fill} />
     </svg>
 {:else if piece === 'bridge'}
     <svg viewBox={square(bridge)} width={size} height={size} aria-hidden="true">
@@ -62,6 +65,13 @@
     svg {
         display: block;
         overflow: visible;
+    }
+
+    .trace {
+        fill: none;
+        stroke: #1c1712;
+        stroke-width: 1.6;
+        stroke-linejoin: round;
     }
 
     .brick {
