@@ -44,6 +44,7 @@ import { TOKEN_ON_BOARD, TOKEN_ON_DISPLAY } from '$lib/board/tokenShape.js'
 import { COVE_TOE } from '$lib/board/looks.js'
 import { SCORING, scoringSchedule, type ScoringSchedule } from '$lib/board/scoringSchedule.js'
 import { BANK_WIDTH } from '$lib/board/waterworks.js'
+import { canoe, type CanoeDrawing } from '$lib/board/canoe.js'
 import { poseOf, setPose } from './svgPose.js'
 
 // A page load, a sync with the server or a switch of view shows the board as it is, unmoved.
@@ -210,6 +211,10 @@ export class BoardAnimator implements MoveInterrupter {
     private readonly springNodes = new Map<string, SVGCircleElement>()
     private readonly floodPavings = new Map<string, SVGImageElement>()
     private readonly boatNodes = new Map<string, SVGGElement>()
+    private readonly canoeFronts = new Map<string, SVGGElement>()
+    private readonly aboardClips = new Map<string, SVGPathElement>()
+    // Figures clipped to the canoe they stand in.
+    private readonly clipped = new Set<SVGGElement>()
     private readonly listener = (step: Step) => this.onGameStateChange(step)
     private timeline: Timeline | undefined
     private landMove: (() => void) | undefined
@@ -269,8 +274,37 @@ export class BoardAnimator implements MoveInterrupter {
         }
     }
 
-    // A canoe, its hull drawn round the origin along x in board units; the animator places it
-    // and turns it on the board.
+    // The near side of a Pilli Mexica's canoe, drawn over the figure while it rides, so it stands
+    // in the canoe rather than in front of it; hidden otherwise. It moves with the figure's
+    // group, a canoe's sink above its feet.
+    canoeFront(key: string): Attachment<SVGGElement> {
+        return (node) => {
+            this.canoeFronts.set(key, node)
+            return () => {
+                if (this.canoeFronts.get(key) === node) this.canoeFronts.delete(key)
+            }
+        }
+    }
+
+    // The outline a Pilli Mexica's body is clipped to while it stands in its canoe, in the same
+    // group as the canoe's near side.
+    aboardClip(key: string): Attachment<SVGPathElement> {
+        return (node) => {
+            this.aboardClips.set(key, node)
+            return () => {
+                if (this.aboardClips.get(key) === node) this.aboardClips.delete(key)
+            }
+        }
+    }
+
+    private leaveCanoes() {
+        for (const node of this.canoeFronts.values()) node.style.visibility = 'hidden'
+        for (const body of this.clipped) body.removeAttribute('clip-path')
+        this.clipped.clear()
+    }
+
+    // A canoe, drawn by the animator round the origin for the way it heads and placed on the
+    // board.
     boat(key: string): Attachment<SVGGElement> {
         return (node) => {
             this.boatNodes.set(key, node)
@@ -317,6 +351,7 @@ export class BoardAnimator implements MoveInterrupter {
             this.walking = new Map()
             this.floods = []
             this.boats = []
+            this.leaveCanoes()
             this.flights = []
             this.breaking = []
             this.gains = []
@@ -613,6 +648,7 @@ export class BoardAnimator implements MoveInterrupter {
             this.walking = new Map()
             this.floods = []
             this.boats = []
+            this.leaveCanoes()
             this.flights = []
             this.breaking = []
             this.gains = []
@@ -996,6 +1032,22 @@ export class BoardAnimator implements MoveInterrupter {
         const view = this.view()
         const boat = this.boatNodes.get(key)
         if (boat === undefined) throw new Error(`The canoe ${key} is drawn before it sails`)
+        // The near side over the figure, and the figure clipped to the hollow, only while it
+        // stands in the canoe; seen from straight above, the figure stands over it whole.
+        const front = view.flat ? undefined : this.canoeFronts.get(key)
+        const clip = view.flat ? undefined : this.aboardClips.get(key)
+        const clipId = clip?.parentElement?.id
+        const aboardShown = (shown: boolean) => {
+            if (front !== undefined) front.style.visibility = shown ? 'visible' : 'hidden'
+            if (clipId === undefined) return
+            if (shown) {
+                body.setAttribute('clip-path', `url(#${clipId})`)
+                this.clipped.add(body)
+            } else {
+                body.removeAttribute('clip-path')
+                this.clipped.delete(body)
+            }
+        }
         const water = this.session.gameState.layout().canals
         const stretches = stretchesOf(stops, water, decks).map((stretch) => {
             const points = stretch.cells.map((cell) => view.centre(cell))
@@ -1016,11 +1068,17 @@ export class BoardAnimator implements MoveInterrupter {
         const place = (course: Course, distance: number) => {
             const { point, heading } = course.pointAt(distance)
             const ground = Math.atan2(heading.y / view.tilt, heading.x)
-            const [cos, sin] = [Math.cos(ground), Math.sin(ground)]
-            boat.setAttribute(
-                'transform',
-                `matrix(${cos} ${sin * view.tilt} ${-sin} ${cos * view.tilt} ${point.x} ${point.y})`
-            )
+            const drawing = canoe(ground, view.tilt)
+            paintCanoe(boat, drawing)
+            boat.setAttribute('transform', `translate(${point.x} ${point.y})`)
+            if (front !== undefined) {
+                paintCanoeFront(front, drawing)
+                front.setAttribute('transform', `translate(0 ${-sink})`)
+            }
+            if (clip !== undefined && clip.getAttribute('d') !== drawing.aboard) {
+                clip.setAttribute('d', drawing.aboard)
+                clip.setAttribute('transform', `translate(0 ${-sink})`)
+            }
             return point
         }
         // Where the canoe sets off and stops on each stretch: short of the bridges at either
@@ -1036,6 +1094,7 @@ export class BoardAnimator implements MoveInterrupter {
         const board = outset.pointAt(ends[0].first).point
         const emerging = { distance: 0 }
         place(outset, 0)
+        aboardShown(false)
         gsap.set(boat, { opacity: 0 })
         timeline.to(
             emerging,
@@ -1101,6 +1160,7 @@ export class BoardAnimator implements MoveInterrupter {
                                 over = Math.sin(Math.PI * u) * (deck + sink + BOAT.over)
                         }
                         bodyPose.y = -over
+                        aboardShown(over === 0)
                         const near = course.squareAt(travel.distance) - stretch.offset
                         const cell =
                             stretch.cells[Math.max(0, Math.min(stretch.cells.length - 1, near))]
@@ -1124,6 +1184,7 @@ export class BoardAnimator implements MoveInterrupter {
         })
         // At the last bridge the Pilli hops up onto the deck and the canoe slides back under.
         const landing = at
+        timeline.call(() => aboardShown(false), undefined, landing)
         const inset = stretches[stretches.length - 1].course
         const going = { distance: ends[ends.length - 1].last }
         const under = landing + BOAT.hop * 0.4
@@ -1354,6 +1415,41 @@ export class BoardAnimator implements MoveInterrupter {
 
 function decksOf(before: DrawnBoard, after: DrawnBoard): Set<Cell> {
     return new Set([...before.bridges, ...after.bridges].map((bridge) => bridge.cell))
+}
+
+// Draws `drawing` in a canoe's node, reusing its paths: the shadow first, then the faces far to
+// near. A drawing already shown is left as it is.
+const painted = new WeakMap<SVGGElement, CanoeDrawing>()
+
+function paintCanoe(node: SVGGElement, drawing: CanoeDrawing) {
+    paintShapes(node, drawing, [
+        { d: drawing.shadow, fill: 'rgb(10 40 45 / 0.35)' },
+        ...drawing.faces
+    ])
+}
+
+function paintCanoeFront(node: SVGGElement, drawing: CanoeDrawing) {
+    paintShapes(node, drawing, drawing.front)
+}
+
+function paintShapes(
+    node: SVGGElement,
+    drawing: CanoeDrawing,
+    shapes: readonly { d: string; fill: string }[]
+) {
+    if (painted.get(node) === drawing) return
+    painted.set(node, drawing)
+    while (node.childElementCount < shapes.length) {
+        node.appendChild(document.createElementNS('http://www.w3.org/2000/svg', 'path'))
+    }
+    while (node.childElementCount > shapes.length) node.lastElementChild?.remove()
+    shapes.forEach((shape, index) => {
+        const path = node.children[index]
+        path.setAttribute('d', shape.d)
+        path.setAttribute('fill', shape.fill)
+        // Each face edged in its own colour, so no seam shows between neighbours.
+        path.setAttribute('stroke', shape.fill.includes('/') ? 'none' : shape.fill)
+    })
 }
 
 // The boat rides in a route: runs of its indices that go bridge to bridge, each run from the
