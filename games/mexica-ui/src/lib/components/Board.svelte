@@ -719,6 +719,9 @@
                         ></ellipse>
                     </g>
                     <g {@attach animator.piece(`temple-${piece.cell}`, 'body')}>
+                        <!-- Traced in black so it stands off the paving: the stroke lies
+                             under the stone, so only its outer half shows. -->
+                        <path d={mark.path} class="temple-trace"></path>
                         <image
                             href={LOOK_URLS[templeLook(piece.level, view.flat)]}
                             {...templeBounds(piece.level, view.tilt)}
@@ -938,6 +941,13 @@
         font-size: 10px;
         font-weight: 600;
         pointer-events: none;
+    }
+
+    .temple-trace {
+        fill: none;
+        stroke: #1c1712;
+        stroke-width: 1.6;
+        stroke-linejoin: round;
     }
 
     .display-frame {
