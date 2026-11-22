@@ -29,7 +29,14 @@ import {
 } from '@tabletop/mexica'
 import type { MexicaGameSession, MoveInterrupter } from '$lib/model/session.svelte.js'
 import type { Point } from '@tabletop/common'
-import { type Box, type BoardView, BRIDGE_RISE, CELL } from '$lib/board/view.js'
+import {
+    type Box,
+    type BoardView,
+    BRIDGE_RISE,
+    CELL,
+    PILLI_DEPTH,
+    PILLI_HEIGHT
+} from '$lib/board/view.js'
 import { pilliSpot } from '$lib/board/pilliSpot.js'
 import { TOKEN_ON_BOARD, TOKEN_ON_DISPLAY } from '$lib/board/tokenShape.js'
 import { COVE_TOE } from '$lib/board/looks.js'
@@ -72,6 +79,9 @@ const BOAT = {
 }
 // The display closing up behind a token that leaves, once it has lifted off.
 const CLOSE_UP = { at: 0.2, duration: 0.35 }
+// Points a founding earns rise as "+N" over each scoring player's Pilli Mexica, `above` its head,
+// by `rise` over `duration`, while the cards count the scores up.
+const GAIN = { duration: 1.2, rise: -14, above: -16 }
 // A token no district can take any more breaks in two along a jagged crack: the halves drift
 // `apart` either way, sink `drop`, tip `tilt` degrees and fade out over `duration`, and the
 // display closes up behind them at `closeAt`.
@@ -129,6 +139,9 @@ type Step = TransitionStep<HydratedMexicaGameState, AnimationContext>
 // A piece's drawing: its body, and its shadow on the board; a Pilli Mexica's group holding both,
 // which moves it between squares; a bridge across the screen also has its near side, drawn over
 // a Pilli Mexica on it.
+// Points earned, rising over a player's Pilli Mexica at (x, y) on screen.
+export type Gain = { playerId: string; points: number; x: number; y: number }
+
 export const BREAK_SIDES = ['left', 'right'] as const
 export type BreakSide = (typeof BREAK_SIDES)[number]
 
@@ -165,6 +178,8 @@ export class BoardAnimator implements MoveInterrupter {
     // Where each walking Pilli Mexica has got to, for the order the board draws in.
     walking: ReadonlyMap<string, Cell> = $state.raw(new Map())
     floods: readonly Flood[] = $state.raw([])
+    // Points a founding earned, shown over the scoring players' Pilli Mexica.
+    gains: readonly Gain[] = $state.raw([])
     // Display tokens ruled out by this move, drawn as two halves while they break apart.
     breaking: readonly number[] = $state.raw([])
     // The canoes Pilli Mexica are riding in this move.
@@ -174,6 +189,7 @@ export class BoardAnimator implements MoveInterrupter {
 
     private readonly parts = new Map<string, Parts>()
     private readonly halves = new Map<string, SVGGElement>()
+    private readonly gainNodes = new Map<string, SVGGElement>()
     private readonly marks = new Set<SVGElement>()
     private readonly springNodes = new Map<string, SVGCircleElement>()
     private readonly floodPavings = new Map<string, SVGImageElement>()
@@ -287,6 +303,7 @@ export class BoardAnimator implements MoveInterrupter {
             this.boats = []
             this.flights = []
             this.breaking = []
+            this.gains = []
             throw error
         }
     }
@@ -353,6 +370,7 @@ export class BoardAnimator implements MoveInterrupter {
         const flying = [...(quick ? founded : []), ...unfounded]
         this.flights = flying
         this.breaking = quick ? [] : withdrawn
+        this.gains = quick || founded.length === 0 ? [] : this.gainsOf(from, to, after)
         this.drawn = {
             districts: after.districts.filter((district) => !flying.includes(district)),
             display: before.display.length >= after.display.length ? before.display : after.display,
@@ -428,6 +446,27 @@ export class BoardAnimator implements MoveInterrupter {
         }
         for (const district of unfounded) {
             this.unfound(district, after.display.indexOf(district.tokenId), timeline, touched)
+        }
+        for (const gain of this.gains) {
+            const node = this.gainNodes.get(gain.playerId)
+            if (node === undefined) continue
+            const final = animationContext.finalTimeline
+            final.fromTo(
+                poseOf(node),
+                { y: 0 },
+                { y: GAIN.rise, duration: GAIN.duration, ease: 'power1.out' },
+                0
+            )
+            final.fromTo(
+                node,
+                { opacity: 0 },
+                {
+                    keyframes: { opacity: [0, 1, 1, 1, 0], easeEach: 'none' },
+                    duration: GAIN.duration,
+                    ease: 'none'
+                },
+                0
+            )
         }
         for (const tokenId of withdrawn) {
             if (quick) {
@@ -515,6 +554,7 @@ export class BoardAnimator implements MoveInterrupter {
             this.boats = []
             this.flights = []
             this.breaking = []
+            this.gains = []
             for (const node of touched) {
                 setPose(node, { x: 0, y: 0, scale: 1 })
                 gsap.set(node, { opacity: 1 })
@@ -527,6 +567,37 @@ export class BoardAnimator implements MoveInterrupter {
         }
         this.landMove = land
         animationContext.afterAnimations(land)
+    }
+
+    // Each player a founding scored, with where the "+N" rises from: above their Pilli Mexica's
+    // head, or above its mask when seen from straight above.
+    private gainsOf(
+        from: HydratedMexicaGameState,
+        to: HydratedMexicaGameState,
+        after: DrawnBoard
+    ): Gain[] {
+        const view = this.view()
+        const bridges = new Set(after.bridges.map((bridge) => bridge.cell))
+        return to.players.flatMap((player) => {
+            const points = player.score - from.getPlayerState(player.playerId).score
+            const pilli = after.pillis.find((other) => other.playerId === player.playerId)
+            if (points <= 0 || pilli === undefined) return []
+            const spot = pilliSpot(view, pilli.cell, bridges)
+            const head = view.flat
+                ? CELL * 0.45
+                : view.lift(PILLI_HEIGHT) + PILLI_DEPTH * CELL * view.tilt
+            return [{ playerId: player.playerId, points, x: spot.x, y: spot.y - head - GAIN.above }]
+        })
+    }
+
+    // The "+N" over a player's Pilli Mexica.
+    gain(playerId: string): Attachment<SVGGElement> {
+        return (node) => {
+            this.gainNodes.set(playerId, node)
+            return () => {
+                if (this.gainNodes.get(playerId) === node) this.gainNodes.delete(playerId)
+            }
+        }
     }
 
     // A token ruled out breaks in two: each half drifts its own way, sinks a little and tips

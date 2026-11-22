@@ -275,6 +275,9 @@
         return `M${edge} -60${CRACK.map(([x, y]) => `L${x} ${y}`).join('')}L${edge} 60Z`
     }
 
+    // The "+N" a founding's points rise as, in board units.
+    const GAIN_SIZE = 22
+
     const landCells = LAND_CELLS
     const palace = $derived(view.centre(PALACE_CENTRE))
 </script>
@@ -880,6 +883,17 @@
             </g>
         {/each}
 
+        <!-- Points a founding earned, rising over the scoring players' Pilli Mexica. -->
+        {#each animator.gains as gain (gain.playerId)}
+            <g transform="translate({gain.x} {gain.y})" class="surface">
+                <g {@attach animator.gain(gain.playerId)} opacity="0">
+                    <text class="gain" dy={GAIN_SIZE * 0.35} font-size={GAIN_SIZE}
+                        >+{gain.points}</text
+                    >
+                </g>
+            </g>
+        {/each}
+
         <!-- Hit areas over every cell, nearest last. -->
         {#each landCells as cell (cell)}
             {@const rect = view.cellBox(cell)}
@@ -984,6 +998,16 @@
         font-size: 10px;
         font-weight: 600;
         pointer-events: none;
+    }
+
+    .gain {
+        font-weight: 800;
+        text-anchor: middle;
+        fill: #fff8ec;
+        stroke: #1c1712;
+        stroke-width: 3.5;
+        stroke-linejoin: round;
+        paint-order: stroke;
     }
 
     .temple-trace {
