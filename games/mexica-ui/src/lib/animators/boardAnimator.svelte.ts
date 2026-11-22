@@ -197,6 +197,9 @@ export class BoardAnimator implements MoveInterrupter {
     drawn: DrawnBoard = $derived.by(() => this.boardOf(this.session.gameState))
     // Where each walking Pilli Mexica has got to, for the order the board draws in.
     walking: ReadonlyMap<string, Cell> = $state.raw(new Map())
+    // Riding Pilli Mexica past the middle of the square they are over, so drawn in front of one
+    // standing there, which they can only be jumping over.
+    ahead: ReadonlySet<string> = $state.raw(new Set())
     floods: readonly Flood[] = $state.raw([])
     // The districts a period's end scores, each with its awards, shown over the district.
     scorings: readonly Scoring[] = $state.raw([])
@@ -355,6 +358,7 @@ export class BoardAnimator implements MoveInterrupter {
         } catch (error) {
             this.drawn = this.boardOf(this.session.gameState)
             this.walking = new Map()
+            this.ahead = new Set()
             this.floods = []
             this.boats = []
             this.leaveCanoes()
@@ -470,7 +474,8 @@ export class BoardAnimator implements MoveInterrupter {
                           ? action.metadata?.path
                           : undefined
                   return walked !== undefined &&
-                      voyagesOf(walked, decksOf(before, after)).length > 0
+                      voyagesOf(walked, decksOf(before, after), mannedBy(after, move.playerId))
+                          .length > 0
                       ? [`boat-${move.playerId}`]
                       : []
               })
@@ -652,6 +657,7 @@ export class BoardAnimator implements MoveInterrupter {
             if (this.landMove === land) this.landMove = undefined
             if (this.timeline === timeline) this.timeline = undefined
             this.walking = new Map()
+            this.ahead = new Set()
             this.floods = []
             this.boats = []
             this.leaveCanoes()
@@ -957,7 +963,7 @@ export class BoardAnimator implements MoveInterrupter {
         const start = pilliSpot(view, path[0], decks)
         const wholePose = poseOf(whole)
         const bodyPose = poseOf(body)
-        const voyages = voyagesOf(path, decks)
+        const voyages = voyagesOf(path, decks, mannedBy(this.drawn, playerId))
         let at = 0
         let index = 1
         while (index < path.length) {
@@ -1105,7 +1111,10 @@ export class BoardAnimator implements MoveInterrupter {
         const end = pilliSpot(view, stops[stops.length - 1], decks)
         const lastStretch = stretches[stretches.length - 1]
         const landsAt = ends[ends.length - 1].last
-        const leapsAshore = liftOver(landsAt, lastStretch.passed, landsAt, heights).toDeck === 1
+        const setsOff = (index: number) => (index === 0 ? ends[0].first : 0)
+        const leapsAshore =
+            liftOver(landsAt, lastStretch.passed, landsAt, setsOff(stretches.length - 1), heights)
+                .toDeck === 1
         // The canoe slides out from under the first bridge, the Pilli hops down into it.
         const outset = stretches[0].course
         const board = outset.pointAt(ends[0].first).point
@@ -1172,6 +1181,7 @@ export class BoardAnimator implements MoveInterrupter {
                             travel.distance,
                             stretch.passed,
                             index === stretches.length - 1 ? last : undefined,
+                            setsOff(index),
                             heights
                         )
                         const x = point.x - start.x
@@ -1186,6 +1196,12 @@ export class BoardAnimator implements MoveInterrupter {
                         if (cell !== square) {
                             square = cell
                             this.walking = new Map([...this.walking, [playerId, cell]])
+                        }
+                        const past = point.y >= view.centre(cell).y
+                        if (past !== this.ahead.has(playerId)) {
+                            this.ahead = past
+                                ? new Set([...this.ahead, playerId])
+                                : new Set([...this.ahead].filter((id) => id !== playerId))
                         }
                     }
                 },
@@ -1474,12 +1490,18 @@ function paintShapes(
 
 // The boat rides in a route: runs of its indices that go bridge to bridge, each run from the
 // bridge the ride starts on to the one it ends on. From a bridge to the one beside it the Pilli
-// Mexica just hops across.
-function voyagesOf(path: readonly Cell[], decks: ReadonlySet<Cell>): number[][] {
+// Mexica just hops across, unless another Pilli Mexica stands on either, when the canoe carries
+// it under that one.
+function voyagesOf(
+    path: readonly Cell[],
+    decks: ReadonlySet<Cell>,
+    manned: ReadonlySet<Cell>
+): number[][] {
     const voyages: number[][] = []
     for (let index = 1; index < path.length; index++) {
-        if (!decks.has(path[index - 1]) || !decks.has(path[index])) continue
-        if (areAdjacent(path[index - 1], path[index])) continue
+        const [last, cell] = [path[index - 1], path[index]]
+        if (!decks.has(last) || !decks.has(cell)) continue
+        if (areAdjacent(last, cell) && !manned.has(last) && !manned.has(cell)) continue
         const current = voyages[voyages.length - 1]
         if (current !== undefined && current[current.length - 1] === index - 1) current.push(index)
         else voyages.push([index - 1, index])
@@ -1496,6 +1518,13 @@ type Stretch = { cells: Cell[]; fromOutside: boolean; toOutside: boolean }
 const OUTSIDE = -1
 const ROUND_ISLAND = 12
 const LAKE_CELLS = Array.from({ length: CELL_COUNT }, (_, cell) => cell).filter(isLake)
+
+// The squares other players' Pilli Mexica stand on.
+function mannedBy(board: DrawnBoard, playerId: string): Set<Cell> {
+    return new Set(
+        board.pillis.flatMap((pilli) => (pilli.playerId !== playerId ? [pilli.cell] : []))
+    )
+}
 
 interface Hurdle {
     // How far along the stretch the bridge stands.
@@ -1514,11 +1543,12 @@ interface Heights {
 
 // How high the riding Pilli Mexica is lifted over its canoe `distance` along a stretch, and how
 // far (0 to 1) it has moved from the canoe towards the last bridge's deck, where the canoe stops
-// at `landing`.
+// at `landing`. Nothing lifts it before `setOff`, where the canoe sets off with it aboard.
 function liftOver(
     distance: number,
     hurdles: readonly Hurdle[],
     landing: number | undefined,
+    setOff: number,
     heights: Heights
 ): { lift: number; toDeck: number } {
     const quarter = (u: number) => Math.sin((Math.PI / 2) * u)
@@ -1529,7 +1559,8 @@ function liftOver(
         const leaps = hurdle.manned && next !== undefined && next - hurdle.at <= BOAT.leap * CELL
         if (!leaps) {
             const reach = (hurdle.manned ? BOAT.jump : BOAT.pass) * CELL
-            const u = (distance - hurdle.at + reach) / (2 * reach)
+            const from = Math.max(hurdle.at - reach, setOff)
+            const u = (distance - from) / (hurdle.at + reach - from)
             if (u > 0 && u < 1)
                 return {
                     lift: Math.sin(Math.PI * u) * (hurdle.manned ? heights.jump : heights.over),
@@ -1538,7 +1569,7 @@ function liftOver(
             continue
         }
         // Over the Pilli Mexica and down onto the next deck.
-        const rising = hurdle.at - BOAT.jump * CELL
+        const rising = Math.max(hurdle.at - BOAT.jump * CELL, setOff)
         const ashore = index === hurdles.length - 1
         const toDeck = ashore ? Math.max(0, Math.min(1, (distance - rising) / (next - rising))) : 0
         if (distance > rising && distance <= hurdle.at)

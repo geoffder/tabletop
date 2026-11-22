@@ -354,35 +354,51 @@ function canalRides(state) {
     return undefined
 }
 
-// Canal rides with another player's Pilli Mexica standing on a bridge the ride passes under, so
-// the riding Pilli Mexica has to jump over it.
+// A ride along a canal, no lake on the way, under a bridge with another player's Pilli Mexica
+// moved onto it, to an empty bridge just beyond, so the riding Pilli Mexica jumps over it onto
+// that bridge.
 function jumpOver(state) {
     const hydrated = new HydratedMexicaGameState(structuredClone(state))
     const [playerId] = state.activePlayerIds
-    const layout = hydrated.layout()
     const ap = hydrated.apAvailable(playerId)
-    const passed = [...hydrated.moves(playerId).values()]
-        .filter((move) => !move.teleport && move.cost <= ap)
-        .flatMap((move) =>
-            move.path.slice(1, -1).filter((cell, index) => {
+    const others = hydrated.players.filter((player) => player.playerId !== playerId)
+    const occupied = new Set(others.map((player) => player.pilli))
+    let best
+    for (const start of [...hydrated.layout().bridges.keys()].sort((a, b) => a - b)) {
+        if (occupied.has(start)) continue
+        const trial = new HydratedMexicaGameState(structuredClone(hydrated.dehydrate()))
+        trial.getPlayerState(playerId).pilli = start
+        const layout = trial.layout()
+        for (const [, move] of trial.moves(playerId)) {
+            if (move.teleport || move.cost > ap) continue
+            move.path.slice(1, -1).forEach((cell, index) => {
                 const [last, next] = [move.path[index], move.path[index + 2]]
-                return (
-                    layout.bridges.has(cell) &&
-                    layout.bridges.has(last) &&
-                    layout.bridges.has(next) &&
-                    !areAdjacent(last, cell) &&
-                    !areAdjacent(cell, next)
-                )
+                if (![last, cell, next].every((stop) => layout.bridges.has(stop))) return
+                const there = canalWay(layout, last, cell)
+                const on = canalWay(layout, cell, next)
+                if (there === undefined || on === undefined || there < 2) return
+                const rank = on * 100 + there
+                if (best === undefined || rank < best.rank) best = { start, cell, rank }
             })
-        )
-    const bridge = passed.sort((a, b) => a - b)[0]
-    if (bridge === undefined) throw Error('No ride in Canal rides passes under a bridge')
-    const other = hydrated.players.find(
-        (player) => player.playerId !== playerId && !layout.bridges.has(player.pilli)
-    )
-    if (other === undefined) throw Error('No other Pilli Mexica can move onto the bridge')
-    hydrated.getPlayerState(other.playerId).pilli = bridge
-    return hydrated.dehydrate()
+        }
+    }
+    if (best === undefined) return undefined
+    const jumped = new HydratedMexicaGameState(structuredClone(hydrated.dehydrate()))
+    jumped.getPlayerState(playerId).pilli = best.start
+    const layout = jumped.layout()
+    const other = others.find((player) => !layout.bridges.has(player.pilli))
+    if (other === undefined) return undefined
+    jumped.getPlayerState(other.playerId).pilli = best.cell
+    return jumped.dehydrate()
+}
+
+// The squares of water from one bridge to the next along canals alone, under no other bridge,
+// when that is as short as any way across the lake; otherwise undefined.
+function canalWay(layout, from, to) {
+    const canal = (cell) => layout.canals.has(cell) && !layout.bridges.has(cell)
+    const alone = waterSteps(layout, from, to, canal)
+    const any = waterSteps(layout, from, to, (cell) => canal(cell) || isLake(cell))
+    return alone !== undefined && alone === any ? alone : undefined
 }
 
 // A ride from bridge to bridge under a bridge between, with another player's Pilli Mexica moved
@@ -425,19 +441,20 @@ function jumpIntoCanoe(state) {
 }
 
 // The squares of water from one bridge to the next across canals under no other bridge and the
-// lake, or undefined when they join only round the island.
-function waterSteps(layout, from, to) {
+// lake, or only those squares `afloat` allows; undefined when they join only round the island.
+function waterSteps(
+    layout,
+    from,
+    to,
+    afloat = (cell) => isLake(cell) || (layout.canals.has(cell) && !layout.bridges.has(cell))
+) {
     const steps = new Map([[from, 0]])
     const queue = [from]
     while (queue.length > 0) {
         const cell = queue.shift()
         if (cell === to) return steps.get(cell)
         for (const next of neighbours(cell)) {
-            const afloat =
-                next === to ||
-                isLake(next) ||
-                (layout.canals.has(next) && !layout.bridges.has(next))
-            if (steps.has(next) || !afloat) continue
+            if (steps.has(next) || !(next === to || afloat(next))) continue
             steps.set(next, steps.get(cell) + 1)
             queue.push(next)
         }
@@ -487,7 +504,7 @@ const rides = firstSetUp(4, canalRides)
 write('canal-rides', 'Canal rides', rides)
 console.log(`Canal rides: ${describe(rides.state)}`)
 
-const jump = { game: rides.game, state: jumpOver(rides.state) }
+const jump = firstSetUp(4, jumpOver)
 write('jump-over', 'Jump over', jump)
 console.log(`Jump over: ${describe(jump.state)}`)
 

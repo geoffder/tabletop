@@ -40,15 +40,18 @@ way of moving by water is a choice:
 
 ## Jump over
 
-Canal rides again, with Alice's Pilli Mexica moved onto the bridge at O6, so the bridge can be
-passed under but not stopped on.
+Four players in the first period, Carol to move from the bridge at O6, with Alice's Pilli Mexica
+moved onto the bridge at O9 and an empty bridge just beyond it at O10, all on one canal.
 
-- **N7**: the canoe slides out from under Q8, the Pilli hops in and is paddled round through the
-  lake. As the canoe passes under O6 the Pilli jumps high enough to clear Alice's headdress and,
-  N7 being close, comes straight down onto N7's deck without touching the canoe again, which
-  slides on under N7.
-- O6 is not offered as a place to stop.
-- Undo: the Pilli slides straight back to Q8.
+- **O10**: the canoe slides out from under O6 and paddles down the canal. Carol stays behind Alice
+  while rising, jumps clear over her headdress as the canoe passes under O9, and comes down in
+  front of her straight onto O10's deck, never touching the canoe again; the canoe slides on
+  under O10.
+- **R8**: the same leap onto O10's deck, then a hop down into the canoe beyond it and a ride on
+  to R8.
+- **N10**: the leap onto O10, then a walk off its end.
+- O9 is not offered as a place to stop.
+- Undo: the Pilli slides straight back to O6.
 
 ## Jump into canoe
 

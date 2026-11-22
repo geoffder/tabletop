@@ -39,11 +39,11 @@
         "hotseat": false,
         "winningPlayerIds": [],
         "seed": 3367980177,
-        "activePlayerIds": ["player-2"],
-        "createdAt": "2026-11-22T18:43:40.088Z",
+        "activePlayerIds": ["player-3"],
+        "createdAt": "2026-11-22T19:03:41.925Z",
         "storage": "remote",
         "category": "standard",
-        "startedAt": "2026-11-22T18:43:40.088Z",
+        "startedAt": "2026-11-22T19:03:41.925Z",
         "progress": {
             "fraction": 0,
             "label": "Period 1 · 8 districts to found"
@@ -51,7 +51,7 @@
     },
     "state": {
         "systemVersion": 3,
-        "id": "_4UT9hehTVQYxBp0es9MK",
+        "id": "XkC6_DIwF0ztzb8Rr-fnZ",
         "gameId": "scenario-jump-over",
         "seed": 3367980177,
         "prng": {
@@ -64,7 +64,7 @@
             "invocations": 0
         },
         "masterSeed": "0123456789abcdef0123456789abcdef",
-        "activePlayerIds": ["player-2"],
+        "activePlayerIds": ["player-3"],
         "winningPlayerIds": [],
         "actionCount": 0,
         "actionChecksum": 0,
@@ -72,30 +72,30 @@
             {
                 "playerId": "player-1",
                 "color": "blue",
-                "score": 0,
+                "score": 4,
                 "actionTokens": 0,
-                "pilli": 119
+                "pilli": 182
             },
             {
                 "playerId": "player-2",
                 "color": "red",
-                "score": 5,
+                "score": 0,
                 "actionTokens": 0,
-                "pilli": 163
+                "pilli": 154
             },
             {
                 "playerId": "player-3",
                 "color": "yellow",
-                "score": 0,
+                "score": 2,
                 "actionTokens": 0,
-                "pilli": 155
+                "pilli": 119
             },
             {
                 "playerId": "player-4",
                 "color": "green",
-                "score": 7,
+                "score": 6,
                 "actionTokens": 0,
-                "pilli": 222
+                "pilli": 183
             }
         ],
         "machineState": "Acting",
@@ -103,16 +103,16 @@
             "series": [
                 {
                     "type": "turn",
-                    "playerId": "player-2",
+                    "playerId": "player-3",
                     "start": 0
                 }
             ],
             "turnOrder": ["player-1", "player-2", "player-3", "player-4"],
             "turnCounts": {
-                "player-1": 7,
+                "player-1": 6,
                 "player-2": 6,
-                "player-3": 6,
-                "player-4": 6
+                "player-3": 5,
+                "player-4": 5
             },
             "seriesKeeps": "latest"
         },
@@ -124,100 +124,77 @@
                 "cells": [161, 182]
             },
             {
-                "cells": [205, 184]
-            },
-            {
-                "cells": [1, 22]
-            },
-            {
-                "cells": [181]
-            },
-            {
-                "cells": [144]
-            },
-            {
-                "cells": [253, 254]
-            },
-            {
-                "cells": [275, 276]
-            },
-            {
-                "cells": [202]
-            },
-            {
-                "cells": [143, 122]
-            },
-            {
-                "cells": [5, 26]
-            },
-            {
-                "cells": [125]
-            },
-            {
-                "cells": [163, 142]
-            },
-            {
-                "cells": [259]
-            },
-            {
-                "cells": [282, 261]
-            },
-            {
-                "cells": [201, 180]
-            },
-            {
-                "cells": [146]
-            },
-            {
-                "cells": [139, 138]
-            },
-            {
-                "cells": [31, 30]
-            },
-            {
-                "cells": [170, 149]
-            },
-            {
-                "cells": [127, 128]
-            },
-            {
-                "cells": [99, 98]
+                "cells": [1]
             },
             {
                 "cells": [224, 203]
             },
             {
-                "cells": [97, 76]
+                "cells": [124]
             },
             {
-                "cells": [240, 219]
+                "cells": [259, 238]
             },
             {
-                "cells": [200, 179]
+                "cells": [281, 282]
             },
             {
-                "cells": [6, 7]
+                "cells": [278]
             },
             {
-                "cells": [129, 150]
+                "cells": [99]
             },
             {
-                "cells": [199, 198]
+                "cells": [185, 186]
             },
             {
-                "cells": [238, 237]
+                "cells": [258, 237]
             },
             {
-                "cells": [130, 109]
+                "cells": [190, 211]
+            },
+            {
+                "cells": [164, 143]
+            },
+            {
+                "cells": [232, 233]
+            },
+            {
+                "cells": [277, 276]
+            },
+            {
+                "cells": [22]
+            },
+            {
+                "cells": [243, 222]
+            },
+            {
+                "cells": [75, 74]
+            },
+            {
+                "cells": [170, 149]
+            },
+            {
+                "cells": [95, 94]
+            },
+            {
+                "cells": [63, 64]
+            },
+            {
+                "cells": [239]
             }
         ],
         "bridges": [
             {
-                "cell": 161,
+                "cell": 203,
                 "axis": "ew"
             },
             {
-                "cell": 184,
+                "cell": 222,
+                "axis": "ew"
+            },
+            {
+                "cell": 182,
                 "axis": "ew"
             },
             {
@@ -225,185 +202,163 @@
                 "axis": "ew"
             },
             {
-                "cell": 259,
-                "axis": "ew"
-            },
-            {
-                "cell": 139,
-                "axis": "ns"
-            },
-            {
-                "cell": 163,
+                "cell": 164,
                 "axis": "ew"
             }
         ],
         "temples": [
             {
-                "cell": 48,
-                "level": 4,
+                "cell": 214,
+                "level": 2,
                 "playerId": "player-1"
+            },
+            {
+                "cell": 9,
+                "level": 4,
+                "playerId": "player-2"
+            },
+            {
+                "cell": 175,
+                "level": 4,
+                "playerId": "player-3"
+            },
+            {
+                "cell": 47,
+                "level": 1,
+                "playerId": "player-3"
+            },
+            {
+                "cell": 141,
+                "level": 1,
+                "playerId": "player-4"
+            },
+            {
+                "cell": 184,
+                "level": 4,
+                "playerId": "player-4"
+            },
+            {
+                "cell": 45,
+                "level": 1,
+                "playerId": "player-4"
+            },
+            {
+                "cell": 48,
+                "level": 3,
+                "playerId": "player-1"
+            },
+            {
+                "cell": 146,
+                "level": 3,
+                "playerId": "player-1"
+            },
+            {
+                "cell": 32,
+                "level": 2,
+                "playerId": "player-2"
+            },
+            {
+                "cell": 231,
+                "level": 1,
+                "playerId": "player-2"
+            },
+            {
+                "cell": 137,
+                "level": 2,
+                "playerId": "player-2"
+            },
+            {
+                "cell": 128,
+                "level": 1,
+                "playerId": "player-2"
+            },
+            {
+                "cell": 115,
+                "level": 3,
+                "playerId": "player-3"
+            },
+            {
+                "cell": 53,
+                "level": 1,
+                "playerId": "player-3"
             },
             {
                 "cell": 156,
-                "level": 1,
-                "playerId": "player-1"
-            },
-            {
-                "cell": 220,
-                "level": 3,
-                "playerId": "player-2"
-            },
-            {
-                "cell": 232,
-                "level": 1,
-                "playerId": "player-2"
-            },
-            {
-                "cell": 64,
-                "level": 2,
-                "playerId": "player-3"
-            },
-            {
-                "cell": 167,
-                "level": 2,
-                "playerId": "player-3"
-            },
-            {
-                "cell": 172,
-                "level": 1,
-                "playerId": "player-3"
-            },
-            {
-                "cell": 136,
                 "level": 3,
                 "playerId": "player-4"
-            },
-            {
-                "cell": 131,
-                "level": 3,
-                "playerId": "player-4"
-            },
-            {
-                "cell": 151,
-                "level": 3,
-                "playerId": "player-1"
-            },
-            {
-                "cell": 24,
-                "level": 3,
-                "playerId": "player-1"
-            },
-            {
-                "cell": 87,
-                "level": 1,
-                "playerId": "player-2"
             },
             {
                 "cell": 25,
                 "level": 1,
+                "playerId": "player-4"
+            },
+            {
+                "cell": 52,
+                "level": 2,
+                "playerId": "player-1"
+            },
+            {
+                "cell": 6,
+                "level": 2,
+                "playerId": "player-1"
+            },
+            {
+                "cell": 97,
+                "level": 3,
                 "playerId": "player-2"
             },
             {
-                "cell": 8,
+                "cell": 253,
+                "level": 2,
+                "playerId": "player-2"
+            },
+            {
+                "cell": 138,
                 "level": 1,
-                "playerId": "player-3"
+                "playerId": "player-2"
             },
             {
                 "cell": 145,
-                "level": 4,
-                "playerId": "player-3"
-            },
-            {
-                "cell": 106,
-                "level": 1,
-                "playerId": "player-4"
-            },
-            {
-                "cell": 210,
-                "level": 1,
-                "playerId": "player-4"
-            },
-            {
-                "cell": 124,
-                "level": 2,
-                "playerId": "player-1"
-            },
-            {
-                "cell": 243,
-                "level": 1,
-                "playerId": "player-1"
-            },
-            {
-                "cell": 68,
-                "level": 4,
-                "playerId": "player-2"
-            },
-            {
-                "cell": 233,
-                "level": 1,
-                "playerId": "player-3"
-            },
-            {
-                "cell": 191,
-                "level": 4,
-                "playerId": "player-4"
-            },
-            {
-                "cell": 242,
-                "level": 2,
-                "playerId": "player-4"
-            },
-            {
-                "cell": 23,
-                "level": 1,
-                "playerId": "player-1"
-            },
-            {
-                "cell": 118,
-                "level": 2,
-                "playerId": "player-3"
-            },
-            {
-                "cell": 69,
-                "level": 2,
-                "playerId": "player-1"
-            },
-            {
-                "cell": 91,
-                "level": 2,
-                "playerId": "player-1"
-            },
-            {
-                "cell": 185,
-                "level": 3,
-                "playerId": "player-2"
-            },
-            {
-                "cell": 187,
-                "level": 2,
-                "playerId": "player-2"
-            },
-            {
-                "cell": 43,
                 "level": 3,
                 "playerId": "player-3"
+            },
+            {
+                "cell": 163,
+                "level": 2,
+                "playerId": "player-4"
+            },
+            {
+                "cell": 121,
+                "level": 2,
+                "playerId": "player-4"
+            },
+            {
+                "cell": 166,
+                "level": 1,
+                "playerId": "player-1"
+            },
+            {
+                "cell": 165,
+                "level": 4,
+                "playerId": "player-1"
+            },
+            {
+                "cell": 195,
+                "level": 3,
+                "playerId": "player-2"
             }
         ],
         "districts": [
             {
-                "tokenId": 10,
-                "cell": 165
-            },
-            {
-                "tokenId": 7,
-                "cell": 183
+                "tokenId": 12,
+                "cell": 122
             },
             {
                 "tokenId": 9,
-                "cell": 221
+                "cell": 167
             }
         ],
-        "display": [1, 5, 8, 12, 13],
+        "display": [1, 5, 7, 8, 10, 13],
         "reserve": [0, 2, 3, 4, 6, 11, 14],
         "period": 1,
         "apLeft": 6,
