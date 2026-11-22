@@ -193,6 +193,47 @@
         [session.chosenCell, session.chosenDestination].filter((cell) => cell !== undefined)
     )
 
+    // The canal's chosen first square, the neighbours that finish a double with it, and whether a
+    // single tile can go there alone.
+    const canalStart = $derived.by(() => {
+        const first = session.tool === 'canal' ? session.chosenCell : undefined
+        if (first === undefined) return undefined
+        return {
+            cell: first,
+            single: session.targets.has(first),
+            doubles: [...session.targets].filter((cell) => cell !== first)
+        }
+    })
+    // Every choice but the canal's spots takes the usual choice mark.
+    const plainlyMarked = (cell: Cell) =>
+        canalStart === undefined || (cell !== canalStart.cell && !canalStart.doubles.includes(cell))
+
+    // The canal's choices from its first square, in board units, as GIPF's push arrows: a spot on
+    // each square that can take the tile, and an arrow across the border to each neighbour,
+    // clear of the spots at either end.
+    const SPOT = 6
+    // Room between an arrow's end and the spot it meets, beyond the strokes.
+    const SPOT_GAP = 7
+    const STROKES = 1.5
+    const ARROW_WING = 5.5
+
+    // Plan points on the ground, whose y the tilt shortens on screen.
+    function canalArrow(from: Cell, to: Cell): string {
+        const tilt = view.tilt
+        const a = view.centre(from)
+        const b = view.centre(to)
+        const [ax, ay, bx, by] = [a.x, a.y / tilt, b.x, b.y / tilt]
+        const length = Math.hypot(bx - ax, by - ay)
+        const ux = (bx - ax) / length
+        const uy = (by - ay) / length
+        const clear = SPOT + SPOT_GAP + STROKES
+        const at = (x: number, y: number) => `${x} ${y * tilt}`
+        const [tx, ty] = [bx - ux * clear, by - uy * clear]
+        const [sx, sy] = [ax + ux * clear, ay + uy * clear]
+        const w = ARROW_WING
+        return `M ${at(sx, sy)} L ${at(tx, ty)} M ${at(tx - ux * w - uy * w, ty - uy * w + ux * w)} L ${at(tx, ty)} L ${at(tx - ux * w + uy * w, ty - uy * w - ux * w)}`
+    }
+
     let hovered: Cell | undefined = $state()
 
     function onKey(event: KeyboardEvent, cell: Cell) {
@@ -701,12 +742,35 @@
         {/each}
 
         <!-- Ground marks: where the chosen tool or the Pilli Mexica can go. -->
-        {#each [...choosable].filter((cell) => !decks.has(cell)) as cell (cell)}
+        {#each [...choosable].filter((cell) => !decks.has(cell) && plainlyMarked(cell)) as cell (cell)}
             {@render choiceMark(cell)}
         {/each}
-        {#each chosen.filter((cell) => !decks.has(cell)) as cell (cell)}
+        {#each chosen.filter((cell) => !decks.has(cell) && canalStart?.cell !== cell) as cell (cell)}
             {@render chosenMark(cell)}
         {/each}
+        {#if canalStart !== undefined}
+            {@const spots = [
+                ...canalStart.doubles,
+                ...(canalStart.single ? [canalStart.cell] : [])
+            ]}
+            <g class="canal-choices" {@attach animator.mark()}>
+                {#each ['under', 'over'] as layer (layer)}
+                    {#each canalStart.doubles as cell (cell)}
+                        <path d={canalArrow(canalStart.cell, cell)} class="arrow {layer}"></path>
+                    {/each}
+                    {#each spots as cell (cell)}
+                        {@const c = view.centre(cell)}
+                        <ellipse
+                            cx={c.x}
+                            cy={c.y}
+                            rx={SPOT}
+                            ry={SPOT * view.tilt}
+                            class="spot {layer}"
+                        ></ellipse>
+                    {/each}
+                {/each}
+            </g>
+        {/if}
 
         <!-- Canoes the Pilli Mexica ride from bridge to bridge, under the bridges they pass. -->
         {#each animator.boats as boat (boat)}
@@ -1109,6 +1173,37 @@
     .founding-hit {
         fill: transparent;
         pointer-events: all;
+    }
+
+    /* Two-tone as GIPF's push arrows: a dark band under a cyan core. */
+    .canal-choices {
+        pointer-events: none;
+    }
+
+    .canal-choices .arrow {
+        fill: none;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+    }
+
+    .canal-choices .under {
+        stroke: rgb(0 0 0 / 0.85);
+        stroke-width: 4.2;
+    }
+
+    .canal-choices .over {
+        stroke: var(--mx-mark);
+        stroke-width: 2.4;
+    }
+
+    .canal-choices .spot.under {
+        fill: rgb(94 240 255 / 0.22);
+        stroke-width: 3.4;
+    }
+
+    .canal-choices .spot.over {
+        fill: none;
+        stroke-width: 1.7;
     }
 
     .chosen {
