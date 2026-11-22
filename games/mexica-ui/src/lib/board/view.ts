@@ -17,10 +17,12 @@ export const PILLI_WIDTH = 1.08
 export const PILLI_HEIGHT = 0.85 * PILLI_SIZE
 export const PILLI_DEPTH = 0.24 * PILLI_WIDTH
 
-const LABEL_SIZE = 12
-const LABEL_GAP = 8
+// The coordinates' type size, in board units.
+export const LABEL_SIZE = 18
+export const LABEL_WEIGHT = 600
+const LABEL_GAP = 4
 const LABEL_REACH = LABEL_SIZE * 0.9
-const EDGE_MARGIN = 10
+const EDGE_MARGIN = 4
 // The lake reaches this far past the printed board's edge all round, so where the island's land
 // runs to the edge its shore meets water, not the table.
 export const LAKE_MARGIN = 14

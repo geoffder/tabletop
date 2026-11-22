@@ -19,7 +19,14 @@
         placePoints
     } from '@tabletop/mexica'
     import { getGameSession } from '$lib/model/sessionContext.svelte.js'
-    import { BRIDGE_RISE, CELL, LAKE_MARGIN, type PlanStep } from '$lib/board/view.js'
+    import {
+        BRIDGE_RISE,
+        CELL,
+        LABEL_SIZE,
+        LABEL_WEIGHT,
+        LAKE_MARGIN,
+        type PlanStep
+    } from '$lib/board/view.js'
     import type { Point } from '@tabletop/common'
     import { LOOK_URLS } from '$lib/board/lookUrls.js'
     import { BANK_WIDTH, SIDES, surfaceOf, waterworks } from '$lib/board/waterworks.js'
@@ -557,7 +564,9 @@
                     class="label"
                     x={label.at.x}
                     y={label.at.y}
-                    dy="4.2"
+                    dy={LABEL_SIZE * 0.35}
+                    font-size={LABEL_SIZE}
+                    font-weight={LABEL_WEIGHT}
                     text-anchor={label.anchor}>{label.text}</text
                 >
             {/each}
@@ -883,7 +892,6 @@
     }
 
     .label {
-        font-size: 12px;
         fill: var(--mx-table-ink);
         letter-spacing: 0.5px;
         pointer-events: none;
