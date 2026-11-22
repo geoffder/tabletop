@@ -83,6 +83,7 @@
         | { kind: 'pilli'; cell: Cell; playerId: string; onBridge: boolean }
         | { kind: 'bridge'; cell: Cell; axis: Axis }
         | { kind: 'bridgeFront'; cell: Cell }
+        | { kind: 'mark'; cell: Cell; chosen: boolean }
 
     const animator = new BoardAnimator(
         session,
@@ -122,7 +123,14 @@
                 pieces.push({ kind: 'bridgeFront', cell: bridge.cell })
             }
         }
-        const order = { bridge: 0, temple: 1, pilli: 2, bridgeFront: 3 }
+        // A choice on a bridge lies on its deck, in front of the bridge behind it.
+        for (const cell of choosable) {
+            if (decks.has(cell)) pieces.push({ kind: 'mark', cell, chosen: false })
+        }
+        for (const cell of chosen) {
+            if (decks.has(cell)) pieces.push({ kind: 'mark', cell, chosen: true })
+        }
+        const order = { bridge: 0, mark: 1, temple: 2, pilli: 3, bridgeFront: 4 }
         const drawnAt = (piece: Raised) =>
             piece.kind === 'pilli'
                 ? (animator.walking.get(piece.playerId) ?? piece.cell)
@@ -141,7 +149,13 @@
         )
     })
     const keyOf = (piece: Raised) =>
-        piece.kind === 'pilli' ? `pilli-${piece.playerId}` : `${piece.kind}-${piece.cell}`
+        piece.kind === 'pilli'
+            ? `pilli-${piece.playerId}`
+            : piece.kind === 'mark'
+              ? `mark-${piece.chosen}-${piece.cell}`
+              : `${piece.kind}-${piece.cell}`
+    // How high a square's marks stand: on a bridge's deck, or on the palace.
+    const markLift = (cell: Cell) => view.lift(decks.has(cell) ? BRIDGE_RISE : palaceRise(cell))
 
     // Neighbouring canal cells overlap a little, or their clipped edges leave a seam.
     const CLIP_OVERLAP = 0.5
@@ -282,6 +296,53 @@
     const landCells = LAND_CELLS
     const palace = $derived(view.centre(PALACE_CENTRE))
 </script>
+
+<!-- Where the chosen tool or the Pilli Mexica can go, at the height of the square's top. -->
+{#snippet choiceMark(cell: Cell)}
+    {@const move = session.moves.get(cell)}
+    {#if !move?.teleport}
+        {@const box = view.cellBox(cell)}
+        {@const tile = {
+            x: box.x + 4,
+            y: box.y + 4 * view.tilt - markLift(cell),
+            width: box.width - 8,
+            height: box.height - 8 * view.tilt
+        }}
+        <rect {...tile} rx="2" class="mark-band" {@attach animator.mark()}></rect>
+        <rect {...tile} rx="2" class="mark" {@attach animator.mark()}></rect>
+        {#if session.moveCosts && move !== undefined && session.tool === undefined}
+            <!-- What the move costs, in a badge at the square's far right corner. -->
+            <circle
+                cx={tile.x + tile.width - 1}
+                cy={tile.y + 1}
+                r="6.5"
+                class="cost-badge"
+                {@attach animator.mark()}
+            ></circle>
+            <text
+                x={tile.x + tile.width - 1}
+                y={tile.y + 1}
+                dy="3.4"
+                text-anchor="middle"
+                class="cost-number"
+                {@attach animator.mark()}>{move.cost}</text
+            >
+        {/if}
+    {/if}
+{/snippet}
+
+<!-- A square already chosen. -->
+{#snippet chosenMark(cell: Cell)}
+    {@const box = view.cellBox(cell)}
+    {@const tile = {
+        x: box.x + 3,
+        y: box.y + 3 * view.tilt - markLift(cell),
+        width: box.width - 6,
+        height: box.height - 6 * view.tilt
+    }}
+    <rect {...tile} rx="2" class="mark-band" {@attach animator.mark()}></rect>
+    <rect {...tile} rx="2" class="chosen" {@attach animator.mark()}></rect>
+{/snippet}
 
 <!-- A calpulli token, `radius` to its corners: its size, and below it the points for second
      and third place. -->
@@ -640,61 +701,11 @@
         {/each}
 
         <!-- Ground marks: where the chosen tool or the Pilli Mexica can go. -->
-        {#each [...choosable] as cell (cell)}
-            {@const centre = view.centre(cell)}
-            {@const move = session.moves.get(cell)}
-            {@const raised = centre.y - view.lift(palaceRise(cell))}
-            {#if !move?.teleport}
-                {@const box = view.cellBox(cell)}
-                {@const tile = {
-                    x: box.x + 4,
-                    y: box.y + 4 * view.tilt + raised - centre.y,
-                    width: box.width - 8,
-                    height: box.height - 8 * view.tilt
-                }}
-                <rect {...tile} rx="2" class="mark-band" {@attach animator.mark()}></rect>
-                <rect {...tile} rx="2" class="mark" {@attach animator.mark()}></rect>
-                {#if session.moveCosts && move !== undefined && session.tool === undefined}
-                    <!-- What the move costs, in a badge at the square's far right corner. -->
-                    <circle
-                        cx={tile.x + tile.width - 1}
-                        cy={tile.y + 1}
-                        r="6.5"
-                        class="cost-badge"
-                        {@attach animator.mark()}
-                    ></circle>
-                    <text
-                        x={tile.x + tile.width - 1}
-                        y={tile.y + 1}
-                        dy="3.4"
-                        text-anchor="middle"
-                        class="cost-number"
-                        {@attach animator.mark()}>{move.cost}</text
-                    >
-                {/if}
-            {/if}
+        {#each [...choosable].filter((cell) => !decks.has(cell)) as cell (cell)}
+            {@render choiceMark(cell)}
         {/each}
-        {#each chosen as cell (cell)}
-            {@const box = view.cellBox(cell)}
-            {@const lift = view.lift(palaceRise(cell))}
-            <rect
-                x={box.x + 3}
-                y={box.y + 3 * view.tilt - lift}
-                width={box.width - 6}
-                height={box.height - 6 * view.tilt}
-                rx="2"
-                class="mark-band"
-                {@attach animator.mark()}
-            ></rect>
-            <rect
-                x={box.x + 3}
-                y={box.y + 3 * view.tilt - lift}
-                width={box.width - 6}
-                height={box.height - 6 * view.tilt}
-                rx="2"
-                class="chosen"
-                {@attach animator.mark()}
-            ></rect>
+        {#each chosen.filter((cell) => !decks.has(cell)) as cell (cell)}
+            {@render chosenMark(cell)}
         {/each}
 
         <!-- Canoes the Pilli Mexica ride from bridge to bridge, under the bridges they pass. -->
@@ -735,6 +746,12 @@
                         ></image>
                     </g>
                 </g>
+            {:else if piece.kind === 'mark'}
+                {#if piece.chosen}
+                    {@render chosenMark(piece.cell)}
+                {:else}
+                    {@render choiceMark(piece.cell)}
+                {/if}
             {:else if piece.kind === 'temple'}
                 {@const mark = templeMark(piece.level, view.tilt)}
                 <g transform="translate({centre.x} {centre.y})" class="piece">
