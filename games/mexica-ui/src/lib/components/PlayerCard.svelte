@@ -47,7 +47,7 @@
             </span>
         {/each}
         <span class="tally" title="Action tokens">
-            <span class="mask" {@attach flights?.cardMask(playerId)}><MaskIcon size={22} /></span><b
+            <span class="mask" {@attach flights?.cardMask(playerId)}><MaskIcon size={26} /></span><b
                 class="tokens">{playerState.actionTokens}</b
             >
         </span>

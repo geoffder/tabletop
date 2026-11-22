@@ -69,8 +69,8 @@
             {/each}
         </svg>
     {:else}
-        <g transform="translate({-size / 2} {-size / 2})" {@attach flights?.supplyMask}>
-            <MaskIcon size={size * 0.9} />
+        <g transform="translate({-size * 0.54} {-size * 0.54})" {@attach flights?.supplyMask}>
+            <MaskIcon size={size * 1.08} />
         </g>
         <text x={-size / 2 - 4} y={size / 2 - 6} class="plus">+1</text>
     {/if}

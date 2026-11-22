@@ -20,7 +20,7 @@
 <div class="tray" class:hidden={!shown} class:gone={ended} inert={!shown} aria-hidden={!shown}>
     <div class="ap" title="Action points left this turn">
         {#each Array.from({ length: BASE_AP }, (_, i) => i) as pip (pip)}
-            <MaskIcon spent={pip >= session.apLeft} size={28} />
+            <MaskIcon spent={pip >= session.apLeft} size={34} />
         {/each}
         {#if tokens > 0}<span class="tokens" title="Action tokens">+{tokens}</span>{/if}
     </div>
@@ -113,7 +113,7 @@
         display: flex;
         align-items: center;
         gap: 6px;
-        min-height: 30px;
+        min-height: 36px;
     }
 
     .tokens {
@@ -153,8 +153,8 @@
     }
 
     .tool :global(.token svg) {
-        width: 86%;
-        height: 86%;
+        width: 100%;
+        height: 100%;
     }
 
     .tool.picked {
