@@ -45,6 +45,7 @@
     import { DESIGN, templeBounds } from '$lib/board/templeShape.js'
     import { templeMark } from '$lib/board/templeMarks.js'
     import TempleMarks from './TempleMarks.svelte'
+    import CommonSupply from './CommonSupply.svelte'
     import { PLAN, WATERS } from '$lib/board/plan.js'
     import { PINCH_SHEET, pinchBox, pinchesOf, pinchFrame } from '$lib/board/pinches.js'
     import {
@@ -193,15 +194,14 @@
         session.letGo()
     }
 
-    // The Emperor's commands, in the lake at the bottom right as on the printed board.
+    // The Emperor's commands, in the lake at the top right, as far from its top edge on screen
+    // as from its right edge, however tilted.
     const display = $derived(drawn.display)
     const DISPLAY = { left: 15.3, slot: 1.42, columns: 4, rows: 2 }
-    // As far from the lake's bottom edge on screen as from its right edge, however tilted.
-    const displayTop = $derived.by(() => {
-        const margin = LAKE_MARGIN / CELL
-        const right = BOARD_WIDTH + margin - DISPLAY.left - DISPLAY.slot * DISPLAY.columns
-        return BOARD_HEIGHT + margin - DISPLAY.slot * DISPLAY.rows - right / view.tilt
-    })
+    // How far the trays keep from the lake's right edge, in plan columns.
+    const TRAY_RIGHT =
+        BOARD_WIDTH + LAKE_MARGIN / CELL - DISPLAY.left - DISPLAY.slot * DISPLAY.columns
+    const displayTop = $derived(-LAKE_MARGIN / CELL + TRAY_RIGHT / view.tilt)
     const displayBox = $derived(
         view.planBox(
             DISPLAY.left,
@@ -226,6 +226,25 @@
             displayTop + DISPLAY.slot * (Math.floor(index / DISPLAY.columns) + 0.5)
         )
     }
+
+    // The pieces everyone draws on, in the lake at the bottom right, as far from its bottom
+    // edge on screen as from its right edge. Each piece's slot fits the piece, as a share of
+    // `slot`, so the frame keeps off the land.
+    const SUPPLY = { scale: 1.4, slots: [0.6, 1, 0.85, 0.9] }
+    const SUPPLY_SLOT = DISPLAY.slot * SUPPLY.scale
+    const supply = $derived.by(() => {
+        const spans = SUPPLY.slots.map((share) => share * SUPPLY_SLOT)
+        const width = spans.reduce((sum, span) => sum + span, 0)
+        const left = BOARD_WIDTH + LAKE_MARGIN / CELL - TRAY_RIGHT - width
+        const top = BOARD_HEIGHT + LAKE_MARGIN / CELL - TRAY_RIGHT / view.tilt - SUPPLY_SLOT
+        let start = left
+        const centres = spans.map((span) => {
+            const centre = view.at(start + span / 2, top + SUPPLY_SLOT / 2)
+            start += span
+            return centre
+        })
+        return { frame: view.planBox(left, top, left + width, top + SUPPLY_SLOT), centres }
+    })
 
     const landCells = LAND_CELLS
     const palace = $derived(view.centre(PALACE_CENTRE))
@@ -792,6 +811,13 @@
                 </g>
             {/each}
         </g>
+
+        <CommonSupply
+            frame={supply.frame}
+            centres={supply.centres}
+            size={SUPPLY_SLOT * CELL * 0.7}
+            badge={SUPPLY.scale}
+        />
 
         <!-- Tokens on their way between the display and the board, over everything. -->
         {#each animator.flights as district (district.tokenId)}

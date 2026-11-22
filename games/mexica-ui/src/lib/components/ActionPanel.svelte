@@ -53,7 +53,7 @@
     {:else if tool === 'canal' && session.chosenCell !== undefined}
         <span>Choose a neighbour to finish the canal</span>
     {:else if tool === 'canal' && singles > 0}
-        <span>Choose two neighbouring spaces, or one twice for a single ({singles}&nbsp;left)</span>
+        <span>Choose two neighbouring spaces, or one twice for a single</span>
     {:else if tool === 'canal'}
         <span>Choose 2 neighbouring spaces to dig</span>
     {:else if tool === 'bridge'}
