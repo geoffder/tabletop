@@ -1,5 +1,9 @@
 <script lang="ts">
-    import { BoardAnimator } from '$lib/animators/boardAnimator.svelte.js'
+    import {
+        BoardAnimator,
+        BREAK_SIDES,
+        type BreakSide
+    } from '$lib/animators/boardAnimator.svelte.js'
     import { pilliSpot } from '$lib/board/pilliSpot.js'
     import { palaceBounds, palaceLook, palaceRise } from '$lib/board/palaceShape.js'
     import {
@@ -253,6 +257,24 @@
         return { frame: view.planBox(left, top, left + width, top + SUPPLY_SLOT), centres }
     })
 
+    // The crack a ruled-out token breaks along, top to bottom through its middle, and the side of
+    // it either half keeps.
+    const CRACK = [
+        [3, -60],
+        [2, -34],
+        [-3, -22],
+        [4, -11],
+        [-2, -1],
+        [3, 8],
+        [-4, 18],
+        [1, 30],
+        [1, 60]
+    ]
+    function crackSide(side: BreakSide): string {
+        const edge = side === 'left' ? -60 : 60
+        return `M${edge} -60${CRACK.map(([x, y]) => `L${x} ${y}`).join('')}L${edge} 60Z`
+    }
+
     const landCells = LAND_CELLS
     const palace = $derived(view.centre(PALACE_CENTRE))
 </script>
@@ -303,6 +325,12 @@
         {@attach animator.attach}
     >
         <defs>
+            <!-- Either side of the jagged crack a ruled-out token breaks along, round its middle. -->
+            {#each BREAK_SIDES as side (side)}
+                <clipPath id="mx-crack-{side}" clipPathUnits="userSpaceOnUse">
+                    <path d={crackSide(side)}></path>
+                </clipPath>
+            {/each}
             <clipPath id="mx-canal-clip">
                 {#each [...drawn.canals] as cell (cell)}
                     <rect
@@ -817,9 +845,20 @@
                     </g>
                 {/if}
                 <g transform="translate({at.x} {at.y})">
-                    <g {@attach animator.piece(`display-${tokenId}`, 'body')}>
-                        {@render calpulli({ x: 0, y: 0 }, tokenId, TOKEN_ON_DISPLAY)}
-                    </g>
+                    {#if animator.breaking.includes(tokenId)}
+                        <!-- Ruled out: the token in two halves along a crack, drifting apart. -->
+                        {#each BREAK_SIDES as side (side)}
+                            <g {@attach animator.half(tokenId, side)}>
+                                <g clip-path="url(#mx-crack-{side})">
+                                    {@render calpulli({ x: 0, y: 0 }, tokenId, TOKEN_ON_DISPLAY)}
+                                </g>
+                            </g>
+                        {/each}
+                    {:else}
+                        <g {@attach animator.piece(`display-${tokenId}`, 'body')}>
+                            {@render calpulli({ x: 0, y: 0 }, tokenId, TOKEN_ON_DISPLAY)}
+                        </g>
+                    {/if}
                 </g>
             {/each}
         </g>

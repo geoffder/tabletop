@@ -72,6 +72,10 @@ const BOAT = {
 }
 // The display closing up behind a token that leaves, once it has lifted off.
 const CLOSE_UP = { at: 0.2, duration: 0.35 }
+// A token no district can take any more breaks in two along a jagged crack: the halves drift
+// `apart` either way, sink `drop`, tip `tilt` degrees and fade out over `duration`, and the
+// display closes up behind them at `closeAt`.
+const BREAK = { duration: 0.55, apart: 7, drop: 3, tilt: 14, closeAt: 0.3 }
 // How much bigger the display shows a token than the board does.
 const DISPLAY_SCALE = TOKEN_ON_DISPLAY / TOKEN_ON_BOARD
 // A step without an action ends within QUICK: pieces slide straight to where they end, and
@@ -125,6 +129,9 @@ type Step = TransitionStep<HydratedMexicaGameState, AnimationContext>
 // A piece's drawing: its body, and its shadow on the board; a Pilli Mexica's group holding both,
 // which moves it between squares; a bridge across the screen also has its near side, drawn over
 // a Pilli Mexica on it.
+export const BREAK_SIDES = ['left', 'right'] as const
+export type BreakSide = (typeof BREAK_SIDES)[number]
+
 type Parts = { whole?: SVGGElement; body?: SVGGElement; shadow?: SVGGElement; front?: SVGGElement }
 
 // A rectangle with its corners rounded by `radii`, clockwise from the top left.
@@ -158,12 +165,15 @@ export class BoardAnimator implements MoveInterrupter {
     // Where each walking Pilli Mexica has got to, for the order the board draws in.
     walking: ReadonlyMap<string, Cell> = $state.raw(new Map())
     floods: readonly Flood[] = $state.raw([])
+    // Display tokens ruled out by this move, drawn as two halves while they break apart.
+    breaking: readonly number[] = $state.raw([])
     // The canoes Pilli Mexica are riding in this move.
     boats: readonly string[] = $state.raw([])
     // Calpulli tokens going between the Emperor's display and the board, drawn over everything.
     flights: readonly District[] = $state.raw([])
 
     private readonly parts = new Map<string, Parts>()
+    private readonly halves = new Map<string, SVGGElement>()
     private readonly marks = new Set<SVGElement>()
     private readonly springNodes = new Map<string, SVGCircleElement>()
     private readonly floodPavings = new Map<string, SVGImageElement>()
@@ -276,6 +286,7 @@ export class BoardAnimator implements MoveInterrupter {
             this.floods = []
             this.boats = []
             this.flights = []
+            this.breaking = []
             throw error
         }
     }
@@ -307,8 +318,21 @@ export class BoardAnimator implements MoveInterrupter {
         const unfounded = before.districts.filter(
             (district) => !after.districts.some((other) => other.tokenId === district.tokenId)
         )
+        // Tokens that leave the display without being founded, ruled out, and ones that come
+        // onto it unfounded: put back by an undo, or the reserve at the second period.
+        const withdrawn = before.display.filter(
+            (tokenId) =>
+                !after.display.includes(tokenId) &&
+                !founded.some((district) => district.tokenId === tokenId)
+        )
+        const arriving = after.display.filter(
+            (tokenId) =>
+                !before.display.includes(tokenId) &&
+                !unfounded.some((district) => district.tokenId === tokenId)
+        )
         if (
             founded.length + unfounded.length === 0 &&
+            withdrawn.length + arriving.length === 0 &&
             dug.length + filled.length === 0 &&
             temples.added.length + temples.removed.length === 0 &&
             bridges.added.length + bridges.removed.length === 0 &&
@@ -328,6 +352,7 @@ export class BoardAnimator implements MoveInterrupter {
         // sliding between the display and the board goes over everything.
         const flying = [...(quick ? founded : []), ...unfounded]
         this.flights = flying
+        this.breaking = quick ? [] : withdrawn
         this.drawn = {
             districts: after.districts.filter((district) => !flying.includes(district)),
             display: before.display.length >= after.display.length ? before.display : after.display,
@@ -404,16 +429,33 @@ export class BoardAnimator implements MoveInterrupter {
         for (const district of unfounded) {
             this.unfound(district, after.display.indexOf(district.tokenId), timeline, touched)
         }
+        for (const tokenId of withdrawn) {
+            if (quick) {
+                const { body } = this.partsOf(`display-${tokenId}`, touched)
+                timeline.to(body, { opacity: 0, duration: QUICK, ease: 'none' }, 0)
+            } else {
+                this.breakApart(tokenId, timeline)
+            }
+        }
+        for (const tokenId of arriving) {
+            const { body } = this.partsOf(`display-${tokenId}`, touched)
+            timeline.fromTo(body, { opacity: 0 }, { opacity: 1, duration: QUICK, ease: 'none' }, 0)
+        }
         // The tokens left on the display close up behind one that leaves, and open up for one
         // put back.
-        if (founded.length + unfounded.length > 0) {
+        if (founded.length + unfounded.length + withdrawn.length + arriving.length > 0) {
             const drawnDisplay = this.drawn.display
             const ends = after.display
+            const closeAt = quick
+                ? 0
+                : withdrawn.length > 0 && founded.length === 0
+                  ? BREAK.closeAt
+                  : CLOSE_UP.at
             drawnDisplay.forEach((tokenId, index) => {
                 if (flying.some((district) => district.tokenId === tokenId)) return
                 const goes = ends.indexOf(tokenId)
                 const was = before.display.indexOf(tokenId)
-                if (goes === was) return
+                if (goes === was || goes < 0 || was < 0) return
                 const { body } = this.partsOf(`display-${tokenId}`, touched)
                 const shown = this.slot(index)
                 const from = this.slot(was)
@@ -428,7 +470,7 @@ export class BoardAnimator implements MoveInterrupter {
                         ease: 'power2.inOut',
                         immediateRender: false
                     },
-                    quick ? 0 : CLOSE_UP.at
+                    closeAt
                 )
             })
         }
@@ -472,6 +514,7 @@ export class BoardAnimator implements MoveInterrupter {
             this.floods = []
             this.boats = []
             this.flights = []
+            this.breaking = []
             for (const node of touched) {
                 setPose(node, { x: 0, y: 0, scale: 1 })
                 gsap.set(node, { opacity: 1 })
@@ -484,6 +527,44 @@ export class BoardAnimator implements MoveInterrupter {
         }
         this.landMove = land
         animationContext.afterAnimations(land)
+    }
+
+    // A token ruled out breaks in two: each half drifts its own way, sinks a little and tips
+    // over as it fades. The halves are drawn only while it breaks, so they need no resetting.
+    private breakApart(tokenId: number, timeline: Timeline) {
+        BREAK_SIDES.forEach((side) => {
+            const node = this.halves.get(`${tokenId}-${side}`)
+            if (node === undefined) throw new Error(`The token ${tokenId} breaks once it is drawn`)
+            const sign = side === 'left' ? -1 : 1
+            const progress = { u: 0 }
+            const write = () => {
+                const u = progress.u
+                const x = sign * BREAK.apart * u
+                const y = BREAK.drop * u * u
+                node.setAttribute(
+                    'transform',
+                    `translate(${x} ${y}) rotate(${sign * BREAK.tilt * u})`
+                )
+                node.setAttribute('opacity', String(1 - u * u))
+            }
+            write()
+            timeline.to(
+                progress,
+                { u: 1, duration: BREAK.duration, ease: 'power1.out', onUpdate: write },
+                0
+            )
+        })
+    }
+
+    // One half of a token breaking apart.
+    half(tokenId: number, side: BreakSide): Attachment<SVGGElement> {
+        const key = `${tokenId}-${side}`
+        return (node) => {
+            this.halves.set(key, node)
+            return () => {
+                if (this.halves.get(key) === node) this.halves.delete(key)
+            }
+        }
     }
 
     // Dug, the banks and kerbs show through the paving as it runs away like a liquid, and then the
