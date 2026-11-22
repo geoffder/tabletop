@@ -64,31 +64,31 @@ export function palaceText(count: number): string {
 
 const COUNTS = ['', 'a', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight']
 
-// The districts the Emperor withdrew, by size and how many of each: "two 4-space districts",
-// "an 8-space district and a 10-space district", and what that means for founding them.
+// The districts the Emperor withdrew, how many of each size, smallest first, sharing one noun:
+// "two 4-space districts", "a 3-, two 4-, and an 8-space districts", and what that means for
+// founding them.
 export function withdrawnText(sizes: readonly number[]): string {
     const counts = new Map<number, number>()
     for (const size of [...sizes].sort((a, b) => a - b)) {
         counts.set(size, (counts.get(size) ?? 0) + 1)
     }
     const groups = [...counts].map(([size, count]) => {
-        const many = count > 1
-        const number = many
-            ? (COUNTS[count] ?? String(count))
-            : /^(8|11|18)$/.test(String(size))
-              ? 'an'
-              : 'a'
-        return `${number} ${size}-space ${many ? 'districts' : 'district'}`
+        const number =
+            count > 1 ? (COUNTS[count] ?? String(count)) : [8, 11, 18].includes(size) ? 'an' : 'a'
+        return `${number} ${size}-`
     })
     const listed =
         groups.length === 1
             ? groups[0]
-            : `${groups.slice(0, -1).join(', ')} and ${groups[groups.length - 1]}`
+            : groups.length === 2
+              ? `${groups[0]} and ${groups[1]}`
+              : `${groups.slice(0, -1).join(', ')}, and ${groups[groups.length - 1]}`
+    const noun = sizes.length === 1 ? 'district' : 'districts'
     const fate =
         sizes.length === 1
             ? 'it can no longer be founded'
             : sizes.length === 2
               ? 'neither can be founded'
               : 'none can be founded'
-    return `The Emperor withdrew ${listed}: ${fate}`
+    return `The Emperor withdrew ${listed}space ${noun}: ${fate}`
 }

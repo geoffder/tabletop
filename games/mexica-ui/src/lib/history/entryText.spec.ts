@@ -14,12 +14,15 @@ describe('the Emperor withdrawing districts', () => {
         )
     })
 
-    it('names each size, smallest first, with "an" before an 8 or an 11', () => {
-        expect(withdrawnText([11, 3, 8])).toBe(
-            'The Emperor withdrew a 3-space district, an 8-space district and an 11-space district: none can be founded'
+    it('names each size once, smallest first, sharing one noun', () => {
+        expect(withdrawnText([4, 8])).toBe(
+            'The Emperor withdrew a 4- and an 8-space districts: neither can be founded'
         )
-        expect(withdrawnText([5, 5, 13])).toBe(
-            'The Emperor withdrew two 5-space districts and a 13-space district: none can be founded'
+        expect(withdrawnText([8, 4, 3, 4])).toBe(
+            'The Emperor withdrew a 3-, two 4-, and an 8-space districts: none can be founded'
+        )
+        expect(withdrawnText([5, 5, 11])).toBe(
+            'The Emperor withdrew two 5- and an 11-space districts: none can be founded'
         )
     })
 })
