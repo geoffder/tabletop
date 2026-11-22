@@ -4,11 +4,13 @@
     import PieceIcon from './PieceIcon.svelte'
     import MaskIcon from './MaskIcon.svelte'
     import { getTokenFlights } from '$lib/animators/tokenFlights.svelte.js'
+    import { getScoreTicker } from '$lib/animators/scoreTicker.svelte.js'
 
     let { playerState }: { playerState: HydratedMexicaPlayerState } = $props()
 
     const session = getGameSession()
     const flights = getTokenFlights()
+    const ticker = getScoreTicker()
 
     const playerId = $derived(playerState.playerId)
     const isActive = $derived(session.gameState.activePlayerIds.includes(playerId))
@@ -34,7 +36,10 @@
         </span>
     </div>
     <div class="body">
-        <span class="score"><b>{playerState.score}</b> <span class="word">points</span></span>
+        <span class="score"
+            ><b {@attach ticker?.score(playerId)}>{playerState.score}</b>
+            <span class="word">points</span></span
+        >
         {#each LEVELS as level (level)}
             <span class="tally" title={`${level}-level temples left this period`}>
                 <PieceIcon piece={level} {fill} size={26} />
@@ -87,11 +92,14 @@
     }
 
     .score {
+        position: relative;
         margin-right: auto;
         color: var(--mx-ink-quiet);
     }
 
     .score b {
+        display: inline-block;
+        transform-origin: 50% 60%;
         font-size: 17px;
         color: var(--mx-ink);
     }

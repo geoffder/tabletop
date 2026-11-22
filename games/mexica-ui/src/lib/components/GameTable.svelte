@@ -20,6 +20,7 @@
     import SupplyTray from '$lib/components/SupplyTray.svelte'
     import MaskIcon from '$lib/components/MaskIcon.svelte'
     import { setTokenFlights, TokenFlights } from '$lib/animators/tokenFlights.svelte.js'
+    import { ScoreTicker, setScoreTicker } from '$lib/animators/scoreTicker.svelte.js'
     import OverlayToggle from '$lib/components/OverlayToggle.svelte'
     import { zoomLimits } from '$lib/board/zoom.js'
     import { MexicaGameSession } from '$lib/model/session.svelte.js'
@@ -31,6 +32,8 @@
     setGameSession(gameSession)
     const tokenFlights = new TokenFlights(getGameSession())
     setTokenFlights(tokenFlights)
+    const scoreTicker = new ScoreTicker(getGameSession())
+    setScoreTicker(scoreTicker)
 
     const zoom = $derived(zoomLimits(devicePixelRatio.current ?? 1))
 
@@ -66,7 +69,12 @@
 
 <div class="mx-table">
     <!-- Action tokens flying between the supply tray on the board and the players' cards. -->
-    <div class="fliers" aria-hidden="true" {@attach tokenFlights.attach}>
+    <div
+        class="fliers"
+        aria-hidden="true"
+        {@attach tokenFlights.attach}
+        {@attach scoreTicker.attach}
+    >
         {#each tokenFlights.fliers as flier (flier.id)}
             <div class="flier" {@attach tokenFlights.flier(flier.id)}><MaskIcon size={40} /></div>
         {/each}
