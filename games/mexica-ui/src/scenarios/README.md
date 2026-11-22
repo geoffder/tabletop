@@ -1,7 +1,7 @@
 # Mexica scenarios
 
 The dev harness lists these under **Scenarios**; loading one again starts it over.
-`scripts/build-scenarios.mjs` writes Founding and Canal rides (it plays bot games, so rerunning
+`scripts/build-scenarios.mjs` writes Founding, Canal rides and Ruled out (it plays bot games, so rerunning
 it also rewrites Middle game and Late game; restore those with `git checkout` unless they are
 meant to change). `src/lib/model/scenarioFiles.spec.ts` checks every file.
 
@@ -37,3 +37,12 @@ way of moving by water is a choice:
 - **H13**: the water joins only round the island, so the canoe paddles off the board's east
   edge and back on at the south, near H14, before the Pilli lands on H13.
 - Undo after any ride: the Pilli slides straight back to Q8.
+
+## Ruled out
+
+Four players late in the second period, Carol to move. The Emperor's display holds two 4s, and
+the only district left that can take a 4 is up at F1.
+
+- Pick the **3-level temple** and choose **F1**: no district can take a 4 any more, so both 4s
+  crack in two, the halves drifting apart and fading.
+- Undo: the temple lifts off and both 4s fade back onto the display.

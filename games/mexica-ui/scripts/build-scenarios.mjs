@@ -395,3 +395,36 @@ console.log(`Founding: ${describe(founding.state)}`)
 const rides = firstSetUp(4, canalRides)
 write('canal-rides', 'Canal rides', rides)
 console.log(`Canal rides: ${describe(rides.state)}`)
+
+// The first turn's start where one action of the player's, not a founding, leaves a token on
+// the display that no district can take any more.
+function ruledOutBy(game, state) {
+    for (const action of choose(game, state, () => 0.5).slice(1)) {
+        try {
+            const after = engine.executeCanonicalAction({ game, state, action }).updatedState
+            const founded = after.districts.length > state.districts.length
+            if (!founded && after.display.length < state.display.length) return action
+        } catch {
+            // Not allowed here.
+        }
+    }
+    return undefined
+}
+
+function firstRuledOut(players) {
+    for (let seed = 1; seed < 300; seed++) {
+        const begun = start(players)
+        let action
+        const found = playUntil(
+            begun,
+            seed,
+            (state) => (action = ruledOutBy(begun.game, state)) !== undefined
+        )
+        if (found) return { ...found, action }
+    }
+    throw Error('No seed reached a token being ruled out')
+}
+
+const ruled = firstRuledOut(4)
+write('ruled-out', 'Ruled out', ruled)
+console.log(`Ruled out: ${describe(ruled.state)}, by ${JSON.stringify(ruled.action)}`)

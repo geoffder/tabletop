@@ -7,7 +7,8 @@ import {
     areAdjacent,
     HydratedMexicaGameState,
     type MexicaGameState,
-    MexicaGameStateValidator
+    MexicaGameStateValidator,
+    tokenSize
 } from '@tabletop/mexica'
 
 const FOLDER = new URL('../../scenarios/', import.meta.url)
@@ -67,5 +68,16 @@ describe('the scenarios the harness offers', () => {
             .filter(([from, to]) => layout.bridges.has(from) && layout.bridges.has(to))
         expect(legs.some(([from, to]) => areAdjacent(from, to))).toBe(true)
         expect(legs.filter(([from, to]) => !areAdjacent(from, to)).length).toBeGreaterThan(2)
+    })
+
+    it('Ruled out loses both 4s from the display once Carol builds a 3-level temple at F1', () => {
+        const state = scenario('ruled-out')
+        const [playerId] = state.activePlayerIds
+        const f1 = 5
+        expect(state.impossibleTokens()).toEqual([])
+        expect(state.display.map((tokenId) => tokenSize(tokenId))).toEqual([4, 4])
+        expect(state.canBuildTemple(playerId, f1, 3)).toBe(true)
+        state.buildTemple(playerId, f1, 3)
+        expect(state.impossibleTokens()).toEqual(state.display)
     })
 })
