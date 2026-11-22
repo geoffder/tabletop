@@ -40,10 +40,10 @@
 }
 
 :root {
-    /* A pale sand table under the island's lake. */
-    --mx-table: #e9e1cc;
-    --mx-table-deep: #d9ceb3;
-    --mx-panel: #fffbf2;
+    /* A jade table under the island's lake, and warm ivory panels on it. */
+    --mx-table: #6fa387;
+    --mx-table-deep: #5f9477;
+    --mx-panel: #f7f0df;
     --mx-panel-edge: rgb(48 36 22 / 0.16);
     --mx-panel-shadow: 0 2px 8px rgb(48 36 22 / 0.18);
     --mx-panel-hover: color-mix(in srgb, var(--mx-panel), #2a2418 7%);
@@ -53,7 +53,7 @@
     --mx-ink: #1f1a14;
     --mx-ink-quiet: #6a6156;
     --mx-control-off: #b5ad9f;
-    --mx-table-ink: #2a2319;
+    --mx-table-ink: #0e2118;
     --mx-target: #e08a00;
     /* Choice marks: cyan over a dark band. */
     --mx-mark: #5ef0ff;

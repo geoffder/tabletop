@@ -99,7 +99,7 @@
         line-height: 1;
         color: #2b3680;
         text-shadow:
-            0 0 2px #fffbf2,
-            0 0 2px #fffbf2;
+            0 0 2px var(--mx-panel),
+            0 0 2px var(--mx-panel);
     }
 </style>
