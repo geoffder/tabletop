@@ -6,11 +6,13 @@ import type {
     TransitionKind,
     TransitionStep
 } from '@tabletop/frontend-components'
-import type { HydratedMexicaGameState } from '@tabletop/mexica'
+import { type HydratedMexicaGameState, isScorePeriod, PALACE_BONUS } from '@tabletop/mexica'
+import { SCORING, scoringSchedule } from '$lib/board/scoringSchedule.js'
 import type { MexicaGameSession, MoveInterrupter } from '$lib/model/session.svelte.js'
 
 // A player's score on their card counts to its new total once the action that earned it has
-// played out, swelling and turning green as it counts up.
+// played out, swelling and turning green as it counts up. At a period's end it counts each
+// district's points as the board shows them.
 
 const ANIMATED_KINDS: ReadonlySet<TransitionKind> = new Set<TransitionKind>([
     'own-action',
@@ -81,6 +83,31 @@ export class ScoreTicker implements MoveInterrupter {
         })
         if (changes.length === 0) return
         const quick = action === undefined
+        const scored = isScorePeriod(action) ? action.metadata : undefined
+        if (scored !== undefined) {
+            // Each award at the moment its district shows, and the palace bonus after them.
+            const schedule = scoringSchedule(from, scored.districts)
+            const steps = [
+                ...schedule.districts.flatMap(({ score, at }) =>
+                    score.awards.map((award) => ({ ...award, at }))
+                ),
+                ...scored.palace.map((playerId) => ({
+                    playerId,
+                    points: PALACE_BONUS,
+                    at: schedule.palaceAt
+                }))
+            ]
+            for (const { playerId, was } of changes) {
+                this.countInSteps(
+                    playerId,
+                    was,
+                    steps.filter((step) => step.playerId === playerId),
+                    animationContext.actionTimeline
+                )
+            }
+            animationContext.afterAnimations(() => this.land())
+            return
+        }
         const timeline = quick ? animationContext.actionTimeline : animationContext.finalTimeline
         for (const { playerId, was, now } of changes) {
             const node = this.scores.get(playerId)
@@ -122,6 +149,50 @@ export class ScoreTicker implements MoveInterrupter {
             )
         }
         animationContext.afterAnimations(() => this.land())
+    }
+
+    // A score counted up in steps, each `points` more from its time `at`, swelling from the first
+    // and settling after the last.
+    private countInSteps(
+        playerId: string,
+        was: number,
+        steps: readonly { points: number; at: number }[],
+        timeline: gsap.core.Timeline
+    ) {
+        const node = this.scores.get(playerId)
+        const text = node?.firstChild
+        if (node === undefined || text?.nodeType !== Node.TEXT_NODE || steps.length === 0) return
+        const count = { value: was }
+        this.tweened.add(count)
+        this.tweened.add(node)
+        let total = was
+        for (const { points, at } of steps) {
+            total += points
+            timeline.to(
+                count,
+                {
+                    value: total,
+                    duration: SCORING.count,
+                    ease: 'power1.out',
+                    onUpdate: () => {
+                        text.nodeValue = String(Math.round(count.value))
+                    }
+                },
+                at
+            )
+        }
+        const first = steps[0].at
+        const last = steps[steps.length - 1].at + SCORING.count
+        timeline.to(
+            node,
+            { scale: SWELL.scale, color: SWELL.color, duration: 0.15, ease: 'power1.out' },
+            first
+        )
+        timeline.to(
+            node,
+            { scale: 1, color: '', duration: SWELL.settle, ease: 'power1.inOut' },
+            last
+        )
     }
 
     private land() {
