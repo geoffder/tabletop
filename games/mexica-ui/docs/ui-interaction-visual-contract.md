@@ -1,0 +1,100 @@
+# UI Interaction Visual Contract
+
+## 1. Visual Intents
+
+Every choice on the board is drawn the same way: the square washed in cyan and outlined over a dark band (`mark`); a square already chosen is washed and outlined more strongly (`chosen`). A choice on a bridge's deck is drawn over the whole bridge, its near rail too.
+
+| Intent                | Trigger                                                                             | What is emphasized                                                                                                                                                                                 | What is dimmed                                    | What must remain unaffected |
+| --------------------- | ----------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------- | --------------------------- |
+| choose_start          | The viewer places their Pilli Mexica at the start                                   | Every free palace square a Pilli Mexica may start on                                                                                                                                               | Nothing                                           | The supply tray (hidden)    |
+| move_pilli            | The viewer is acting with nothing picked up                                         | Every square the Pilli Mexica can reach for the action points left; with Move costs on, each carries its cost in a badge at its far right corner; hovering one (not by touch) shows "N AP" over it | Nothing                                           | Pieces, the tray's tools    |
+| pick_tool             | A tool in the supply tray is pressed (a temple level, canal, bridge, move a bridge) | The pressed tool's tile ringed; the tool's targets marked; Pilli Mexica moves hidden                                                                                                               | Tools the viewer cannot use now (disabled at 38%) | Pieces                      |
+| dig_canal             | Canal picked                                                                        | Every square that can start a canal; once one is chosen (`chosen`), only its neighbours that finish a double, and itself again when a single tile is left                                          | Squares that no longer fit                        | Pieces                      |
+| build_bridge          | Bridge picked                                                                       | Every canal square a bridge fits on; a square that takes either direction is chosen, and the action panel asks ↕ or ↔                                                                              | Nothing                                           | Pieces                      |
+| move_bridge           | Move a bridge picked (no bridges left in the supply)                                | Every bridge no Pilli Mexica stands on; once one is chosen, every canal square it can move to; one that takes either direction is chosen too, and the panel asks ↕ or ↔                            | Bridges not chosen (their marks go)               | Pieces                      |
+| build_temple          | A temple level picked                                                               | Every square a temple of that level can go on                                                                                                                                                      | Nothing                                           | Pieces                      |
+| found_district        | The Pilli Mexica's district can be founded                                          | The token on the Emperor's display it can take, ringed as a choice; the panel's Found button; pressed, the token's ring turns `chosen` and the squares the token can go on are marked              | Nothing                                           | Other display tokens        |
+| take_token / end_turn | Tray's mask tile / the panel's End turn                                             | Nothing staged: both act at once                                                                                                                                                                   | Nothing                                           | The board                   |
+| waiting               | Another player's turn, or History View                                              | The action panel shows the last move (or "The game begins"); no marks or targets                                                                                                                   | The supply tray is hidden, its room kept          | Board position              |
+
+Keyboard: every marked square, bridge, canal square and the founding token is a focusable `role="button"` taking Enter or Space; a focused square shows a cyan outline. Touch has no hover, so the cost badge (Move costs) is the touch path to a move's cost.
+
+## 2. Visual Primitives
+
+- **Choice marks** (`choiceMark` / `chosenMark` in `Board.svelte`): drawn at the height of the square's top (`markLift`: a bridge's deck or the palace); on the ground they come after the surface and before the pieces; on a deck they join the pieces' depth order after the bridge's near rail, so they show whole and a nearer figure still covers them. Every mark is registered with the animator (`animator.mark()`) and fades as a move starts.
+- **Pieces** (temples, bridges, Pilli Mexica, calpulli tokens, the palace): pre-rendered looks from `scripts/render-looks.mjs`; a Pilli Mexica is its outline filled with the owner's colour under an image of its light. Never carry interaction state.
+- **Supply tray** (`SupplyTray.svelte`): always drawn and hidden (`visibility`, `inert`) when it is not the viewer's turn, so the board stays put; gone at the game's end, where the ending takes its room. On a phone (under 640px) the action points move to the header (`ActionPoints.svelte` in `Header.svelte`), the card keeping only the tools.
+- **Action card height** (`holdTallest`): the action card and the panel inside it keep the tallest height they have reached at the current width, so a prompt that wraps, or the ending replacing the tray, does not move the board.
+- **View toggles** (overlay, bottom right of the board): A1 coordinates, Flat board, Move costs, Rotated board (90°), Far side; all title preferences. Every one but Move costs re-lays the board.
+
+## 3. Layer Responsibilities
+
+| Layer                                                 | Owns                                                                                                                                                                                                                                                                                                              | Allowed inputs                                   | Must not own                |
+| ----------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------ | --------------------------- |
+| `MexicaGameSession`                                   | Legality of every choice: `startCells`, `moves`, `targets`, `axisChoices`, `templeLevels`, `canDig`/`canBuildBridge`/`canMoveBridge`/`canTakeToken`, `foundingToken`; the staged selection (`tool`, `chosenCell`, `chosenDestination`); a tap commits or stages (`chooseCell`, `chooseAxis`, `pickTool`, `letGo`) | Game state, valid action types, staged selection | Styling                     |
+| `Board.svelte`                                        | `choosable`: which set is marked (start squares, else the picked tool's targets, else the moves); hit targets over every cell, nearest last; tap-off                                                                                                                                                              | Session sets, the animator's drawn board         | Deciding legality           |
+| `BoardAnimator` (`animators/boardAnimator.svelte.ts`) | Motion for committed actions: pieces dropping in or lifting off, the Pilli Mexica walking, hopping bridges and riding canoes, canals dug and flooded, display tokens flying to the board, ruled-out tokens breaking, founding "+N" and period scoring chips; fading the marks                                     | Transition kind, `from`/`to` states, the action  | Interaction state, legality |
+| `TokenFlights`, `ScoreTicker` (`animators/`)          | Masks flying between the board's supply and the player cards; scores counting up on the cards                                                                                                                                                                                                                     | Transition kind, the action                      | Board drawing               |
+| `ActionPanel.svelte`                                  | One prompt for the staged choice (with its inline buttons), the last move while waiting, the ending                                                                                                                                                                                                               | Session state, history entries                   | Board marks                 |
+
+## 4. Shared State Contracts
+
+- **Staged selection** (`selection`: `tool`, then `cell`, then `destination`; `stagedSelection.ts`): registered with `localSelections`, so Undo pops its latest stage and a newly published state clears it. It belongs to the player who made it (`selectionOwner`): anyone else viewing sees none of it and Undo passes it by. Lets go: pressing the picked tool again, a tap on the board that hits no active target (`letGo` on the `tap-off` wrapper), a tap on a square that is not a target, or Undo. Tapping a canal's chosen first square again digs a single there, or, with no single tiles left, lets go of that square alone. Every input is ignored while `updatingVisibleState`.
+- **Kept canal**: after a dig that leaves at least 2 AP and 2 canal tiles, `beforeNewState` picks the canal tool again as an `auto` stage on that `own-action`, so a player can dig several in a row; Undo passes the auto stage by and takes back the dig.
+- **Validity**: every target set is derived from the displayed state and is empty unless the viewer can act now (`canAct`: not History View, their turn, the action type valid). A move is offered only within the action points left and if it leaves every Pilli Mexica a way out (`leavesEveryoneFree`); targets likewise.
+- **Animation scope**: the board, the token flights and the score ticker animate only `own-action`, `other-action`, `undo`, `history` and `exploration`; a page load, a server sync or a view switch shows the board at rest. A step with an action plays it in full, a history replay included. A step without one (Undo, a history jump) slides pieces straight to where they end, drops or lifts pieces placed or removed, and drains or refills canals, within `QUICK` (0.18 s).
+- **Marks during a move**: every mark fades out from the move's start (`MARK_FADE`, or `QUICK` without an action), as its choices belong to the state being left; the new state's marks appear when it is published.
+- **Stopping a move** (`moveInterrupters`): the A1, Flat, 90° and Far side toggles interrupt a move under way, landing it at once (its motion was laid out in the old view); a `view-switch` abandons it and drops the rest of its replay. Move costs does not re-lay the board and does not interrupt.
+- **Moving SVG** (`animators/svgPose.ts`): moving nodes tween a plain pose that writes `translate()`/`scale()`, never GSAP's `matrix()`, which Firefox leaves out of the board's view-scale zoom.
+- **Drawing order while walking** (`walking`, `ahead`): a walking Pilli Mexica is drawn in the order of the square it is crossing into; one riding over another standing on a bridge goes behind it until past the square's middle.
+
+## 5. Forbidden Couplings
+
+- Do not derive legality in components; read the session's sets.
+- Do not override `undo()`; register selections with `localSelections`.
+- Do not hide the supply tray with `display: none` between turns; the board would move.
+
+## 6. Interaction Matrix
+
+| Intent A       | Intent B                 | Can coexist? | Rule                                                                                                                        |
+| -------------- | ------------------------ | ------------ | --------------------------------------------------------------------------------------------------------------------------- |
+| move_pilli     | any tool                 | no           | Picking a tool replaces the moves with its targets (`choosable`); letting go brings the moves back                          |
+| one tool       | another tool             | no           | Pressing another tool replaces the first and its staged squares                                                             |
+| found_district | move_pilli / other tools | yes          | The founding token stays ringed while moves or another tool's targets show; pressing it picks the found tool like any other |
+| choose_start   | everything else          | no           | Start is the only valid action at that point                                                                                |
+| any choice     | waiting / History View   | no           | No targets outside `canAct`                                                                                                 |
+| any choice     | a move playing           | no           | Marks fade with the move and inputs are ignored until the new state is published                                            |
+
+## 7. Regression Checklist
+
+To be exercised in the verification pass; `tests/` will mark the automated ones.
+
+| Scenario                                                  | Intent         | Expected                                                                                                                  | Automated |
+| --------------------------------------------------------- | -------------- | ------------------------------------------------------------------------------------------------------------------------- | --------- |
+| New game: choose a start square                           | choose_start   | Free palace squares marked; the figure drops in on the one chosen                                                         | manual    |
+| Middle game: move the Pilli Mexica                        | move_pilli     | Reachable squares marked; Move costs adds badges; it walks the route; marks fade as it starts                             | manual    |
+| Middle game: ride a canoe (Canal rides)                   | move_pilli     | Canoe slides out, the figure rides, hops over bridges, steps onto the end bridge                                          | manual    |
+| Pick canal, choose a square, then a neighbour             | dig_canal      | First square `chosen`, only finishing neighbours marked; the canal floods; the canal tool stays picked while another fits | manual    |
+| Pick canal, tap off the marks                             | dig_canal      | Lets go; moves come back                                                                                                  | manual    |
+| Pick bridge on a crossing canal                           | build_bridge   | Square `chosen`, panel asks ↕ / ↔; choosing one builds it                                                                 | manual    |
+| Move a bridge (none left)                                 | move_bridge    | Free bridges marked; then destinations; a bridge with a Pilli Mexica on it is not offered                                 | manual    |
+| Build a temple                                            | build_temple   | Level's squares marked; the temple drops in; any action tokens it spends fly back to the supply                           | manual    |
+| Found a district (Founding)                               | found_district | Token ringed; pressed, `chosen`; the token flies to the square; "+N" rises over scoring figures; cards count up           | manual    |
+| Undo a staged choice, then the move                       | Undo           | Undo pops the latest stage first, then takes back the move within 0.2 s; nothing chosen afterwards                        | manual    |
+| History to the beginning and back                         | History View   | Pieces slide straight to their places within 0.2 s; no marks; the tray hidden, the board unmoved                          | manual    |
+| A view toggle mid-move                                    | —              | The move lands at once and the board re-lays                                                                              | manual    |
+| Phones at 390, 375, 320: your turn, waiting, History View | —              | Board's y equal within the game column in all three (the harness's own history bar aside)                                 | manual    |
+
+## 8. Change Rules
+
+When touching interactive visuals:
+
+1. identify the intent being changed
+2. identify the primitives involved
+3. verify whether shared state contracts are being widened
+4. update this document if a new interaction or coupling is introduced
+
+## 9. Status
+
+- Interactive visual system status: `Initial`
+- Last updated for interaction change: first contract, after the phone layout (action points in the header on phones)
