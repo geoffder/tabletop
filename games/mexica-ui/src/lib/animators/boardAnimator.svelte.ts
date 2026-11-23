@@ -634,7 +634,7 @@ export class BoardAnimator implements MoveInterrupter {
             if (walked?.teleport) {
                 this.teleport(key, move.from, move.to, decks, timeline, touched)
             } else if (walked !== undefined) {
-                this.walk(key, move.playerId, walked.path, decks, timeline, touched)
+                this.walk(key, move.playerId, walked.path, decks, before, timeline, touched)
             } else {
                 const start = pilliSpot(view, move.from, new Set(before.bridges.map((b) => b.cell)))
                 const end = pilliSpot(view, move.to, new Set(after.bridges.map((b) => b.cell)))
@@ -954,16 +954,20 @@ export class BoardAnimator implements MoveInterrupter {
         playerId: string,
         path: readonly Cell[],
         decks: ReadonlySet<Cell>,
+        board: DrawnBoard,
         timeline: Timeline,
         touched: SVGGElement[]
     ) {
         const view = this.view()
         const { body, whole } = this.partsOf(key, touched)
-        const water = this.session.gameState.layout().canals
+        // The water and the other figures as the move found them: in a replay of several
+        // actions, the state shown is still the one before the first.
+        const water = board.canals
+        const manned = mannedBy(board, playerId)
         const start = pilliSpot(view, path[0], decks)
         const wholePose = poseOf(whole)
         const bodyPose = poseOf(body)
-        const voyages = voyagesOf(path, decks, mannedBy(this.drawn, playerId))
+        const voyages = voyagesOf(path, decks, manned)
         let at = 0
         let index = 1
         while (index < path.length) {
@@ -975,6 +979,8 @@ export class BoardAnimator implements MoveInterrupter {
                     playerId,
                     stops,
                     decks,
+                    water,
+                    manned,
                     start,
                     whole,
                     body,
@@ -1028,13 +1034,16 @@ export class BoardAnimator implements MoveInterrupter {
     // A ride by canoe through `stops`, bridges each a boat ride from the last; returns when it
     // ends. The canoe follows the water from square to square, and where the way runs round the
     // island beyond the board's edge, it paddles off the board and back on where the water
-    // joins again. `start` is where the Pilli Mexica stood before its move, which its group's
-    // pose is measured from.
+    // joins again. `water` and `manned` are the canals and the other figures' squares as the move
+    // found them. `start` is where the Pilli Mexica stood before its move, which its group's pose
+    // is measured from.
     private ride(
         key: string,
         playerId: string,
         stops: readonly Cell[],
         decks: ReadonlySet<Cell>,
+        water: ReadonlySet<Cell>,
+        manned: ReadonlySet<Cell>,
         start: Point,
         whole: SVGGElement,
         body: SVGGElement,
@@ -1060,7 +1069,6 @@ export class BoardAnimator implements MoveInterrupter {
                 this.clipped.delete(body)
             }
         }
-        const { canals: water, pillis: standing } = this.session.gameState.layout()
         const sink = BOAT.sink * view.tilt
         const deck = view.lift(BRIDGE_RISE)
         const stretches = stretchesOf(stops, water, decks).map((stretch) => {
@@ -1072,7 +1080,7 @@ export class BoardAnimator implements MoveInterrupter {
             const offset = stretch.fromOutside ? 1 : 0
             const passed = stretch.cells.flatMap((cell, index) =>
                 stops.slice(1, -1).includes(cell)
-                    ? [{ at: course.at[index + offset], manned: standing.has(cell) }]
+                    ? [{ at: course.at[index + offset], manned: manned.has(cell) }]
                     : []
             )
             return { ...stretch, course, offset, passed }
