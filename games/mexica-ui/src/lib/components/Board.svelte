@@ -429,16 +429,33 @@
             </g>
         {:else if (move !== undefined && session.tool === undefined) || session.canChooseStart}
             <!-- Walks are many and reach onto bridges, where a wash would not show: a spot. -->
+            {@const cx = tile.x + tile.width / 2}
+            {@const cy = tile.y + tile.height / 2}
             {#each ['under', 'over'] as layer (layer)}
                 <ellipse
-                    cx={tile.x + tile.width / 2}
-                    cy={tile.y + tile.height / 2}
+                    {cx}
+                    {cy}
                     rx={WALK_SPOT}
                     ry={WALK_SPOT * view.tilt}
                     class="walk {layer}"
                     {@attach animator.mark()}
                 ></ellipse>
             {/each}
+            {#if session.moveCosts && move !== undefined}
+                <!-- What the move costs, in a badge on the spot's ring at its upper right. -->
+                {@const bx = cx + WALK_SPOT * Math.SQRT1_2}
+                {@const by = cy - WALK_SPOT * view.tilt * Math.SQRT1_2}
+                <circle cx={bx} cy={by} r="5.2" class="cost-badge" {@attach animator.mark()}
+                ></circle>
+                <text
+                    x={bx}
+                    y={by}
+                    dy="2.9"
+                    text-anchor="middle"
+                    class="cost-number"
+                    {@attach animator.mark()}>{move.cost}</text
+                >
+            {/if}
         {:else if session.tool === 'moveBridge' && layout.bridges.has(cell)}
             {@const bridge = layout.bridges.get(cell)}
             {#if bridge !== undefined}
@@ -457,24 +474,6 @@
         {:else}
             <rect {...tile} rx="2" class="mark-band" {@attach animator.mark()}></rect>
             <rect {...tile} rx="2" class="mark" {@attach animator.mark()}></rect>
-        {/if}
-        {#if session.moveCosts && move !== undefined && session.tool === undefined}
-            <!-- What the move costs, in a badge at the square's far right corner. -->
-            <circle
-                cx={tile.x + tile.width - 1}
-                cy={tile.y + 1}
-                r="6.5"
-                class="cost-badge"
-                {@attach animator.mark()}
-            ></circle>
-            <text
-                x={tile.x + tile.width - 1}
-                y={tile.y + 1}
-                dy="3.4"
-                text-anchor="middle"
-                class="cost-number"
-                {@attach animator.mark()}>{move.cost}</text
-            >
         {/if}
     {:else}
         {@const c = view.centre(cell)}
@@ -1449,7 +1448,7 @@
     }
 
     .cost-number {
-        font-size: 9.5px;
+        font-size: 7.5px;
         font-weight: 800;
         fill: #fff;
         pointer-events: none;
