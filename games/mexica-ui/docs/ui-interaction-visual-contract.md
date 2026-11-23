@@ -68,7 +68,7 @@ Keyboard: every marked square, bridge, canal square and the founding token is a 
 
 ## 7. Regression Checklist
 
-`tests/` covers the ones marked †; the rest are exercised by hand in the verification pass. Actionless steps end within 0.2 s, a canal's included (drain, then the paving closes, half of `QUICK` each), plus at most 0.01 s waiting for the board to draw (`undo-timing.spec.ts`).
+`tests/` covers the ones marked †; the rest are exercised by hand in the verification pass. Actionless steps end within 0.2 s, a canal's included (the dig played backwards: the water drains, and the paving closes from halfway through the drain, two thirds of `QUICK` each), plus at most 0.01 s waiting for the board to draw (`undo-timing.spec.ts`).
 
 | Scenario                                                  | Intent         | Expected                                                                                                                  | Automated                                 |
 | --------------------------------------------------------- | -------------- | ------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------- |
