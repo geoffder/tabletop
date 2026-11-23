@@ -29,6 +29,7 @@
         LABEL_SIZE,
         LABEL_WEIGHT,
         LAKE_MARGIN,
+        type Box,
         type PlanStep
     } from '$lib/board/view.js'
     import type { Point } from '@tabletop/common'
@@ -41,7 +42,7 @@
         surfaceOf,
         type Waterworks
     } from '$lib/board/waterworks.js'
-    import { polygonsPath, rectsPath } from '$lib/board/mergedPaths.js'
+    import { polygonsPath, rectsPath, roundedRectsPath } from '$lib/board/mergedPaths.js'
     import {
         bridgeLook,
         CANAL_LOOK,
@@ -433,19 +434,38 @@
 
     const landCells = LAND_CELLS
     const palace = $derived(view.centre(PALACE_CENTRE))
+
+    // A square's mark, inset from its edges, at the height of its top.
+    function markTile(cell: Cell): Box {
+        const box = view.cellBox(cell)
+        return {
+            x: box.x + 4,
+            y: box.y + 4 * view.tilt - markLift(cell),
+            width: box.width - 8,
+            height: box.height - 8 * view.tilt
+        }
+    }
+
+    // A canal's or a temple's squares are many: on the ground their washes are one path, so the
+    // marks that come back after each dig or Undo are one element rather than one per square.
+    // Squares on a bridge's deck keep their own, drawn with the bridge.
+    const washed: ReadonlySet<Cell> = $derived(
+        session.tool === 'canal' || typeof session.tool === 'number'
+            ? new Set(
+                  [...choosable].filter(
+                      (cell) => !decks.has(cell) && session.spanAxes(cell).length === 0
+                  )
+              )
+            : new Set()
+    )
+    const washPath = $derived(roundedRectsPath([...washed].map(markTile), 2))
 </script>
 
 <!-- Where the chosen tool or the Pilli Mexica can go, at the height of the square's top. -->
 {#snippet choiceMark(cell: Cell)}
     {@const move = session.moves.get(cell)}
     {#if !move?.teleport}
-        {@const box = view.cellBox(cell)}
-        {@const tile = {
-            x: box.x + 4,
-            y: box.y + 4 * view.tilt - markLift(cell),
-            width: box.width - 8,
-            height: box.height - 8 * view.tilt
-        }}
+        {@const tile = markTile(cell)}
         {@const axes = session.spanAxes(cell)}
         {#if axes.length > 0}
             {#each axes as axis (axis)}
@@ -901,7 +921,10 @@
         {/each}
 
         <!-- Ground marks: where the chosen tool or the Pilli Mexica can go. -->
-        {#each [...choosable].filter((cell) => !decks.has(cell)) as cell (cell)}
+        {#if washPath !== ''}
+            <path d={washPath} class="wash" {@attach animator.mark()}></path>
+        {/if}
+        {#each [...choosable].filter((cell) => !decks.has(cell) && !washed.has(cell)) as cell (cell)}
             {@render choiceMark(cell)}
         {/each}
         {#each chosen.filter((cell) => !decks.has(cell) && canalStart?.cell !== cell) as cell (cell)}

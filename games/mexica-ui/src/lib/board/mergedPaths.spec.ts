@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { polygonsPath, rectsPath } from './mergedPaths.js'
+import { polygonsPath, rectsPath, roundedRectsPath } from './mergedPaths.js'
 
 describe('merged paths', () => {
     it('draws each box as a closed clockwise ring', () => {
@@ -22,8 +22,18 @@ describe('merged paths', () => {
         expect(polygonsPath(['0 0, 2 0, 2 2'])).toBe('M0 0L2 0L2 2z')
     })
 
+    it('rounds each box clockwise, the radius no more than half a side', () => {
+        expect(roundedRectsPath([{ x: 0, y: 0, width: 10, height: 6 }], 2)).toBe(
+            'M2 0h6a2 2 0 0 1 2 2v2a2 2 0 0 1 -2 2h-6a2 2 0 0 1 -2 -2v-2a2 2 0 0 1 2 -2z'
+        )
+        expect(roundedRectsPath([{ x: 0, y: 0, width: 10, height: 2 }], 2)).toBe(
+            'M1 0h8a1 1 0 0 1 1 1v0a1 1 0 0 1 -1 1h-8a1 1 0 0 1 -1 -1v0a1 1 0 0 1 1 -1z'
+        )
+    })
+
     it('is empty for no shapes', () => {
         expect(rectsPath([])).toBe('')
+        expect(roundedRectsPath([], 2)).toBe('')
         expect(polygonsPath([])).toBe('')
     })
 })

@@ -11,6 +11,22 @@ export function rectsPath(boxes: readonly Box[]): string {
         .join('')
 }
 
+// Boxes with corners rounded by `radius`, as `rx` rounds a rect's; clockwise like rectsPath.
+export function roundedRectsPath(boxes: readonly Box[], radius: number): string {
+    return boxes
+        .map(({ x, y, width, height }) => {
+            const r = Math.min(radius, width / 2, height / 2)
+            const across = width - 2 * r
+            const down = height - 2 * r
+            const turn = (dx: number, dy: number) => `a${r} ${r} 0 0 1 ${dx} ${dy}`
+            return (
+                `M${x + r} ${y}h${across}${turn(r, r)}v${down}${turn(-r, r)}` +
+                `h${-across}${turn(-r, -r)}v${-down}${turn(r, -r)}z`
+            )
+        })
+        .join('')
+}
+
 // Shapes given as polygon points ("x,y x,y ...").
 export function polygonsPath(shapes: readonly string[]): string {
     return shapes.map((points) => ringPath(clockwise(parsePoints(points)))).join('')
