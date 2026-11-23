@@ -42,7 +42,12 @@
         surfaceOf,
         type Waterworks
     } from '$lib/board/waterworks.js'
-    import { polygonsPath, rectsPath, roundedRectsPath } from '$lib/board/mergedPaths.js'
+    import {
+        ellipsesPath,
+        polygonsPath,
+        rectsPath,
+        roundedRectsPath
+    } from '$lib/board/mergedPaths.js'
     import {
         bridgeLook,
         CANAL_LOOK,
@@ -331,6 +336,8 @@
 
     // A walk's spot, in board units.
     const WALK_SPOT = 6
+    // The radius of a walk's cost badge.
+    const BADGE_RADIUS = 5.2
 
     let hovered: Cell | undefined = $state()
 
@@ -446,19 +453,63 @@
         }
     }
 
-    // A canal's or a temple's squares are many: on the ground their washes are one path, so the
-    // marks that come back after each dig or Undo are one element rather than one per square.
-    // Squares on a bridge's deck keep their own, drawn with the bridge.
-    const washed: ReadonlySet<Cell> = $derived(
-        session.tool === 'canal' || typeof session.tool === 'number'
-            ? new Set(
-                  [...choosable].filter(
-                      (cell) => !decks.has(cell) && session.spanAxes(cell).length === 0
-                  )
-              )
-            : new Set()
+    // The marks that are many: a canal's or a temple's washes, the Pilli Mexica's walk spots and
+    // teleport dots. On the ground each kind is one path (and the walks' cost badges another), so
+    // the marks that come back after each move or Undo are a few elements rather than one or two
+    // per square. Squares on a bridge's deck keep their own, drawn with the bridge.
+    type ManyKind = 'wash' | 'walk' | 'teleport'
+    // As choiceMark draws the square on its own; undefined for the marks that are few.
+    function manyKind(cell: Cell): ManyKind | undefined {
+        const move = session.moves.get(cell)
+        if (move?.teleport) return 'teleport'
+        if (session.spanAxes(cell).length > 0 || session.tool === 'found') return undefined
+        if ((move !== undefined && session.tool === undefined) || session.canChooseStart) {
+            return 'walk'
+        }
+        if (session.tool === 'moveBridge' && layout.bridges.has(cell)) return undefined
+        if (session.tool === 'canal' || typeof session.tool === 'number') return 'wash'
+        return undefined
+    }
+    const many = $derived.by(() => {
+        const kinds: Record<ManyKind, Cell[]> = { wash: [], walk: [], teleport: [] }
+        for (const cell of choosable) {
+            if (decks.has(cell)) continue
+            const kind = manyKind(cell)
+            if (kind !== undefined) kinds[kind].push(cell)
+        }
+        return kinds
+    })
+    const merged: ReadonlySet<Cell> = $derived(
+        new Set([...many.wash, ...many.walk, ...many.teleport])
     )
-    const washPath = $derived(roundedRectsPath([...washed].map(markTile), 2))
+    const spotCentre = (cell: Cell): Point => {
+        const tile = markTile(cell)
+        return { x: tile.x + tile.width / 2, y: tile.y + tile.height / 2 }
+    }
+    // A walk's cost badge sits on its spot's ring at the upper right.
+    const badgeCentre = (cell: Cell): Point => {
+        const { x, y } = spotCentre(cell)
+        return {
+            x: x + WALK_SPOT * Math.SQRT1_2,
+            y: y - WALK_SPOT * view.tilt * Math.SQRT1_2
+        }
+    }
+    const costed = $derived(
+        session.moveCosts ? many.walk.filter((cell) => session.moves.has(cell)) : []
+    )
+    const manyPaths = $derived({
+        wash: roundedRectsPath(many.wash.map(markTile), 2),
+        walk: ellipsesPath(many.walk.map(spotCentre), WALK_SPOT, WALK_SPOT * view.tilt),
+        teleport: ellipsesPath(
+            many.teleport.map((cell) => {
+                const c = view.centre(cell)
+                return { x: c.x, y: c.y - markLift(cell) }
+            }),
+            TELEPORT_DOT.radius,
+            TELEPORT_DOT.radius * view.tilt
+        ),
+        badges: ellipsesPath(costed.map(badgeCentre), BADGE_RADIUS, BADGE_RADIUS)
+    })
 </script>
 
 <!-- Where the chosen tool or the Pilli Mexica can go, at the height of the square's top. -->
@@ -503,7 +554,12 @@
                 <!-- What the move costs, in a badge on the spot's ring at its upper right. -->
                 {@const bx = cx + WALK_SPOT * Math.SQRT1_2}
                 {@const by = cy - WALK_SPOT * view.tilt * Math.SQRT1_2}
-                <circle cx={bx} cy={by} r="5.2" class="cost-badge" {@attach animator.mark()}
+                <circle
+                    cx={bx}
+                    cy={by}
+                    r={BADGE_RADIUS}
+                    class="cost-badge"
+                    {@attach animator.mark()}
                 ></circle>
                 <text
                     x={bx}
@@ -921,10 +977,40 @@
         {/each}
 
         <!-- Ground marks: where the chosen tool or the Pilli Mexica can go. -->
-        {#if washPath !== ''}
-            <path d={washPath} class="wash" {@attach animator.mark()}></path>
+        {#if manyPaths.wash !== ''}
+            <path d={manyPaths.wash} class="wash" {@attach animator.mark()}></path>
         {/if}
-        {#each [...choosable].filter((cell) => !decks.has(cell) && !washed.has(cell)) as cell (cell)}
+        {#if manyPaths.walk !== ''}
+            {#each ['under', 'over'] as layer (layer)}
+                <path d={manyPaths.walk} class="walk {layer}" {@attach animator.mark()}></path>
+            {/each}
+        {/if}
+        {#if manyPaths.badges !== ''}
+            <path d={manyPaths.badges} class="cost-badge" {@attach animator.mark()}></path>
+            {#each costed as cell (cell)}
+                {@const at = badgeCentre(cell)}
+                <text
+                    x={at.x}
+                    y={at.y}
+                    dy="2.9"
+                    text-anchor="middle"
+                    class="cost-number"
+                    {@attach animator.mark()}>{session.moves.get(cell)?.cost}</text
+                >
+            {/each}
+        {/if}
+        {#if manyPaths.teleport !== ''}
+            <!-- Its edge painted first and the fill over it, as an edge and a fill drawn apart
+                 would be, in one element. -->
+            <path
+                d={manyPaths.teleport}
+                class="teleport"
+                stroke-opacity={TELEPORT_DOT.edge}
+                fill-opacity={TELEPORT_DOT.fill}
+                {@attach animator.mark()}
+            ></path>
+        {/if}
+        {#each [...choosable].filter((cell) => !decks.has(cell) && !merged.has(cell)) as cell (cell)}
             {@render choiceMark(cell)}
         {/each}
         {#each chosen.filter((cell) => !decks.has(cell) && canalStart?.cell !== cell) as cell (cell)}

@@ -27,6 +27,20 @@ export function roundedRectsPath(boxes: readonly Box[], radius: number): string 
         .join('')
 }
 
+// Ellipses of radii `rx` and `ry` about each centre, clockwise like rectsPath.
+export function ellipsesPath(
+    centres: readonly { x: number; y: number }[],
+    rx: number,
+    ry: number
+): string {
+    return centres
+        .map(
+            ({ x, y }) =>
+                `M${x - rx} ${y}a${rx} ${ry} 0 1 1 ${2 * rx} 0a${rx} ${ry} 0 1 1 ${-2 * rx} 0z`
+        )
+        .join('')
+}
+
 // Shapes given as polygon points ("x,y x,y ...").
 export function polygonsPath(shapes: readonly string[]): string {
     return shapes.map((points) => ringPath(clockwise(parsePoints(points)))).join('')

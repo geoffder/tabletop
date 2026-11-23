@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { polygonsPath, rectsPath, roundedRectsPath } from './mergedPaths.js'
+import { ellipsesPath, polygonsPath, rectsPath, roundedRectsPath } from './mergedPaths.js'
 
 describe('merged paths', () => {
     it('draws each box as a closed clockwise ring', () => {
@@ -31,9 +31,14 @@ describe('merged paths', () => {
         )
     })
 
+    it('draws each ellipse as two clockwise half turns from its left end', () => {
+        expect(ellipsesPath([{ x: 10, y: 5 }], 3, 2)).toBe('M7 5a3 2 0 1 1 6 0a3 2 0 1 1 -6 0z')
+    })
+
     it('is empty for no shapes', () => {
         expect(rectsPath([])).toBe('')
         expect(roundedRectsPath([], 2)).toBe('')
+        expect(ellipsesPath([], 3, 2)).toBe('')
         expect(polygonsPath([])).toBe('')
     })
 })
