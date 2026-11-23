@@ -50,6 +50,7 @@
     import { templeMark } from '$lib/board/templeMarks.js'
     import TempleMarks from './TempleMarks.svelte'
     import CommonSupply from './CommonSupply.svelte'
+    import MaskIcon from './MaskIcon.svelte'
     import { PLAN, WATERS } from '$lib/board/plan.js'
     import { PINCH_SHEET, pinchBox, pinchesOf, pinchFrame } from '$lib/board/pinches.js'
     import {
@@ -1194,14 +1195,19 @@
         {#if hovered !== undefined && session.moves.get(hovered) && !session.moveCosts}
             {@const move = session.moves.get(hovered)}
             {@const centre = view.centre(hovered)}
-            <text
-                class="cost"
-                {@attach animator.mark()}
-                x={centre.x}
-                y={centre.y - CELL * 0.42}
-                dy="4.2"
-                text-anchor="middle">{move?.cost} AP</text
-            >
+            {@const cost = move?.cost ?? 0}
+            {@const x = centre.x}
+            {@const y = centre.y - markLift(hovered) - CELL * 0.42}
+            <!-- An ivory pill holding an action point's mask and the cost. -->
+            <g class="hover-cost" {@attach animator.mark()}>
+                <rect x={x - 15} y={y - 8.5} width="30" height="17" rx="8.5" class="pill-rim"
+                ></rect>
+                <rect x={x - 15} y={y - 8.5} width="30" height="17" rx="8.5" class="pill"></rect>
+                <g transform="translate({x - 13.5} {y - 7})">
+                    <MaskIcon size={14} />
+                </g>
+                <text x={x + 7} {y} dy="3.8" text-anchor="middle" class="pill-cost">{cost}</text>
+            </g>
         {/if}
     </svg>
 </div>
@@ -1459,13 +1465,25 @@
         pointer-events: none;
     }
 
-    .cost {
-        font-size: 12px;
-        font-weight: 700;
-        fill: #fff;
-        stroke: #000;
-        stroke-width: 3;
-        paint-order: stroke;
+    .hover-cost {
         pointer-events: none;
+    }
+
+    .pill-rim {
+        fill: none;
+        stroke: rgb(0 0 0 / 0.85);
+        stroke-width: 2.6;
+    }
+
+    .pill {
+        fill: var(--mx-panel);
+        stroke: var(--mx-mark);
+        stroke-width: 1.2;
+    }
+
+    .pill-cost {
+        font-size: 10.5px;
+        font-weight: 800;
+        fill: #1d2a33;
     }
 </style>
