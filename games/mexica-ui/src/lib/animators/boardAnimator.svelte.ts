@@ -105,9 +105,9 @@ const MARK_FADE = 0.15
 // A canal dug: the paving runs away like a liquid to show its finished banks over the earth, and
 // then water runs in the same way from the canal or lake beside it, or with none, from the middle.
 const DIG = { build: 0.3, water: 0.32 }
-// The same without an action (Undo, history), quicker: undone, the water drains back the way it
-// came, and then the paving runs back over the banks.
-const DIG_QUICK = { build: 0.2, water: 0.2 }
+// The same without an action (Undo, history), within QUICK like every other step without one:
+// undone, the water drains back the way it came, and then the paving runs back over the banks.
+const DIG_QUICK = { build: QUICK / 2, water: QUICK / 2 }
 // The paving over a flooding square reaches this far into the land beside it, over the kerb the
 // canal brings there.
 const KERB_REACH = 3

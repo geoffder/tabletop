@@ -22,7 +22,6 @@ declare global {
 }
 
 const ACTIONLESS_BUDGET = 0.2
-const CANAL_BUDGET = 0.4
 const DRAW_WAIT = 0.01
 
 test.beforeEach(({ page }) => watchErrors(page))
@@ -114,5 +113,5 @@ test('Undo of a dug canal', async ({ page }) => {
     await act(page, () => window.mexicaSession.undo())
     await act(page, () => window.mexicaSession.undo())
     expect(await page.evaluate(() => window.mexicaSession.gameState.actionCount)).toBe(0)
-    await expectActionlessWithin(page, CANAL_BUDGET)
+    await expectActionlessWithin(page, ACTIONLESS_BUDGET)
 })
