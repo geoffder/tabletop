@@ -1167,6 +1167,10 @@
                     aria-label={`Bridge at ${cellName(cell)}`}
                     onclick={() => void session.chooseCell(cell)}
                     onkeydown={(event) => onKey(event, cell)}
+                    onpointerenter={(event) => {
+                        if (event.pointerType !== 'touch') hovered = cell
+                    }}
+                    onpointerleave={() => (hovered = undefined)}
                 ></rect>
             {/if}
         {/each}
@@ -1186,7 +1190,8 @@
                 {/if}
             {/each}
         {/if}
-        {#if hovered !== undefined && session.moves.get(hovered)}
+        <!-- With Move costs on, the badges already say it. -->
+        {#if hovered !== undefined && session.moves.get(hovered) && !session.moveCosts}
             {@const move = session.moves.get(hovered)}
             {@const centre = view.centre(hovered)}
             <text
