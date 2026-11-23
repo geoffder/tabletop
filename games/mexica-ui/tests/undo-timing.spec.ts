@@ -9,8 +9,8 @@ import {
 } from './harness.js'
 
 // A step without an action (Undo, another player's Undo, a history step) must finish its motion
-// within 0.2 s; a canal's takes two of those, the water draining before the paving closes over
-// it. Either may wait up to DRAW_WAIT for the board to draw first. Each AnimationContext the
+// within 0.2 s; a canal's included, the paving closing from halfway through the water draining.
+// Each may wait up to DRAW_WAIT for the board to draw first. Each AnimationContext the
 // presenter makes records when its motion ends.
 
 type Step = { kind: string; action: string; end: number }
