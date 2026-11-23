@@ -1,7 +1,7 @@
 # Mexica scenarios
 
 The dev harness lists these under **Scenarios**; loading one again starts it over.
-`scripts/build-scenarios.mjs` writes Founding, Canal rides, Jump over, Jump into canoe, Ruled out, First scoring and Final scoring (it plays bot games, so rerunning
+`scripts/build-scenarios.mjs` writes Founding, Canal rides, Jump over, Jump into canoe, Pilli cover, Ruled out, First scoring and Final scoring (it plays bot games, so rerunning
 it also rewrites Middle game and Late game; restore those with `git checkout` unless they are
 meant to change). `src/lib/model/scenarioFiles.spec.ts` checks every file.
 
@@ -62,6 +62,18 @@ moved onto the bridge at O7 and the next bridge, M10, a long way on by water.
   canoe passes under O7, comes back down into the canoe beyond her bridge and rides on to M10.
 - O7 is not offered as a place to stop.
 - Undo: the Pilli slides straight back to N5.
+
+## Pilli cover
+
+Four players in the first period, Dan to move. Two Pilli Mexica stand on bridges with something
+low just behind them, where a figure hides the most of what is behind it:
+
+- **Alice** on the bridge at C8, in front of Bob's level-1 temple at C7: the headdress covers
+  nearly all of the temple; only its top edge and corners show round it.
+- **Bob** on the bridge at R7, in front of the 12 founded at R6, with Carol on the bridge at R8
+  just in front of him: the token's number is hidden, its gold rim shows above and either side
+  of the headdress.
+- Use it to judge any change to the Pilli Mexica's size or proportions (`board/pilliSize.ts`).
 
 ## Ruled out
 

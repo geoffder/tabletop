@@ -1,0 +1,550 @@
+{
+ "game": {
+  "id": "scenario-pilli-cover",
+  "isPublic": false,
+  "status": "started",
+  "typeId": "mexica",
+  "deleted": false,
+  "name": "Pilli cover",
+  "ownerId": "owner",
+  "players": [
+   {
+    "id": "player-1",
+    "name": "Alice",
+    "isHuman": true,
+    "status": "joined"
+   },
+   {
+    "id": "player-2",
+    "name": "Bob",
+    "isHuman": true,
+    "status": "joined"
+   },
+   {
+    "id": "player-3",
+    "name": "Carol",
+    "isHuman": true,
+    "status": "joined"
+   },
+   {
+    "id": "player-4",
+    "name": "Dan",
+    "isHuman": true,
+    "status": "joined"
+   }
+  ],
+  "config": {
+   "neutralTemples": true
+  },
+  "hotseat": false,
+  "winningPlayerIds": [],
+  "seed": 3367980177,
+  "activePlayerIds": [
+   "player-4"
+  ],
+  "createdAt": "2026-11-23T03:15:48.088Z",
+  "storage": "remote",
+  "category": "standard",
+  "startedAt": "2026-11-23T03:15:48.088Z",
+  "progress": {
+   "fraction": 0,
+   "label": "Period 1 · 8 districts to found"
+  }
+ },
+ "state": {
+  "systemVersion": 3,
+  "id": "tHOUJtiw5Ch5B1TtxSaHa",
+  "gameId": "scenario-pilli-cover",
+  "seed": 3367980177,
+  "prng": {
+   "seed": 3367980177,
+   "invocations": 20
+  },
+  "protectedPrng": {
+   "algorithm": "chacha20-v1",
+   "seed": "033aacbe6212a2c9bee0cb5c71682e564dd13d1188be676e6f5a533a83f821c3",
+   "invocations": 0
+  },
+  "masterSeed": "0123456789abcdef0123456789abcdef",
+  "activePlayerIds": [
+   "player-4"
+  ],
+  "winningPlayerIds": [],
+  "actionCount": 0,
+  "actionChecksum": 0,
+  "players": [
+   {
+    "playerId": "player-1",
+    "color": "blue",
+    "score": 4,
+    "actionTokens": 0,
+    "pilli": 149
+   },
+   {
+    "playerId": "player-2",
+    "color": "red",
+    "score": 3,
+    "actionTokens": 0,
+    "pilli": 143
+   },
+   {
+    "playerId": "player-3",
+    "color": "yellow",
+    "score": 2,
+    "actionTokens": 1,
+    "pilli": 164
+   },
+   {
+    "playerId": "player-4",
+    "color": "green",
+    "score": 6,
+    "actionTokens": 0,
+    "pilli": 205
+   }
+  ],
+  "machineState": "Acting",
+  "turnManager": {
+   "series": [
+    {
+     "type": "turn",
+     "playerId": "player-4",
+     "start": 0
+    }
+   ],
+   "turnOrder": [
+    "player-1",
+    "player-2",
+    "player-3",
+    "player-4"
+   ],
+   "turnCounts": {
+    "player-1": 8,
+    "player-2": 8,
+    "player-3": 8,
+    "player-4": 7
+   },
+   "seriesKeeps": "latest"
+  },
+  "canals": [
+   {
+    "cells": [
+     119,
+     140
+    ]
+   },
+   {
+    "cells": [
+     161,
+     182
+    ]
+   },
+   {
+    "cells": [
+     1
+    ]
+   },
+   {
+    "cells": [
+     224,
+     203
+    ]
+   },
+   {
+    "cells": [
+     124
+    ]
+   },
+   {
+    "cells": [
+     259,
+     238
+    ]
+   },
+   {
+    "cells": [
+     281,
+     282
+    ]
+   },
+   {
+    "cells": [
+     278
+    ]
+   },
+   {
+    "cells": [
+     99
+    ]
+   },
+   {
+    "cells": [
+     185,
+     186
+    ]
+   },
+   {
+    "cells": [
+     258,
+     237
+    ]
+   },
+   {
+    "cells": [
+     190,
+     211
+    ]
+   },
+   {
+    "cells": [
+     164,
+     143
+    ]
+   },
+   {
+    "cells": [
+     232,
+     233
+    ]
+   },
+   {
+    "cells": [
+     277,
+     276
+    ]
+   },
+   {
+    "cells": [
+     22
+    ]
+   },
+   {
+    "cells": [
+     243,
+     222
+    ]
+   },
+   {
+    "cells": [
+     75,
+     74
+    ]
+   },
+   {
+    "cells": [
+     170,
+     149
+    ]
+   },
+   {
+    "cells": [
+     95,
+     94
+    ]
+   },
+   {
+    "cells": [
+     63,
+     64
+    ]
+   },
+   {
+    "cells": [
+     239
+    ]
+   },
+   {
+    "cells": [
+     96,
+     117
+    ]
+   },
+   {
+    "cells": [
+     234,
+     213
+    ]
+   },
+   {
+    "cells": [
+     218,
+     197
+    ]
+   },
+   {
+    "cells": [
+     261,
+     240
+    ]
+   },
+   {
+    "cells": [
+     255,
+     256
+    ]
+   },
+   {
+    "cells": [
+     23,
+     44
+    ]
+   },
+   {
+    "cells": [
+     201,
+     180
+    ]
+   },
+   {
+    "cells": [
+     176,
+     177
+    ]
+   },
+   {
+    "cells": [
+     242,
+     241
+    ]
+   }
+  ],
+  "bridges": [
+   {
+    "cell": 203,
+    "axis": "ew"
+   },
+   {
+    "cell": 222,
+    "axis": "ew"
+   },
+   {
+    "cell": 182,
+    "axis": "ew"
+   },
+   {
+    "cell": 119,
+    "axis": "ew"
+   },
+   {
+    "cell": 164,
+    "axis": "ew"
+   },
+   {
+    "cell": 64,
+    "axis": "ns"
+   },
+   {
+    "cell": 149,
+    "axis": "ew"
+   },
+   {
+    "cell": 213,
+    "axis": "ew"
+   },
+   {
+    "cell": 218,
+    "axis": "ew"
+   },
+   {
+    "cell": 211,
+    "axis": "ew"
+   },
+   {
+    "cell": 143,
+    "axis": "ew"
+   }
+  ],
+  "temples": [
+   {
+    "cell": 214,
+    "level": 2,
+    "playerId": "player-1"
+   },
+   {
+    "cell": 9,
+    "level": 4,
+    "playerId": "player-2"
+   },
+   {
+    "cell": 175,
+    "level": 4,
+    "playerId": "player-3"
+   },
+   {
+    "cell": 47,
+    "level": 1,
+    "playerId": "player-3"
+   },
+   {
+    "cell": 141,
+    "level": 1,
+    "playerId": "player-4"
+   },
+   {
+    "cell": 184,
+    "level": 4,
+    "playerId": "player-4"
+   },
+   {
+    "cell": 45,
+    "level": 1,
+    "playerId": "player-4"
+   },
+   {
+    "cell": 48,
+    "level": 3,
+    "playerId": "player-1"
+   },
+   {
+    "cell": 146,
+    "level": 3,
+    "playerId": "player-1"
+   },
+   {
+    "cell": 32,
+    "level": 2,
+    "playerId": "player-2"
+   },
+   {
+    "cell": 231,
+    "level": 1,
+    "playerId": "player-2"
+   },
+   {
+    "cell": 137,
+    "level": 2,
+    "playerId": "player-2"
+   },
+   {
+    "cell": 128,
+    "level": 1,
+    "playerId": "player-2"
+   },
+   {
+    "cell": 115,
+    "level": 3,
+    "playerId": "player-3"
+   },
+   {
+    "cell": 53,
+    "level": 1,
+    "playerId": "player-3"
+   },
+   {
+    "cell": 156,
+    "level": 3,
+    "playerId": "player-4"
+   },
+   {
+    "cell": 25,
+    "level": 1,
+    "playerId": "player-4"
+   },
+   {
+    "cell": 52,
+    "level": 2,
+    "playerId": "player-1"
+   },
+   {
+    "cell": 6,
+    "level": 2,
+    "playerId": "player-1"
+   },
+   {
+    "cell": 97,
+    "level": 3,
+    "playerId": "player-2"
+   },
+   {
+    "cell": 253,
+    "level": 2,
+    "playerId": "player-2"
+   },
+   {
+    "cell": 138,
+    "level": 1,
+    "playerId": "player-2"
+   },
+   {
+    "cell": 145,
+    "level": 3,
+    "playerId": "player-3"
+   },
+   {
+    "cell": 163,
+    "level": 2,
+    "playerId": "player-4"
+   },
+   {
+    "cell": 121,
+    "level": 2,
+    "playerId": "player-4"
+   },
+   {
+    "cell": 166,
+    "level": 1,
+    "playerId": "player-1"
+   },
+   {
+    "cell": 165,
+    "level": 4,
+    "playerId": "player-1"
+   },
+   {
+    "cell": 195,
+    "level": 3,
+    "playerId": "player-2"
+   },
+   {
+    "cell": 125,
+    "level": 2,
+    "playerId": "player-3"
+   },
+   {
+    "cell": 162,
+    "level": 2,
+    "playerId": "player-4"
+   },
+   {
+    "cell": 142,
+    "level": 3,
+    "playerId": "player-4"
+   }
+  ],
+  "districts": [
+   {
+    "tokenId": 12,
+    "cell": 122
+   },
+   {
+    "tokenId": 9,
+    "cell": 167
+   },
+   {
+    "tokenId": 7,
+    "cell": 254
+   }
+  ],
+  "display": [
+   1,
+   5,
+   8,
+   10,
+   13
+  ],
+  "reserve": [
+   0,
+   2,
+   3,
+   4,
+   6,
+   11,
+   14
+  ],
+  "period": 1,
+  "apLeft": 6,
+  "tokensTaken": 0,
+  "acted": false,
+  "idleTurns": 0
+ },
+ "actions": []
+}

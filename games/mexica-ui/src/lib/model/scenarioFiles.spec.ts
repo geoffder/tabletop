@@ -5,6 +5,7 @@ import { readdirSync, readFileSync } from 'node:fs'
 import type { GameAction } from '@tabletop/common'
 import {
     areAdjacent,
+    BOARD_WIDTH,
     HydratedMexicaGameState,
     type MexicaGameState,
     MexicaGameStateValidator,
@@ -90,6 +91,24 @@ describe('the scenarios the harness offers', () => {
             expect(state.moves(playerId).has(under[0])).toBe(false)
         }
     )
+
+    it('Pilli cover stands two players on bridges in front of a level-1 temple and a token', () => {
+        const state = scenario('pilli-cover')
+        const layout = state.layout()
+        const behind = (cell: number) => cell - BOARD_WIDTH
+        const standing = state.players
+            .filter((player) => !state.activePlayerIds.includes(player.playerId))
+            .map((player) => player.pilli)
+            .filter((cell): cell is number => cell !== undefined && layout.bridges.has(cell))
+        const lowTemple = standing.some((cell) =>
+            state.temples.some((temple) => temple.cell === behind(cell) && temple.level === 1)
+        )
+        const token = standing.some((cell) =>
+            state.districts.some((district) => district.cell === behind(cell))
+        )
+        expect(lowTemple).toBe(true)
+        expect(token).toBe(true)
+    })
 
     it('Ruled out loses both 4s from the display once Carol builds a 3-level temple at F1', () => {
         const state = scenario('ruled-out')

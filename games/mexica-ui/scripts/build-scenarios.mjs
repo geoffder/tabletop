@@ -234,6 +234,50 @@ const late = firstFound(
 write('late-game', 'Late game', late)
 console.log(`Late game: ${describe(late.state)}`)
 
+// Two players who are not to move stand on bridges with something low just behind them, where
+// the figure covers most: one in front of a level-1 temple, the other in front of a district's
+// token, founding that district with a token of its size when none stands there yet.
+function pilliCover(state) {
+    const hydrated = new HydratedMexicaGameState(structuredClone(state))
+    const layout = hydrated.layout()
+    const [mover] = state.activePlayerIds
+    const others = hydrated.players.filter((player) => player.playerId !== mover)
+    const taken = new Set(hydrated.players.map((player) => player.pilli))
+    const free = [...layout.bridges.keys()]
+        .filter((bridge) => !taken.has(bridge) && rowOf(bridge) > 0)
+        .sort((a, b) => a - b)
+    const behind = (bridge) => cellAt(columnOf(bridge), rowOf(bridge) - 1)
+    const temple = free.find((bridge) =>
+        state.temples.some((built) => built.cell === behind(bridge) && built.level === 1)
+    )
+    if (temple === undefined) return undefined
+    const used = new Set(hydrated.districts.map((district) => district.tokenId))
+    const tokenFor = (district) =>
+        [...hydrated.display, ...hydrated.reserve].find(
+            (id) => !used.has(id) && tokenSize(id) === district.length
+        )
+    let founding
+    const token = free.find((bridge) => {
+        if (bridge === temple) return false
+        const square = behind(bridge)
+        if (hydrated.districts.some((district) => district.cell === square)) return true
+        const district = layout.districtOf(square)
+        if (district === undefined || layout.tokenIn(district) !== undefined) return false
+        if (!layout.isBuildable(square) || tokenFor(district) === undefined) return false
+        founding = { tokenId: tokenFor(district), cell: square }
+        return true
+    })
+    if (token === undefined || others.length < 2) return undefined
+    if (founding !== undefined) {
+        hydrated.districts.push(founding)
+        hydrated.display = hydrated.display.filter((id) => id !== founding.tokenId)
+        hydrated.reserve = hydrated.reserve.filter((id) => id !== founding.tokenId)
+    }
+    hydrated.getPlayerState(others[0].playerId).pilli = temple
+    hydrated.getPlayerState(others[1].playerId).pilli = token
+    return hydrated.dehydrate()
+}
+
 // Free ground in `district` round no Pilli Mexica, the palace or anything built.
 function freeIn(layout, district) {
     return district.filter((cell) => layout.isBuildable(cell))
@@ -511,6 +555,10 @@ console.log(`Jump over: ${describe(jump.state)}`)
 const intoCanoe = firstSetUp(4, jumpIntoCanoe)
 write('jump-into-canoe', 'Jump into canoe', intoCanoe)
 console.log(`Jump into canoe: ${describe(intoCanoe.state)}`)
+
+const cover = firstSetUp(4, pilliCover)
+write('pilli-cover', 'Pilli cover', cover)
+console.log(`Pilli cover: ${describe(cover.state)}`)
 
 // The first turn's start where one action of the player's, not a founding, leaves a token on
 // the display that no district can take any more.
