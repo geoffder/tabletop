@@ -50,7 +50,10 @@ function renderPatch(corner: PinchCorner, pixels: number): Bitmap {
         renderPaving(PAVING, pixels, box)
     ])
     const zones = waterworks(LAND_CELLS, new Set([corner.across])).zones.map((zone) =>
-        zone.points.split(' ').map((pair) => pair.split(',').map(Number) as [number, number])
+        zone.points.split(' ').map((pair): [number, number] => {
+            const [x, y] = pair.split(',').map(Number)
+            return [x, y]
+        })
     )
     const inLand = (x: number, y: number) => zones.some((zone) => inside(zone, x, y))
     const data = new Uint8ClampedArray(lake.data.length)

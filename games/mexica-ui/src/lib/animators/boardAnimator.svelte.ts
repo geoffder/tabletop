@@ -1641,15 +1641,14 @@ function waterWay(
         cell === to || isLake(cell) || (canals.has(cell) && !decks.has(cell))
     const atEdge = (cell: Cell) => neighbours(cell).length < 4
     const edges = [...canals, ...LAKE_CELLS].filter((cell) => atEdge(cell) && afloat(cell))
-    const nextTo = (cell: Cell): [Cell, number][] =>
-        cell === OUTSIDE
-            ? edges.map((edge) => [edge, ROUND_ISLAND])
-            : [
-                  ...neighbours(cell)
-                      .filter(afloat)
-                      .map((next): [Cell, number] => [next, 1]),
-                  ...(atEdge(cell) ? [[OUTSIDE, ROUND_ISLAND] as [Cell, number]] : [])
-              ]
+    const nextTo = (cell: Cell): [Cell, number][] => {
+        if (cell === OUTSIDE) return edges.map((edge) => [edge, ROUND_ISLAND])
+        const steps = neighbours(cell)
+            .filter(afloat)
+            .map((next): [Cell, number] => [next, 1])
+        if (atEdge(cell)) steps.push([OUTSIDE, ROUND_ISLAND])
+        return steps
+    }
     const cost = new Map<Cell, number>([[from, 0]])
     const previous = new Map<Cell, Cell>()
     const open = new Set<Cell>([from])

@@ -187,7 +187,10 @@ export function waterworks(
     }
     return {
         surface: waters
-            .filter((spot) => island.canal(spot) && !filling.has(island.cell(spot) as Cell))
+            .filter((spot) => {
+                const cell = island.cell(spot)
+                return island.canal(spot) && (cell === undefined || !filling.has(cell))
+            })
             .map((spot) => waterSurface(island, spot))
             .join(''),
         mouthSurface: waters

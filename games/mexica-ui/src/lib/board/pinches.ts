@@ -56,9 +56,10 @@ function findCorners(): PinchCorner[] {
             const [ac, ar] = round[(lake + 2) % 4]
             const across = landAt(ac, ar)
             if (across === undefined || isPalace(across)) continue
-            const [first, second] = [round[(lake + 1) % 4], round[(lake + 3) % 4]].map(
-                ([c, r]) => landAt(c, r) as Cell
+            const [first, second] = [round[(lake + 1) % 4], round[(lake + 3) % 4]].map(([c, r]) =>
+                landAt(c, r)
             )
+            if (first === undefined || second === undefined) continue
             const [lc, lr] = round[lake]
             const water = cellAt(lc, lr)
             if (water === undefined) continue
