@@ -1,10 +1,11 @@
 import { getContext, setContext, tick } from 'svelte'
 import type { Attachment } from 'svelte/attachments'
 import { gsap } from 'gsap'
-import type {
-    AnimationContext,
-    TransitionKind,
-    TransitionStep
+import {
+    visualClientRect,
+    type AnimationContext,
+    type TransitionKind,
+    type TransitionStep
 } from '@tabletop/frontend-components'
 import type { HydratedMexicaGameState } from '@tabletop/mexica'
 import type { MexicaGameSession, MoveInterrupter } from '$lib/model/session.svelte.js'
@@ -175,10 +176,11 @@ export class TokenFlights implements MoveInterrupter {
     }
 
     // The centre and size of a mask on screen; a card scrolled off the screen, as on a phone, is
-    // met at the screen's edge beside it.
+    // met at the screen's edge beside it. The supply's mask is inside the board's view-scale zoom,
+    // which older Safari leaves out of getBoundingClientRect.
     private spotOf(node: Element | undefined): Spot | undefined {
         if (node === undefined || !node.isConnected) return undefined
-        const rect = node.getBoundingClientRect()
+        const rect = visualClientRect(node)
         if (rect.width === 0) return undefined
         const clamp = (value: number, most: number) => Math.min(Math.max(value, EDGE), most - EDGE)
         return {
