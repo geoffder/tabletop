@@ -1,6 +1,7 @@
 import { linear } from './light.js'
 import { riseOf } from './templeShape.js'
-import { type Box, FLAT, PILLI_SIZE, PILLI_WIDTH } from './view.js'
+import { EXTENT, HEADDRESS, PILLI, pilliHeight } from './pilliSize.js'
+import { type Box, FLAT } from './view.js'
 
 // A Pilli Mexica as a painted wooden figure, feet at the origin: x to the right, y towards the
 // viewer, z up, in board units at full size: a noble in a robe flaring like a pawn's to a ring at
@@ -11,16 +12,6 @@ import { type Box, FLAT, PILLI_SIZE, PILLI_WIDTH } from './view.js'
 export const PILLI_SHINE = 0.3
 
 export const PILLI_PIXELS = 3
-
-// What the figure takes up as drawn: half its width and depth, and its height.
-const EXTENT = { half: 9.6, depth: 9.5, height: 31.5 }
-// The back row of feathers: half as wide, and how much higher its top reaches for each step
-// the headdress is scaled up from its foot.
-export const HEADDRESS = { half: 7.8, rise: 11.2 }
-
-// The figure's height and width as multiples of it as drawn, and its headdress's scale.
-export type PilliProportions = { height: number; width: number; headdress: number }
-export const PILLI: PilliProportions = { height: PILLI_SIZE, width: PILLI_WIDTH, headdress: 1.2 }
 
 // Seen from straight above, the figure is only its mask, lying face up with its feathers
 // spreading above it on the board, `scale` times as big as worn and centred on its spot: the
@@ -39,18 +30,17 @@ export function pilliBounds(tilt: number, proportions = PILLI): Box {
             height: (FACE_UP.above + FACE_UP.chin) * by + 2 * margin
         }
     }
-    const half =
-        Math.max(EXTENT.half, HEADDRESS.half * proportions.headdress + 1.5) * proportions.width
+    const feathers = (HEADDRESS.half * proportions.headdress + 1.5) * proportions.head
+    const half = Math.max(EXTENT.half, feathers) * proportions.width
     const depth = EXTENT.depth * proportions.width
-    const height =
-        (EXTENT.height + HEADDRESS.rise * (proportions.headdress - 1)) * proportions.height
+    const height = pilliHeight(proportions)
     const margin = 1
-    const top = -depth * tilt - height * riseOf(tilt)
+    const above = -depth * tilt - height * riseOf(tilt)
     return {
         x: -half - margin,
-        y: top - margin,
+        y: above - margin,
         width: 2 * (half + margin),
-        height: depth * tilt - top + 2 * margin
+        height: depth * tilt - above + 2 * margin
     }
 }
 

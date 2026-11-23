@@ -1,5 +1,6 @@
 import type { Point } from '@tabletop/common'
 import { Axis, BOARD_HEIGHT, BOARD_WIDTH, type Cell, columnOf, rowOf } from '@tabletop/mexica'
+import { PILLI, pilliHeight } from './pilliSize.js'
 
 export const CELL = 40
 export const TILT = 0.75
@@ -7,13 +8,10 @@ export const FLAT = 1
 
 export const TIER_HEIGHT = 0.26
 export const BRIDGE_RISE = 0.16
-// A Pilli Mexica's height, and its width and depth, as multiples of the figure as drawn: tall
-// enough to show behind a temple, slim enough to stand between a bridge's curbs.
-export const PILLI_SIZE = 1.61
-export const PILLI_WIDTH = 1.242
-// To the top of its headdress, as a share of a cell.
-export const PILLI_HEIGHT = 0.85 * PILLI_SIZE
-export const PILLI_DEPTH = 0.24 * PILLI_WIDTH
+// A Pilli Mexica's height to the top of its headdress, as a share of a cell, following its
+// proportions in pilliSize.ts, and how far its headdress reaches behind its feet.
+export const PILLI_HEIGHT = pilliHeight() / CELL
+export const PILLI_DEPTH = 0.24 * PILLI.width
 
 // The coordinates' type size, in board units.
 export const LABEL_SIZE = 18

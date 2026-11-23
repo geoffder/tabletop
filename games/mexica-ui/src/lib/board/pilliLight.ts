@@ -21,7 +21,8 @@ import {
     srgb,
     type Vec
 } from './light.js'
-import { FACE_UP, PILLI, PILLI_PIXELS, pilliBounds } from './pilliShape.js'
+import { FACE_UP, PILLI_PIXELS, pilliBounds } from './pilliShape.js'
+import { NECK_FOOT, PILLI, type PilliProportions } from './pilliSize.js'
 import { FLAT } from './view.js'
 import {
     castRays,
@@ -51,7 +52,7 @@ export type PilliLook = { bitmap: Bitmap; shine: Bitmap; outline: string }
 export function renderPilli(tilt: number, pixels = PILLI_PIXELS, proportions = PILLI): PilliLook {
     const box = pilliBounds(tilt, proportions)
     const faceUp = tilt === FLAT
-    const full = figureWith(proportions.headdress, faceUp)
+    const full = figureWith(proportions, faceUp)
     // From the board's units back to the figure as drawn; lying down, it keeps its width's
     // proportions every way.
     const tall = faceUp ? proportions.width : proportions.height
@@ -540,19 +541,38 @@ function scaledFan(fan: Fan, by: number): Fan {
     }
 }
 
-// The figure with its headdress scaled by `headdress`, standing or lying face up.
-function figureWith(headdress: number, faceUp: boolean): Figure {
+// The figure in its proportions, standing or lying face up. Lying down it is only its head,
+// already grown to fill its spot.
+function figureWith(proportions: PilliProportions, faceUp: boolean): Figure {
+    const { headdress } = proportions
+    const headBy = faceUp ? 1 : proportions.head
+    const robeBy = faceUp ? 1 : proportions.robe
+    // From the grown head back to the head as drawn, its neck's foot on the shortened robe.
+    const toHead = (p: Vec): Vec => [
+        p[0] / headBy,
+        p[1] / headBy,
+        NECK_FOOT + (p[2] - NECK_FOOT * robeBy) / headBy
+    ]
+    const headPart = (part: Part): Part => ({
+        distance: (p) => part.distance(toHead(p)) * headBy,
+        finish: (p) => part.finish(toHead(p))
+    })
+    // Shortened, not narrowed; squashing one way leaves the distance overstated by as much.
+    const bodyPart = (part: Part): Part => ({
+        distance: (p) => part.distance([p[0], p[1], p[2] / robeBy]) * Math.min(1, robeBy),
+        finish: (p) => part.finish([p[0], p[1], p[2] / robeBy])
+    })
     const parts: Part[] = [
-        { distance: mask, finish: maskFinish },
+        headPart({ distance: mask, finish: maskFinish }),
         // Lying face up, only the mask's own hood: no neck or body under it.
-        faceUp ? { distance: head, finish: HOODED.finish } : HOODED,
-        ...(faceUp ? [] : [{ distance: body, finish: bodyFinish }]),
+        headPart(faceUp ? { distance: head, finish: HOODED.finish } : HOODED),
+        ...(faceUp ? [] : [bodyPart({ distance: body, finish: bodyFinish })]),
         ...[BACK_FAN, FRONT_FAN].map((row) => {
             const fan = scaledFan(row, headdress)
-            return {
+            return headPart({
                 distance: (p: Vec) => featherFan(fan, p),
                 finish: (p: Vec) => fanFinish(fan, p)
-            }
+            })
         })
     ]
     // Lying face up, the mask turns a quarter about its width, its face to the sky and the top
