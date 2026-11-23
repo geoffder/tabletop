@@ -84,12 +84,25 @@ export function historyEntries(actions: readonly GameAction[]): HistoryEntry[] {
             turn.steps.push({ kind: 'start', cell: action.cell })
             turn.ended = true
         } else if (isMovePilli(action)) {
-            turnFor(action, index, action.playerId).steps.push({
+            const steps = turnFor(action, index, action.playerId).steps
+            const move: Step = {
                 kind: 'move',
                 to: action.to,
                 cost: action.metadata?.cost ?? 0,
                 teleport: action.metadata?.teleport ?? false
-            })
+            }
+            // Moves one after another are one move, to where the last ended, at their whole
+            // cost: a teleport only if every leg was one.
+            const last = steps.at(-1)
+            if (last?.kind === 'move') {
+                steps[steps.length - 1] = {
+                    ...move,
+                    cost: last.cost + move.cost,
+                    teleport: last.teleport && move.teleport
+                }
+            } else {
+                steps.push(move)
+            }
         } else if (isDigCanal(action)) {
             turnFor(action, index, action.playerId).steps.push({
                 kind: 'canal',
