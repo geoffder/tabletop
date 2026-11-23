@@ -221,7 +221,8 @@ function actingChoices(
                             : {
                                   ...base(),
                                   type: ActionType.MoveBridge,
-                                  bridgeId: state.bridges.findIndex((b) => b.cell !== pilli),
+                                  bridgeCell:
+                                      state.bridges.find((b) => b.cell !== pilli)?.cell ?? -1,
                                   cell,
                                   axis
                               }

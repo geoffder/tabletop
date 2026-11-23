@@ -1,10 +1,10 @@
 import * as Type from 'typebox'
 import { Compile } from 'typebox/compile'
-import { GameAction, HydratableAction } from '@tabletop/common'
+import { assertExists, GameAction, HydratableAction } from '@tabletop/common'
 import { ActionType } from '../definition/actions.js'
 import type { HydratedMexicaGameState } from '../model/gameState.js'
 import { Axis, AxisSchema, CellSchema } from '../model/board.js'
-import { Bridge, BRIDGE_COUNT } from '../model/pieces.js'
+import { Bridge } from '../model/pieces.js'
 import { payFor } from './payment.js'
 
 export type MoveBridgeMetadata = Type.Static<typeof MoveBridgeMetadata>
@@ -20,7 +20,8 @@ export const MoveBridge = Type.Evaluate(
         Type.Object({
             type: Type.Literal(ActionType.MoveBridge),
             playerId: Type.String(),
-            bridgeId: Type.Integer({ minimum: 0, maximum: BRIDGE_COUNT - 1 }),
+            // The square the moved bridge stands on.
+            bridgeCell: CellSchema,
             cell: CellSchema,
             axis: AxisSchema,
             metadata: Type.Optional(MoveBridgeMetadata)
@@ -37,7 +38,7 @@ export function isMoveBridge(action?: GameAction): action is MoveBridge {
 export class HydratedMoveBridge extends HydratableAction<typeof MoveBridge> implements MoveBridge {
     declare type: ActionType.MoveBridge
     declare playerId: string
-    declare bridgeId: number
+    declare bridgeCell: number
     declare cell: number
     declare axis: Axis
     declare metadata?: MoveBridgeMetadata
@@ -47,8 +48,9 @@ export class HydratedMoveBridge extends HydratableAction<typeof MoveBridge> impl
     }
 
     apply(state: HydratedMexicaGameState) {
-        const from = { ...state.bridges[this.bridgeId] }
-        this.metadata = { ...payFor(state, this.playerId, 1), from }
-        state.moveBridge(this.bridgeId, this.cell, this.axis)
+        const from = state.bridgeAt(this.bridgeCell)
+        assertExists(from, 'A moved bridge must stand on its square')
+        this.metadata = { ...payFor(state, this.playerId, 1), from: { ...from } }
+        state.moveBridge(this.bridgeCell, this.cell, this.axis)
     }
 }

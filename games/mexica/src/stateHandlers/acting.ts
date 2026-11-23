@@ -62,9 +62,9 @@ export class ActingStateHandler implements MachineStateHandler<
         if (isMoveBridge(action)) {
             return (
                 state.apAvailable(playerId) >= 1 &&
-                state.canMoveBridge(action.bridgeId, action.cell, action.axis) &&
+                state.canMoveBridge(action.bridgeCell, action.cell, action.axis) &&
                 state.leavesEveryoneFree(playerId, (s) =>
-                    s.moveBridge(action.bridgeId, action.cell, action.axis)
+                    s.moveBridge(action.bridgeCell, action.cell, action.axis)
                 )
             )
         }

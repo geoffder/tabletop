@@ -219,18 +219,25 @@ export class HydratedMexicaGameState
 
     // Only once every bridge is built, and only a bridge nobody stands on.
     canMoveBridge(
-        bridgeId: number,
+        bridgeCell: number,
         cell: number,
         axis: Axis,
         layout: Layout = this.layout()
     ): boolean {
-        const bridge = this.bridges.at(bridgeId)
+        const bridge = this.bridgeAt(bridgeCell)
         if (bridge === undefined || this.bridgesLeft() > 0 || !isCell(cell)) return false
         return !layout.pillis.has(bridge.cell) && layout.bridgeFits(cell, axis)
     }
 
-    moveBridge(bridgeId: number, cell: Cell, axis: Axis) {
-        this.bridges[bridgeId] = { cell, axis }
+    bridgeAt(cell: number): Bridge | undefined {
+        return this.bridges.find((bridge) => bridge.cell === cell)
+    }
+
+    // The bridge keeps its place in the list, so the table goes on drawing it as the same piece.
+    moveBridge(bridgeCell: number, cell: Cell, axis: Axis) {
+        const index = this.bridges.findIndex((bridge) => bridge.cell === bridgeCell)
+        assert(index >= 0, `No bridge stands on ${bridgeCell}`)
+        this.bridges[index] = { cell, axis }
     }
 
     // Temples

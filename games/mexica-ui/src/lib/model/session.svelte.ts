@@ -266,13 +266,12 @@ export class MexicaGameSession extends GameSession<MexicaGameState, HydratedMexi
                     .map((bridge) => bridge.cell)
             )
         }
-        const bridgeId = state.bridges.findIndex((bridge) => bridge.cell === moving)
         return new Set(
             [...layout.canals].filter((cell) =>
                 AXES.some(
                     (axis) =>
-                        state.canMoveBridge(bridgeId, cell, axis, layout) &&
-                        free((s) => s.moveBridge(bridgeId, cell, axis))
+                        state.canMoveBridge(moving, cell, axis, layout) &&
+                        free((s) => s.moveBridge(moving, cell, axis))
                 )
             )
         )
@@ -290,9 +289,9 @@ export class MexicaGameSession extends GameSession<MexicaGameState, HydratedMexi
             this.chosenCell !== undefined &&
             this.chosenDestination !== undefined
         ) {
-            const bridgeId = this.bridgeIdAt(this.chosenCell)
+            const bridgeCell = this.chosenCell
             const cell = this.chosenDestination
-            return AXES.filter((axis) => state.canMoveBridge(bridgeId, cell, axis, this.layout))
+            return AXES.filter((axis) => state.canMoveBridge(bridgeCell, cell, axis, this.layout))
         }
         return []
     })
@@ -311,8 +310,8 @@ export class MexicaGameSession extends GameSession<MexicaGameState, HydratedMexi
             return AXES.filter((axis) => state.canBuildBridge(cell, axis, this.layout))
         }
         if (this.tool === 'moveBridge' && this.chosenCell !== undefined) {
-            const bridgeId = this.bridgeIdAt(this.chosenCell)
-            return AXES.filter((axis) => state.canMoveBridge(bridgeId, cell, axis, this.layout))
+            const bridgeCell = this.chosenCell
+            return AXES.filter((axis) => state.canMoveBridge(bridgeCell, cell, axis, this.layout))
         }
         return []
     }
@@ -351,10 +350,6 @@ export class MexicaGameSession extends GameSession<MexicaGameState, HydratedMexi
                         ))
             )
         )
-    }
-
-    private bridgeIdAt(cell: Cell): number {
-        return this.gameState.bridges.findIndex((bridge) => bridge.cell === cell)
     }
 
     pickTool(tool: Tool) {
@@ -453,11 +448,10 @@ export class MexicaGameSession extends GameSession<MexicaGameState, HydratedMexi
             this.select(setMexicaSelection(this.ownSelection, 'cell', cell))
             return
         }
-        const bridgeId = this.bridgeIdAt(moving)
-        const axes = AXES.filter((axis) => this.gameState.canMoveBridge(bridgeId, cell, axis))
+        const axes = AXES.filter((axis) => this.gameState.canMoveBridge(moving, cell, axis))
         if (axes.length === 1) {
             await this.applyAction(
-                this.createPlayerAction(MoveBridge, { bridgeId, cell, axis: axes[0] })
+                this.createPlayerAction(MoveBridge, { bridgeCell: moving, cell, axis: axes[0] })
             )
             return
         }
@@ -471,9 +465,9 @@ export class MexicaGameSession extends GameSession<MexicaGameState, HydratedMexi
                 this.createPlayerAction(BuildBridge, { cell: this.chosenCell, axis })
             )
         } else if (this.chosenCell !== undefined && this.chosenDestination !== undefined) {
-            const bridgeId = this.bridgeIdAt(this.chosenCell)
+            const bridgeCell = this.chosenCell
             const cell = this.chosenDestination
-            await this.applyAction(this.createPlayerAction(MoveBridge, { bridgeId, cell, axis }))
+            await this.applyAction(this.createPlayerAction(MoveBridge, { bridgeCell, cell, axis }))
         }
     }
 

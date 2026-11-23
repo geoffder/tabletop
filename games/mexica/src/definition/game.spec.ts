@@ -423,7 +423,7 @@ describe('Mexica', () => {
                 bridges: cells.slice(0, 10).map((name) => ({ cell: c(name), axis: Axis.EastWest }))
             })
             rejects(game, some, ActionType.MoveBridge, {
-                bridgeId: 0,
+                bridgeCell: c('C4'),
                 cell: c('L4'),
                 axis: Axis.NorthSouth
             })
@@ -431,14 +431,14 @@ describe('Mexica', () => {
                 bridges: cells.map((name) => ({ cell: c(name), axis: Axis.EastWest }))
             })
             const moved = act(game, all, ActionType.MoveBridge, {
-                bridgeId: 0,
+                bridgeCell: c('C4'),
                 cell: c('L4'),
                 axis: Axis.NorthSouth
             })
             expect(moved.bridges[0]).toEqual({ cell: c('L4'), axis: Axis.NorthSouth })
             const occupied = position(all, { pillis: { [me]: c('C4') } })
             rejects(game, occupied, ActionType.MoveBridge, {
-                bridgeId: 0,
+                bridgeCell: c('C4'),
                 cell: c('L4'),
                 axis: Axis.NorthSouth
             })
