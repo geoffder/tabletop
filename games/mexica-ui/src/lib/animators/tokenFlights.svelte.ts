@@ -105,6 +105,7 @@ export class TokenFlights implements MoveInterrupter {
 
     private async onGameStateChange({ kind, from, to, action, animationContext }: Step) {
         if (from === undefined || !ANIMATED_KINDS.has(kind)) return
+        if (this.session.presentationAbandoned) return
         const supply = this.spotOf(this.supply)
         if (supply === undefined) return
         const flights: { from: Spot; to: Spot }[] = []

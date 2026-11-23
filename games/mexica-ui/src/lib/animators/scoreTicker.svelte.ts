@@ -59,8 +59,15 @@ export class ScoreTicker implements MoveInterrupter {
     // The cards are the same in any view of the board.
     interrupt() {}
 
+    // Svelte rewrites a score only when it differs from the one Svelte last wrote, so a count cut
+    // short goes back to that score, the published one, before the switch's state is shown.
     abandon() {
         this.land()
+        for (const [playerId, node] of this.scores) {
+            const text = node.firstChild
+            if (text?.nodeType !== Node.TEXT_NODE) continue
+            text.nodeValue = String(this.session.gameState.getPlayerState(playerId).score)
+        }
     }
 
     // The node a player's score is written in; its text is counted directly while it ticks.
@@ -75,6 +82,7 @@ export class ScoreTicker implements MoveInterrupter {
 
     private async onGameStateChange({ kind, from, to, action, animationContext }: Step) {
         if (from === undefined || !ANIMATED_KINDS.has(kind)) return
+        if (this.session.presentationAbandoned) return
         const changes = to.players.flatMap((player) => {
             const was = from.getPlayerState(player.playerId).score
             return was === player.score

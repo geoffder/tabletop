@@ -228,7 +228,6 @@ export class BoardAnimator implements MoveInterrupter {
     private timeline: Timeline | undefined
     private landMove: (() => void) | undefined
     // The state of a presentation a switch of view left behind.
-    private abandoned: HydratedMexicaGameState | undefined
 
     constructor(
         private readonly session: MexicaGameSession,
@@ -255,7 +254,7 @@ export class BoardAnimator implements MoveInterrupter {
     // A switch of view shows another state at once: the move stops where it is and the rest of
     // its replay is dropped.
     abandon() {
-        if (this.stop()) this.abandoned = this.session.presentingState
+        this.stop()
     }
 
     // The node of one part of the piece drawn under `key`.
@@ -372,9 +371,7 @@ export class BoardAnimator implements MoveInterrupter {
 
     private async present({ kind, to, from, action, animationContext }: Step) {
         if (from === undefined || !ANIMATED_KINDS.has(kind)) return
-        const presenting = this.session.presentingState
-        if (presenting !== undefined && presenting === this.abandoned) return
-        this.abandoned = undefined
+        if (this.session.presentationAbandoned) return
 
         const before = this.boardOf(from)
         const after = this.boardOf(to)
@@ -672,7 +669,7 @@ export class BoardAnimator implements MoveInterrupter {
             for (const node of marks) gsap.set(node, { clearProps: 'opacity' })
             // A switch of view while the move played has already shown another state, which
             // this move's board must not cover.
-            if (this.session.gameState !== shown) return
+            if (this.session.gameState !== shown || this.session.presentationAbandoned) return
             this.drawn = after
         }
         this.landMove = land

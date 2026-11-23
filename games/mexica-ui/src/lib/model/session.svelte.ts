@@ -65,6 +65,9 @@ export class MexicaGameSession extends GameSession<MexicaGameState, HydratedMexi
     )
 
     readonly moveInterrupters = new Set<MoveInterrupter>()
+    // The state a presentation was leading to when a view switch cut it short. The presenter
+    // still steps through the rest of its replay, which nothing may show.
+    private abandonedState: HydratedMexicaGameState | undefined
 
     constructor(options: SessionOptions) {
         super(options)
@@ -135,13 +138,15 @@ export class MexicaGameSession extends GameSession<MexicaGameState, HydratedMexi
         if (kind === 'own-action' && dug) this.select(keptCanal())
         this.keepsCanalAfter = undefined
         if (kind === 'view-switch') {
+            this.abandonedState = this.incomingGameState
             for (const interrupter of this.moveInterrupters) interrupter.abandon()
         }
     }
 
-    // The state a presentation is leading to, while it plays.
-    get presentingState(): HydratedMexicaGameState | undefined {
-        return this.incomingGameState
+    // Whether the presentation under way is one a view switch cut short.
+    get presentationAbandoned(): boolean {
+        const presenting = this.incomingGameState
+        return presenting !== undefined && presenting === this.abandonedState
     }
 
     toggleMoveCosts() {
