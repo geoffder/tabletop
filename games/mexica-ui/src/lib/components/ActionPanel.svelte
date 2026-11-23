@@ -3,6 +3,7 @@
     import { getGameSession } from '$lib/model/sessionContext.svelte.js'
     import { historyEntries } from '$lib/history/historyEntries.js'
     import HistoryEntryLine from './HistoryEntryLine.svelte'
+    import TurnSummary from './TurnSummary.svelte'
     import GameEndPanel from './GameEndPanel.svelte'
     import { holdTallest } from './holdTallest.js'
 
@@ -77,7 +78,9 @@
      showed, the board and the player cards show too. -->
 {#if !ended && !acting}
     <div class="waiting">
-        {#if lastEntry}
+        {#if lastEntry?.kind === 'turn'}
+            <TurnSummary entry={lastEntry} />
+        {:else if lastEntry}
             <HistoryEntryLine entry={lastEntry} />
         {:else}
             <span

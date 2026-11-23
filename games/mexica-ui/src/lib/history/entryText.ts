@@ -9,27 +9,24 @@ const player = (playerId: string): Segment => ({ kind: 'player', playerId })
 const LEVEL_NAMES = ['', 'one-level', 'two-level', 'three-level', 'four-level']
 
 // Spaces live inside text segments: Svelte trims whitespace at the edges of template blocks.
-// The brief form keeps the action banner to one line; the history panel uses the full one.
-export function turnSegments(entry: TurnEntry, brief = false): Segment[] {
+export function turnSegments(entry: TurnEntry): Segment[] {
     if (entry.steps.length === 0) return [text(entry.ended ? ' ended the turn' : ' is thinking')]
-    const steps = brief ? [entry.steps.at(-1)].filter((step) => step !== undefined) : entry.steps
-    const parts = steps.map((step) => stepSegments(step, brief))
-    const more = brief && entry.steps.length > 1 ? [text(` (${entry.steps.length} actions)`)] : []
+    const parts = entry.steps.map(stepSegments)
     return [
         text(' '),
-        ...parts.flatMap((part, index) => (index === 0 ? part : [text(', '), ...part])),
-        ...more
+        ...parts.flatMap((part, index) => (index === 0 ? part : [text(', '), ...part]))
     ]
 }
 
-function stepSegments(step: Step, brief: boolean): Segment[] {
+// One action in words.
+export function stepSegments(step: Step): Segment[] {
     switch (step.kind) {
         case 'start':
             return [text(`started at ${cellName(step.cell)}`)]
         case 'move':
             return [
                 text(
-                    `${step.teleport ? 'teleported' : 'moved'} to ${cellName(step.to)}${brief ? '' : ` (${step.cost} AP)`}`
+                    `${step.teleport ? 'teleported' : 'moved'} to ${cellName(step.to)} (${step.cost} AP)`
                 )
             ]
         case 'canal':
@@ -47,13 +44,11 @@ function stepSegments(step: Step, brief: boolean): Segment[] {
                 text(
                     `founded a ${tokenSize(step.tokenId)}-space district at ${cellName(step.cell)} (+${step.points})`
                 ),
-                ...(brief
-                    ? []
-                    : step.visitors.flatMap(({ playerId, points }) => [
-                          text('; '),
-                          player(playerId),
-                          text(` +${points}`)
-                      ]))
+                ...step.visitors.flatMap(({ playerId, points }) => [
+                    text('; '),
+                    player(playerId),
+                    text(` +${points}`)
+                ])
             ]
     }
 }

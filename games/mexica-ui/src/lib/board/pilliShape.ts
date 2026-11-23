@@ -52,6 +52,11 @@ export function pilliShineLook(flat: boolean): string {
     return `pilli-shine${flat ? '-flat' : ''}`
 }
 
+// The paint a player's colour gives the figure's robe, toned toward its stone.
+export function pilliPaint(fill: string): string {
+    return `color-mix(in srgb, ${fill} 88%, #8c7f6a)`
+}
+
 // The shine over a paint colour: full over black, fading out by mid-tones.
 export function shineOver(fill: string, strength = PILLI_SHINE): number {
     const [r, g, b] = linear(fill)

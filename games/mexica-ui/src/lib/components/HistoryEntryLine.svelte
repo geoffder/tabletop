@@ -5,7 +5,7 @@
     import { turnSegments, withdrawnText } from '$lib/history/entryText.js'
     import { getGameSession } from '$lib/model/sessionContext.svelte.js'
 
-    let { entry, brief = false }: { entry: HistoryEntry; brief?: boolean } = $props()
+    let { entry }: { entry: HistoryEntry } = $props()
 
     const session = getGameSession()
 
@@ -18,7 +18,7 @@
     <CalledGameDescription action={entry.action} />
 {:else if entry.kind === 'turn'}<span
         ><span class="font-semibold">{nameOf(entry.playerId)}</span
-        >{#each turnSegments(entry, brief) as segment, index (index)}{#if segment.kind === 'text'}{segment.text}{:else}<span
+        >{#each turnSegments(entry) as segment, index (index)}{#if segment.kind === 'text'}{segment.text}{:else}<span
                     class="font-semibold">{nameOf(segment.playerId)}</span
                 >{/if}{/each}</span
     >{:else if entry.kind === 'withdrawn'}<span

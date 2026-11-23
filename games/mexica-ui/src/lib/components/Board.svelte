@@ -66,7 +66,13 @@
     } from '$lib/board/tokenShape.js'
     import { BRIDGE, bridgeBounds } from '$lib/board/bridgeShape.js'
     import { LOOK_OUTLINES } from '$lib/board/lookOutlines.js'
-    import { pilliBounds, pilliLook, pilliShineLook, shineOver } from '$lib/board/pilliShape.js'
+    import {
+        pilliBounds,
+        pilliLook,
+        pilliPaint,
+        pilliShineLook,
+        shineOver
+    } from '$lib/board/pilliShape.js'
 
     // The space the board is fitted into, in screen pixels; the overlaid controls take a strip
     // of it at the foot.
@@ -193,9 +199,6 @@
 
     const playerFill = (playerId?: string) =>
         playerId === undefined ? 'var(--mx-neutral)' : session.playerFill(playerId)
-    // A Pilli Mexica's paint, toned a little towards the island's earth so the
-    // figures sit among the stone.
-    const pilliPaint = (fill: string) => `color-mix(in srgb, ${fill} 88%, #8c7f6a)`
 
     // What a tap on each cell would do now.
     const choosable: ReadonlySet<Cell> = $derived.by(() => {
