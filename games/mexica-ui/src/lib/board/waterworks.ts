@@ -136,6 +136,23 @@ class Island {
     }
 }
 
+// The board asks again whenever its drawn state is replaced, which is mostly over the same
+// canals (twice as a game opens); it gets the same works back, so nothing drawn from them changes.
+let last: { landCells: readonly Cell[]; key: string; works: Waterworks } | undefined
+
+export function lastWaterworks(
+    landCells: readonly Cell[],
+    canals: ReadonlySet<Cell>,
+    filling: ReadonlySet<Cell> = new Set()
+): Waterworks {
+    const sorted = (cells: ReadonlySet<Cell>) => [...cells].sort((a, b) => a - b).join()
+    const key = `${sorted(canals)}|${sorted(filling)}`
+    if (last === undefined || last.landCells !== landCells || last.key !== key) {
+        last = { landCells, key, works: waterworks(landCells, canals, filling) }
+    }
+    return last.works
+}
+
 // `filling` are canal squares the water is still running into: their surface is drawn with the
 // water as it comes (surfaceOf), not here.
 export function waterworks(

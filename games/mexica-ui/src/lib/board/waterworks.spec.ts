@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { type Cell, cellAt, columnOf, isLand, LAND_CELLS, rowOf } from '@tabletop/mexica'
-import { waterworks } from './waterworks.js'
+import { lastWaterworks, waterworks } from './waterworks.js'
 import { CELL } from './view.js'
 
 const landAt = (column: number, row: number) => {
@@ -89,5 +89,23 @@ describe('waterworks', () => {
             'se',
             'sw'
         ])
+    })
+})
+
+describe('the last waterworks', () => {
+    const square = (column: number, row: number): Cell => {
+        const cell = cellAt(column, row)
+        if (cell === undefined) throw new Error(`No square at ${column}, ${row}`)
+        return cell
+    }
+
+    it('gives the same works back for the same canals, and new ones for others', () => {
+        const [a, b] = [square(5, 5), square(6, 5)]
+        const first = lastWaterworks(LAND_CELLS, new Set([a, b]))
+        expect(lastWaterworks(LAND_CELLS, new Set([b, a]))).toBe(first)
+        const other = lastWaterworks(LAND_CELLS, new Set([a]))
+        expect(other).not.toBe(first)
+        expect(other).toEqual(waterworks(LAND_CELLS, new Set([a])))
+        expect(lastWaterworks(LAND_CELLS, new Set([a]), new Set([a]))).not.toBe(other)
     })
 })

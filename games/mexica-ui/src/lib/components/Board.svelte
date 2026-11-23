@@ -33,7 +33,7 @@
     } from '$lib/board/view.js'
     import type { Point } from '@tabletop/common'
     import { LOOK_URLS } from '$lib/board/lookUrls.js'
-    import { BANK_WIDTH, SIDES, surfaceOf, waterworks } from '$lib/board/waterworks.js'
+    import { BANK_WIDTH, SIDES, lastWaterworks, surfaceOf } from '$lib/board/waterworks.js'
     import { polygonsPath, rectsPath } from '$lib/board/mergedPaths.js'
     import {
         bridgeLook,
@@ -164,7 +164,7 @@
 
     // Banks, quays, jetties and the island's shore for the canals dug so far.
     const works = $derived(
-        waterworks(
+        lastWaterworks(
             LAND_CELLS,
             drawn.canals,
             new Set(animator.floods.flatMap((flood) => flood.cells))
