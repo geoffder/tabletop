@@ -65,9 +65,14 @@ test('a dug canal keeps the canal tool picked, and Undo takes back the dig', asy
     await undoButton(page).click()
     await settle(page)
     expect(await actionCount(page)).toBe(before)
-    // The canal tool is picked again, with the same squares to start from.
+    // The canal tool is picked again, with the same squares to start from; the next Undo lets
+    // go of it, back to the moves, and undoes nothing.
     expect(await page.evaluate(() => window.mexicaSession.tool)).toBe('canal')
     expect(await choices(page)).toEqual(starts)
+    await undoButton(page).click()
+    await settle(page)
+    expect(await page.evaluate(() => window.mexicaSession.tool)).toBeUndefined()
+    expect(await actionCount(page)).toBe(before)
 })
 
 test('a temple goes on a marked square', async ({ page }) => {
