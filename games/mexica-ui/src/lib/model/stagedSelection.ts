@@ -3,7 +3,16 @@ import {
     setStagedSelectionValue,
     type StagedSelectionState
 } from '@tabletop/frontend-components'
-import type { Cell, Level } from '@tabletop/mexica'
+import type { GameAction } from '@tabletop/common'
+import {
+    type Cell,
+    isBuildBridge,
+    isBuildTemple,
+    isDigCanal,
+    isFoundDistrict,
+    isMoveBridge,
+    type Level
+} from '@tabletop/mexica'
 
 // What the player picked up: a temple of a level, a canal tile, a bridge, the founding token, or
 // a built bridge to move.
@@ -49,13 +58,29 @@ export function setMexicaSelection<TStage extends keyof MexicaSelectionValues>(
           )
 }
 
-// The canal tool picked again after a dig: Undo passes it by and takes back the dig.
-export function keptCanal(): MexicaSelection {
+// A tool picked again for the player: Undo passes it by and takes back the action before.
+export function pickedAgain(tool: Tool): MexicaSelection {
     return setStagedSelectionValue<MexicaSelectionValues, 'tool'>(
         {},
         MexicaStageOrder,
         'tool',
-        'canal',
+        tool,
         'auto'
     )
+}
+
+// The canal tool after a dig, so a player can dig several in a row.
+export function keptCanal(): MexicaSelection {
+    return pickedAgain('canal')
+}
+
+// The tool an action was taken with, picked again once it is undone; none for a move of the
+// Pilli Mexica, which needs no tool, or an action without a board choice.
+export function toolOf(action: GameAction): Tool | undefined {
+    if (isDigCanal(action)) return 'canal'
+    if (isBuildBridge(action)) return 'bridge'
+    if (isMoveBridge(action)) return 'moveBridge'
+    if (isBuildTemple(action)) return action.level
+    if (isFoundDistrict(action)) return 'found'
+    return undefined
 }

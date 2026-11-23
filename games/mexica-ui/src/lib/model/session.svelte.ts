@@ -1,3 +1,4 @@
+import type { GameAction } from '@tabletop/common'
 import {
     GameSession,
     type PresentedTransition,
@@ -31,7 +32,9 @@ import {
 } from '@tabletop/mexica'
 import {
     keptCanal,
+    pickedAgain,
     setMexicaSelection,
+    toolOf,
     MexicaStageOrder,
     type MexicaSelection,
     type Tool
@@ -133,10 +136,22 @@ export class MexicaGameSession extends GameSession<MexicaGameState, HydratedMexi
         for (const interrupter of this.moveInterrupters) interrupter.interrupt()
     }
 
+    // The tool of the action this player is taking back, picked again once it is undone, so they
+    // can make the same kind of move another way.
+    private undoneTool: Tool | undefined
+
+    override willUndo(action: GameAction) {
+        this.undoneTool = toolOf(action)
+    }
+
     override beforeNewState({ kind, actions }: PresentedTransition): void {
         const dug = actions.some((action) => action.id === this.keepsCanalAfter)
         if (kind === 'own-action' && dug) this.select(keptCanal())
         this.keepsCanalAfter = undefined
+        // A hosted Undo is shown twice, at once and then as the host confirms it.
+        if (kind === 'undo' && this.undoneTool !== undefined)
+            this.select(pickedAgain(this.undoneTool))
+        if (kind !== 'undo') this.undoneTool = undefined
         if (kind === 'view-switch') {
             this.abandonedState = this.incomingGameState
             for (const interrupter of this.moveInterrupters) interrupter.abandon()

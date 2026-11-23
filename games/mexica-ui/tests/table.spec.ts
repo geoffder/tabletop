@@ -28,6 +28,8 @@ test('the Pilli Mexica walks to a marked square, and Undo takes it back', async 
     await undoButton(page).click()
     await settle(page)
     expect(await actionCount(page)).toBe(before)
+    // A walk needs no tool, so the moves are offered again.
+    expect(await page.evaluate(() => window.mexicaSession.tool)).toBeUndefined()
 })
 
 test('a canal stages its first square; Undo and a tap off let go', async ({ page }) => {
@@ -53,12 +55,19 @@ test('a canal stages its first square; Undo and a tap off let go', async ({ page
 test('a dug canal keeps the canal tool picked, and Undo takes back the dig', async ({ page }) => {
     await openScenario(page, 'Middle game')
     const before = await actionCount(page)
+    await pickTool(page, 'Canal (1 AP)')
+    const starts = await choices(page)
+    // Let go again: digFirstCanal picks the tool up itself.
+    await pickTool(page, 'Canal (1 AP)')
     await digFirstCanal(page)
     expect(await actionCount(page)).toBe(before + 1)
     expect(await page.evaluate(() => window.mexicaSession.tool)).toBe('canal')
     await undoButton(page).click()
     await settle(page)
     expect(await actionCount(page)).toBe(before)
+    // The canal tool is picked again, with the same squares to start from.
+    expect(await page.evaluate(() => window.mexicaSession.tool)).toBe('canal')
+    expect(await choices(page)).toEqual(starts)
 })
 
 test('a temple goes on a marked square', async ({ page }) => {
@@ -70,6 +79,11 @@ test('a temple goes on a marked square', async ({ page }) => {
     await press(page, square)
     await settle(page)
     expect(await temples()).toBe(before + 1)
+    // Undone, the temple's level is picked again.
+    await undoButton(page).click()
+    await settle(page)
+    expect(await temples()).toBe(before)
+    expect(await page.evaluate(() => window.mexicaSession.tool)).toBe(1)
 })
 
 test('the ringed token on the display founds the district', async ({ page }) => {
@@ -81,6 +95,10 @@ test('the ringed token on the display founds the district', async ({ page }) => 
     await press(page, 'D3')
     await settle(page)
     expect(await districts()).toBe(before + 1)
+    await undoButton(page).click()
+    await settle(page)
+    expect(await districts()).toBe(before)
+    expect(await page.evaluate(() => window.mexicaSession.tool)).toBe('found')
 })
 
 test('End turn passes the turn on', async ({ page }) => {
