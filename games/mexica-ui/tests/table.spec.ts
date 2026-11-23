@@ -65,14 +65,34 @@ test('a dug canal keeps the canal tool picked, and Undo takes back the dig', asy
     await undoButton(page).click()
     await settle(page)
     expect(await actionCount(page)).toBe(before)
-    // The canal tool is picked again, with the same squares to start from; the next Undo lets
-    // go of it, back to the moves, and undoes nothing.
+    // The canal tool is picked again, with the same squares to start from.
     expect(await page.evaluate(() => window.mexicaSession.tool)).toBe('canal')
     expect(await choices(page)).toEqual(starts)
-    await undoButton(page).click()
-    await settle(page)
+    // Pressing the tool again lets go of it, back to the moves, and undoes nothing.
+    await pickTool(page, 'Canal (1 AP)')
     expect(await page.evaluate(() => window.mexicaSession.tool)).toBeUndefined()
     expect(await actionCount(page)).toBe(before)
+})
+
+test('Undo of the second of two digs takes back the first at the next Undo', async ({ page }) => {
+    await openScenario(page, 'Middle game')
+    const before = await actionCount(page)
+    await digFirstCanal(page)
+    // The canal tool stays picked: dig again with it.
+    const [first] = await choices(page)
+    await press(page, first)
+    await press(page, (await choices(page)).find((name) => name !== first) ?? first)
+    await settle(page)
+    expect(await actionCount(page)).toBe(before + 2)
+    await undoButton(page).click()
+    await settle(page)
+    expect(await actionCount(page)).toBe(before + 1)
+    expect(await page.evaluate(() => window.mexicaSession.tool)).toBe('canal')
+    // The tool picked again is passed by: the next Undo takes back the first dig.
+    await undoButton(page).click()
+    await settle(page)
+    expect(await actionCount(page)).toBe(before)
+    expect(await page.evaluate(() => window.mexicaSession.tool)).toBe('canal')
 })
 
 test('a temple goes on a marked square', async ({ page }) => {

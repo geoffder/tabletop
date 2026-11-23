@@ -32,6 +32,7 @@ import {
 } from '@tabletop/mexica'
 import {
     keptCanal,
+    pickedAgain,
     setMexicaSelection,
     toolOf,
     MexicaStageOrder,
@@ -136,8 +137,7 @@ export class MexicaGameSession extends GameSession<MexicaGameState, HydratedMexi
     }
 
     // The tool of the action this player is taking back, picked again once it is undone, so they
-    // can make the same kind of move another way. It is picked as a press of theirs: the next Undo
-    // lets go of it, back to the Pilli Mexica's moves.
+    // can make the same kind of move another way.
     private undoneTool: Tool | undefined
 
     override willUndo(action: GameAction) {
@@ -150,7 +150,7 @@ export class MexicaGameSession extends GameSession<MexicaGameState, HydratedMexi
         this.keepsCanalAfter = undefined
         // A hosted Undo is shown twice, at once and then as the host confirms it.
         if (kind === 'undo' && this.undoneTool !== undefined)
-            this.select(setMexicaSelection({}, 'tool', this.undoneTool))
+            this.select(pickedAgain(this.undoneTool))
         if (kind !== 'undo') this.undoneTool = undefined
         if (kind === 'view-switch') {
             this.abandonedState = this.incomingGameState
