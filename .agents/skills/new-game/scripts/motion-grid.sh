@@ -36,7 +36,9 @@ while [ $# -gt 0 ]; do
             END { printf "frames %s-%s, %.2f s", first, last, (last - first + 1) / 25 }')
     echo "$label: $moved"
     inputs+=(-i "$work/$index.mp4")
+    # drawtext reads ' as a quote and : as an option break.
     text=${label//\'/}
+    text=${text//:/\\:}
     filter+="[$index:v]drawtext=fontfile=$font:expansion=none:text='$text':x=12:y=12:fontsize=26:"
     filter+="fontcolor=white:box=1:boxcolor=black@0.6:boxborderw=8,loop=loop=2:size=$(awk "BEGIN { print int($length * 25) + 1 }")[v$index];"
     stack+="[v$index]"
