@@ -34,9 +34,10 @@ export type KerbJoin = { key: string; stone: string; edge: string }
 export type Zone = { key: string; points: string }
 
 export type Waterworks = {
-    // The water's surface over the banks' feet, in canals and in their mouths in the lake, each
-    // as one path: see waterSurface.
-    surface: string
+    // The water's surface over the banks' feet: square by square in the canals, as the water
+    // still running into some is drawn apart (canalSurface), and as one path in their mouths in
+    // the lake. See waterSurface.
+    canalSurfaces: { cell: Cell | undefined; path: string }[]
     mouthSurface: string
     banks: Bank[]
     curves: Curve[]
@@ -137,29 +138,29 @@ class Island {
 }
 
 // The board asks again whenever its drawn state is replaced, which is mostly over the same
-// canals (twice as a game opens); it gets the same works back, so nothing drawn from them changes.
-let last: { landCells: readonly Cell[]; key: string; works: Waterworks } | undefined
+// canals (twice as a game opens), or over canals it drew a moment ago: an undone dig goes back to
+// the canals before it. It gets the same works back for those, so nothing drawn from them changes.
+const KEPT = 6
+let kept: { landCells: readonly Cell[]; key: string; works: Waterworks }[] = []
 
-export function lastWaterworks(
-    landCells: readonly Cell[],
-    canals: ReadonlySet<Cell>,
-    filling: ReadonlySet<Cell> = new Set()
-): Waterworks {
-    const sorted = (cells: ReadonlySet<Cell>) => [...cells].sort((a, b) => a - b).join()
-    const key = `${sorted(canals)}|${sorted(filling)}`
-    if (last === undefined || last.landCells !== landCells || last.key !== key) {
-        last = { landCells, key, works: waterworks(landCells, canals, filling) }
-    }
-    return last.works
+export function lastWaterworks(landCells: readonly Cell[], canals: ReadonlySet<Cell>): Waterworks {
+    const key = [...canals].sort((a, b) => a - b).join()
+    const found = kept.find((entry) => entry.landCells === landCells && entry.key === key)
+    const entry = found ?? { landCells, key, works: waterworks(landCells, canals) }
+    kept = [entry, ...kept.filter((other) => other !== entry)].slice(0, KEPT)
+    return entry.works
 }
 
-// `filling` are canal squares the water is still running into: their surface is drawn with the
-// water as it comes (surfaceOf), not here.
-export function waterworks(
-    landCells: readonly Cell[],
-    canals: ReadonlySet<Cell>,
-    filling: ReadonlySet<Cell> = new Set()
-): Waterworks {
+// The canals' water surface as one path, but for the squares the water is still running into
+// (`filling`): theirs is drawn with the water as it comes (surfaceOf).
+export function canalSurface(works: Waterworks, filling: ReadonlySet<Cell>): string {
+    return works.canalSurfaces
+        .filter(({ cell }) => cell === undefined || !filling.has(cell))
+        .map(({ path }) => path)
+        .join('')
+}
+
+export function waterworks(landCells: readonly Cell[], canals: ReadonlySet<Cell>): Waterworks {
     const island = new Island(canals)
     const spotOf = (cell: Cell): Spot => ({ column: columnOf(cell), row: rowOf(cell) })
     const waters: Spot[] = []
@@ -186,13 +187,9 @@ export function waterworks(
         }
     }
     return {
-        surface: waters
-            .filter((spot) => {
-                const cell = island.cell(spot)
-                return island.canal(spot) && (cell === undefined || !filling.has(cell))
-            })
-            .map((spot) => waterSurface(island, spot))
-            .join(''),
+        canalSurfaces: waters
+            .filter((spot) => island.canal(spot))
+            .map((spot) => ({ cell: island.cell(spot), path: waterSurface(island, spot) })),
         mouthSurface: waters
             .filter((spot) => island.mouth(spot))
             .map((spot) => waterSurface(island, spot))

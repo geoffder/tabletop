@@ -144,6 +144,23 @@ export class MexicaGameSession extends GameSession<MexicaGameState, HydratedMexi
         this.undoneTool = toolOf(action)
     }
 
+    // Undo pressed while a move is still being shown waits for it to land, and then takes it back:
+    // until then the move is not yet the last action, and the selection it was made with is spent.
+    // Presses in a row queue, each taking back one more.
+    private undoing: Promise<void> = Promise.resolve()
+
+    override undo(): Promise<void> {
+        // An earlier press that failed has said so to its caller; this one still runs.
+        this.undoing = this.undoing
+            .catch(() => undefined)
+            .then(async () => {
+                if (this.updatingVisibleState) await this.waitForVisibleTransitionSettled()
+                await super.undo()
+                await this.waitForVisibleTransitionSettled()
+            })
+        return this.undoing
+    }
+
     override beforeNewState({ kind, actions }: PresentedTransition): void {
         const dug = actions.some((action) => action.id === this.keepsCanalAfter)
         if (kind === 'own-action' && dug) this.select(keptCanal())

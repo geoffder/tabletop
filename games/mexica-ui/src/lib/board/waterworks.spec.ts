@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { type Cell, cellAt, columnOf, isLand, LAND_CELLS, rowOf } from '@tabletop/mexica'
-import { lastWaterworks, waterworks } from './waterworks.js'
+import { canalSurface, lastWaterworks, waterworks } from './waterworks.js'
 import { CELL } from './view.js'
 
 const landAt = (column: number, row: number) => {
@@ -106,6 +106,17 @@ describe('the last waterworks', () => {
         const other = lastWaterworks(LAND_CELLS, new Set([a]))
         expect(other).not.toBe(first)
         expect(other).toEqual(waterworks(LAND_CELLS, new Set([a])))
-        expect(lastWaterworks(LAND_CELLS, new Set([a]), new Set([a]))).not.toBe(other)
+        // Back to the canals of a moment ago, as an undone dig goes.
+        expect(lastWaterworks(LAND_CELLS, new Set([a, b]))).toBe(first)
+    })
+
+    it('leaves the squares still filling out of the canal surface', () => {
+        const [a, b] = [square(5, 5), square(6, 5)]
+        const works = waterworks(LAND_CELLS, new Set([a, b]))
+        const all = canalSurface(works, new Set())
+        const part = canalSurface(works, new Set([b]))
+        expect(part.length).toBeGreaterThan(0)
+        expect(part.length).toBeLessThan(all.length)
+        expect(canalSurface(works, new Set([a, b]))).toBe('')
     })
 })

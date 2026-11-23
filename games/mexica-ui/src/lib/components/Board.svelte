@@ -33,7 +33,14 @@
     } from '$lib/board/view.js'
     import type { Point } from '@tabletop/common'
     import { LOOK_URLS } from '$lib/board/lookUrls.js'
-    import { BANK_WIDTH, SIDES, lastWaterworks, surfaceOf } from '$lib/board/waterworks.js'
+    import {
+        BANK_WIDTH,
+        SIDES,
+        canalSurface,
+        lastWaterworks,
+        surfaceOf,
+        type Waterworks
+    } from '$lib/board/waterworks.js'
     import { polygonsPath, rectsPath } from '$lib/board/mergedPaths.js'
     import {
         bridgeLook,
@@ -168,31 +175,41 @@
     // Neighbouring canal cells overlap a little, or their clipped edges leave a seam.
     const CLIP_OVERLAP = 0.5
 
+    // The clips and kerbs as one path each: hundreds of small shapes, all still. Kept with the
+    // works they come from, which come back for canals drawn before (an undone dig).
+    const outlineCache = new WeakMap<Waterworks, ReturnType<typeof drawOutlines>>()
+    function outlinesOf(works: Waterworks, canals: ReadonlySet<Cell>) {
+        const found = outlineCache.get(works)
+        if (found !== undefined) return found
+        const drawnOutlines = drawOutlines(works, canals)
+        outlineCache.set(works, drawnOutlines)
+        return drawnOutlines
+    }
+    function drawOutlines(works: Waterworks, canals: ReadonlySet<Cell>) {
+        return {
+            canalClip: rectsPath(
+                [...canals].map((cell) => ({
+                    x: columnOf(cell) * CELL - CLIP_OVERLAP,
+                    y: rowOf(cell) * CELL - CLIP_OVERLAP,
+                    width: CELL + CLIP_OVERLAP * 2,
+                    height: CELL + CLIP_OVERLAP * 2
+                }))
+            ),
+            landClip: polygonsPath(works.zones.map((zone) => zone.points)),
+            kerbStones: rectsPath(works.kerbs.map((kerb) => kerb.stone)),
+            kerbEdges: rectsPath(works.kerbs.map((kerb) => kerb.edge)),
+            joinStones: polygonsPath(works.joins.map((join) => join.stone)),
+            joinEdges: polygonsPath(works.joins.map((join) => join.edge))
+        }
+    }
+
     // Banks, quays, jetties and the island's shore for the canals dug so far.
-    const works = $derived(
-        lastWaterworks(
-            LAND_CELLS,
-            drawn.canals,
-            new Set(animator.floods.flatMap((flood) => flood.cells))
-        )
+    const works = $derived(lastWaterworks(LAND_CELLS, drawn.canals))
+    const surface = $derived(
+        canalSurface(works, new Set(animator.floods.flatMap((flood) => flood.cells)))
     )
     const pinches = $derived(pinchesOf(drawn.canals))
-    // The clips and kerbs as one path each: hundreds of small shapes, all still.
-    const canalClip = $derived(
-        rectsPath(
-            [...drawn.canals].map((cell) => ({
-                x: columnOf(cell) * CELL - CLIP_OVERLAP,
-                y: rowOf(cell) * CELL - CLIP_OVERLAP,
-                width: CELL + CLIP_OVERLAP * 2,
-                height: CELL + CLIP_OVERLAP * 2
-            }))
-        )
-    )
-    const landClip = $derived(polygonsPath(works.zones.map((zone) => zone.points)))
-    const kerbStones = $derived(rectsPath(works.kerbs.map((kerb) => kerb.stone)))
-    const kerbEdges = $derived(rectsPath(works.kerbs.map((kerb) => kerb.edge)))
-    const joinStones = $derived(polygonsPath(works.joins.map((join) => join.stone)))
-    const joinEdges = $derived(polygonsPath(works.joins.map((join) => join.edge)))
+    const outlines = $derived(outlinesOf(works, drawn.canals))
     const BANK = BANK_WIDTH
     // How much of the brick under the water is hidden by it.
     const WATER_OVER_BANK = 0.82
@@ -593,7 +610,7 @@
                 </clipPath>
             {/each}
             <clipPath id="mx-canal-clip">
-                <path d={canalClip}></path>
+                <path d={outlines.canalClip}></path>
             </clipPath>
             <!-- The bare earth at the bottom of a canal being dug: darker the deeper it lies
                  towards the middle, and speckled with grit. -->
@@ -700,13 +717,13 @@
                 </clipPath>
             {/each}
             <clipPath id="mx-water-surface">
-                <path d={works.surface}></path>
+                <path d={surface}></path>
             </clipPath>
             <clipPath id="mx-mouth-surface">
                 <path d={works.mouthSurface}></path>
             </clipPath>
             <clipPath id="mx-land-clip">
-                <path d={landClip}></path>
+                <path d={outlines.landClip}></path>
             </clipPath>
             <radialGradient id="mx-piece-shadow">
                 <stop offset="0.55" stop-color="#2a1a08" stop-opacity="0.32"></stop>
@@ -792,10 +809,10 @@
                     class="surface"
                 ></image>
             {/each}
-            <path d={kerbStones} class="surface kerb"></path>
-            <path d={kerbEdges} class="surface kerb-edge"></path>
-            <path d={joinStones} class="surface kerb"></path>
-            <path d={joinEdges} class="surface kerb-edge"></path>
+            <path d={outlines.kerbStones} class="surface kerb"></path>
+            <path d={outlines.kerbEdges} class="surface kerb-edge"></path>
+            <path d={outlines.joinStones} class="surface kerb"></path>
+            <path d={outlines.joinEdges} class="surface kerb-edge"></path>
             <!-- The water standing up the banks, over their feet: under a canal being dug's earth,
                  so it shows as the water runs in. -->
             <image

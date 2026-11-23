@@ -95,6 +95,41 @@ test('Undo of the second of two digs takes back the first at the next Undo', asy
     expect(await page.evaluate(() => window.mexicaSession.tool)).toBe('canal')
 })
 
+test('Undo pressed while a dig is shown takes the dig back once it lands', async ({ page }) => {
+    await openScenario(page, 'Middle game')
+    const before = await actionCount(page)
+    const canals = () => page.evaluate(() => window.mexicaSession.gameState.canals.length)
+    const dug = await canals()
+    await pickTool(page, 'Canal (1 AP)')
+    const [first] = await choices(page)
+    await press(page, first)
+    await press(page, (await choices(page)).find((name) => name !== first) ?? first)
+    // At once, while the dig is still being shown: it is not yet the last action.
+    expect(await page.evaluate(() => window.mexicaSession.updatingVisibleState)).toBe(true)
+    await undoButton(page).click()
+    await expect.poll(() => actionCount(page)).toBe(before)
+    await settle(page)
+    expect(await actionCount(page)).toBe(before)
+    expect(await canals()).toBe(dug)
+    expect(await page.evaluate(() => window.mexicaSession.tool)).toBe('canal')
+})
+
+test('two quick Undos take back two digs, one each', async ({ page }) => {
+    await openScenario(page, 'Middle game')
+    const before = await actionCount(page)
+    await digFirstCanal(page)
+    const [first] = await choices(page)
+    await press(page, first)
+    await press(page, (await choices(page)).find((name) => name !== first) ?? first)
+    await settle(page)
+    expect(await actionCount(page)).toBe(before + 2)
+    await undoButton(page).click()
+    await undoButton(page).click()
+    await expect.poll(() => actionCount(page)).toBe(before)
+    await settle(page)
+    expect(await actionCount(page)).toBe(before)
+})
+
 test('a temple goes on a marked square', async ({ page }) => {
     await openScenario(page, 'Ruled out')
     const temples = () => page.evaluate(() => window.mexicaSession.gameState.temples.length)
