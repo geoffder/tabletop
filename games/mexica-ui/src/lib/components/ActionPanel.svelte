@@ -54,25 +54,27 @@
                 >{/each}</span
         >
     {:else if tool === 'canal' && session.chosenCell !== undefined && session.canDigChosenAlone}
-        <span>Choose a neighbour for a double, or this space again for a single</span>
+        <span>A neighbour for a double, this space again for a single, or {@render endTurn()}</span>
     {:else if tool === 'canal' && session.chosenCell !== undefined}
-        <span>Choose a neighbour to finish the canal</span>
+        <span>Choose a neighbour to finish the canal, or {@render endTurn()}</span>
     {:else if tool === 'canal' && singles > 0}
-        <span>Choose two neighbouring spaces, or one twice for a single</span>
+        <span
+            >Choose two neighbouring spaces, or one twice for a single, or {@render endTurn()}</span
+        >
     {:else if tool === 'canal'}
-        <span>Choose 2 neighbouring spaces to dig</span>
+        <span>Choose 2 neighbouring spaces to dig, or {@render endTurn()}</span>
     {:else if tool === 'bridge'}
-        <span>Build a bridge: choose a canal</span>
+        <span>Build a bridge: choose a canal, or {@render endTurn()}</span>
     {:else if tool === 'moveBridge'}
         <span
             >{session.chosenCell === undefined
                 ? 'Move a bridge: choose the bridge'
-                : 'Then choose the destination'}</span
+                : 'Then choose the destination'}, or {@render endTurn()}</span
         >
     {:else if tool === 'found'}
-        <span>Found the district: choose a space for the token</span>
+        <span>Found the district: choose a space for the token, or {@render endTurn()}</span>
     {:else if typeof tool === 'number'}
-        <span>Build a {tool}-level temple: choose a space</span>
+        <span>Build a {tool}-level temple: choose a space, or {@render endTurn()}</span>
     {:else if foundingSize !== undefined}
         <span
             ><button type="button" class="inline" onclick={() => session.pickTool('found')}
