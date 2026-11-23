@@ -1,9 +1,15 @@
 import { describe, expect, it } from 'vitest'
-import { assert, validateGameResult } from '@tabletop/common'
+import { assert, validateGameResult, type GameConfig } from '@tabletop/common'
 import { MexicaRuntime } from './runtime.js'
 import { MachineState } from './states.js'
+import { NEUTRAL_LEVELS } from '../model/pieces.js'
 import { MexicaGameStateValidator, type MexicaGameState } from '../model/gameState.js'
-import { createGame, engine, MASTER_SEED, playToEnd } from './tests/playthrough.js'
+import {
+    createGame as createMexicaGame,
+    engine,
+    MASTER_SEED,
+    playToEnd
+} from './tests/playthrough.js'
 
 const SEATS = ['p1', 'p2', 'p3', 'p4']
 
@@ -16,9 +22,18 @@ function reseat(state: MexicaGameState, from: string[], to: string[]): MexicaGam
     return JSON.parse(text)
 }
 
-describe.each([2, 3, 4])('Mexica tournaments with %i players', (count) => {
+// Every player count, and two players without the neutral temples, which changes the setup.
+const SETUPS: { count: number; config: GameConfig; name: string }[] = [
+    { count: 2, config: {}, name: '2 players' },
+    { count: 2, config: { neutralTemples: false }, name: '2 players without neutral temples' },
+    { count: 3, config: {}, name: '3 players' },
+    { count: 4, config: {}, name: '4 players' }
+]
+
+describe.each(SETUPS)('Mexica tournaments with $name', ({ count, config }) => {
     const players = SEATS.slice(0, count)
     const orders = [players, [...players].reverse()]
+    const createGame = (playerIds: string[]) => createMexicaGame(playerIds, { config })
 
     it('starts the player in seat one', () => {
         const game = createGame(players)
@@ -41,6 +56,8 @@ describe.each([2, 3, 4])('Mexica tournaments with %i players', (count) => {
                 .initializeGameState(game, structuredClone(uninitialized), { playerIds })
                 .dehydrate()
         const reference = initialize(orders[0])
+        const neutral = count === 2 && config.neutralTemples !== false
+        expect(reference.temples).toHaveLength(neutral ? NEUTRAL_LEVELS.length : 0)
         for (const order of orders) {
             const assigned = initialize(order)
             assert(MexicaGameStateValidator.Check(assigned), 'Setup must be canonical')
