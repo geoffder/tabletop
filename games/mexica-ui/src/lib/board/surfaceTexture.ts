@@ -292,7 +292,7 @@ export function renderCanal(style: WaterStyle, pixels = LAKE_PIXELS): Bitmap {
     return paint(PLAN, pixels, (x, y) => ({ color: at(x, y, CANAL_SHALLOWS), alpha: 1 }))
 }
 
-export const SLOPE_PIXELS = 4
+export const SLOPE_PIXELS = 3
 // How round the top of a cove's bank is at the corner of land; its foot rounds by COVE_TOE.
 const COVE_TOP_ROUND = 4
 
@@ -614,7 +614,7 @@ export function renderSpill(
     end: SlopeSide,
     kind: SpillKind,
     depth: SpillDepth,
-    pixels = SHORE_PIXELS * 2
+    pixels = SLOPE_PIXELS
 ): Bitmap {
     const [light, dark, earth] = [ROCK.light, ROCK.dark, ROCK.earth].map(linear)
     const grit = noise2(97 + depth)
