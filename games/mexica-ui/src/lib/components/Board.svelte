@@ -34,6 +34,7 @@
     import type { Point } from '@tabletop/common'
     import { LOOK_URLS } from '$lib/board/lookUrls.js'
     import { BANK_WIDTH, SIDES, surfaceOf, waterworks } from '$lib/board/waterworks.js'
+    import { polygonsPath, rectsPath } from '$lib/board/mergedPaths.js'
     import {
         bridgeLook,
         CANAL_LOOK,
@@ -170,6 +171,22 @@
         )
     )
     const pinches = $derived(pinchesOf(drawn.canals))
+    // The clips and kerbs as one path each: hundreds of small shapes, all still.
+    const canalClip = $derived(
+        rectsPath(
+            [...drawn.canals].map((cell) => ({
+                x: columnOf(cell) * CELL - CLIP_OVERLAP,
+                y: rowOf(cell) * CELL - CLIP_OVERLAP,
+                width: CELL + CLIP_OVERLAP * 2,
+                height: CELL + CLIP_OVERLAP * 2
+            }))
+        )
+    )
+    const landClip = $derived(polygonsPath(works.zones.map((zone) => zone.points)))
+    const kerbStones = $derived(rectsPath(works.kerbs.map((kerb) => kerb.stone)))
+    const kerbEdges = $derived(rectsPath(works.kerbs.map((kerb) => kerb.edge)))
+    const joinStones = $derived(polygonsPath(works.joins.map((join) => join.stone)))
+    const joinEdges = $derived(polygonsPath(works.joins.map((join) => join.edge)))
     const BANK = BANK_WIDTH
     // How much of the brick under the water is hidden by it.
     const WATER_OVER_BANK = 0.82
@@ -572,14 +589,7 @@
                 </clipPath>
             {/each}
             <clipPath id="mx-canal-clip">
-                {#each [...drawn.canals] as cell (cell)}
-                    <rect
-                        x={columnOf(cell) * CELL - CLIP_OVERLAP}
-                        y={rowOf(cell) * CELL - CLIP_OVERLAP}
-                        width={CELL + CLIP_OVERLAP * 2}
-                        height={CELL + CLIP_OVERLAP * 2}
-                    ></rect>
-                {/each}
+                <path d={canalClip}></path>
             </clipPath>
             <!-- The bare earth at the bottom of a canal being dug: darker the deeper it lies
                  towards the middle, and speckled with grit. -->
@@ -692,9 +702,7 @@
                 <path d={works.mouthSurface}></path>
             </clipPath>
             <clipPath id="mx-land-clip">
-                {#each works.zones as zone (zone.key)}
-                    <polygon points={zone.points}></polygon>
-                {/each}
+                <path d={landClip}></path>
             </clipPath>
             <radialGradient id="mx-piece-shadow">
                 <stop offset="0.55" stop-color="#2a1a08" stop-opacity="0.32"></stop>
@@ -780,14 +788,10 @@
                     class="surface"
                 ></image>
             {/each}
-            {#each works.kerbs as kerb (kerb.key)}
-                <rect {...kerb.stone} class="surface kerb"></rect>
-                <rect {...kerb.edge} class="surface kerb-edge"></rect>
-            {/each}
-            {#each works.joins as join (join.key)}
-                <polygon points={join.stone} class="surface kerb"></polygon>
-                <polygon points={join.edge} class="surface kerb-edge"></polygon>
-            {/each}
+            <path d={kerbStones} class="surface kerb"></path>
+            <path d={kerbEdges} class="surface kerb-edge"></path>
+            <path d={joinStones} class="surface kerb"></path>
+            <path d={joinEdges} class="surface kerb-edge"></path>
             <!-- The water standing up the banks, over their feet: under a canal being dug's earth,
                  so it shows as the water runs in. -->
             <image
