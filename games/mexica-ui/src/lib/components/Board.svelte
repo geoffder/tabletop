@@ -495,17 +495,18 @@
         {/if}
     {:else}
         {@const c = view.centre(cell)}
-        {#each ['under', 'over'] as layer (layer)}
-            <ellipse
-                cx={c.x}
-                cy={c.y - markLift(cell)}
-                rx={TELEPORT_DOT.radius}
-                ry={TELEPORT_DOT.radius * view.tilt}
-                class="teleport {layer}"
-                style:opacity={layer === 'under' ? TELEPORT_DOT.edge : TELEPORT_DOT.fill}
-                {@attach animator.mark()}
-            ></ellipse>
-        {/each}
+        <!-- Its edge painted first and the fill over it, as an edge and a fill drawn apart would
+             be, in one element: the dots are many. -->
+        <ellipse
+            cx={c.x}
+            cy={c.y - markLift(cell)}
+            rx={TELEPORT_DOT.radius}
+            ry={TELEPORT_DOT.radius * view.tilt}
+            class="teleport"
+            stroke-opacity={TELEPORT_DOT.edge}
+            fill-opacity={TELEPORT_DOT.fill}
+            {@attach animator.mark()}
+        ></ellipse>
     {/if}
 {/snippet}
 
@@ -1380,17 +1381,11 @@
     }
 
     .teleport {
-        pointer-events: none;
-    }
-
-    .teleport.under {
-        fill: none;
+        fill: var(--mx-mark);
         stroke: #000;
         stroke-width: 2.2;
-    }
-
-    .teleport.over {
-        fill: var(--mx-mark);
+        paint-order: stroke;
+        pointer-events: none;
     }
 
     .span.chosen-span.under {
