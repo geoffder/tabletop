@@ -4,6 +4,10 @@ export const CANAL_LOOK = 'canal'
 export const SHORE_LOOK = 'shore'
 // The sheet of patches for the coast at a pinch: see pinches.ts.
 export const PINCH_LOOK = 'pinches'
+// The action point's mask (routes/looks/MaskDrawing.svelte), in that drawing's units: the box
+// holds all of it, strokes included, as its feathers reach a little past the icon's square.
+export const MASK_LOOK = 'mask'
+export const MASK_BOX = { x: -32, y: -31, width: 64, height: 54 }
 
 export function bridgeLook(screenAxis: string, flat: boolean, layer = 'whole'): string {
     return `bridge-${screenAxis}${layer === 'whole' ? '' : `-${layer}`}${flat ? '-flat' : ''}`

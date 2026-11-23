@@ -17,6 +17,8 @@
     import {
         CANAL_LOOK,
         LAKE_LOOK,
+        MASK_BOX,
+        MASK_LOOK,
         PAVING_LOOK,
         PINCH_LOOK,
         SHORE_LOOK,
@@ -47,6 +49,7 @@
     import { CELL, FLAT, TILT } from '$lib/board/view.js'
     import { PIGMENTS } from '$lib/model/palette.js'
     import '../../app.css'
+    import MaskDrawing from './MaskDrawing.svelte'
 
     // For scripts/render-looks.mjs to save as the images the game shows.
     let urls: Record<string, string> | undefined = $state()
@@ -92,6 +95,76 @@
         return { ...DESIGN, stair: { shade, glint, riser, balustrade: false } }
     }
 
+    // The mask drawing, rasterised over MASK_BOX at `pixels` per unit: drawn four times as large
+    // and halved twice, so its many edges blend smoothly. The drawing's scoped styles do not
+    // travel with its markup, so each element takes its computed paint along inline.
+    let maskHost: HTMLElement | undefined = $state()
+    let maskOverflow = $state('')
+    const MASK_PIXELS = 3
+
+    async function drawMask(): Promise<string> {
+        const svg = maskHost?.querySelector('svg')
+        if (!svg) throw new Error('The mask drawing is missing')
+        const bbox = svg.getBBox()
+        const box = MASK_BOX
+        if (
+            bbox.x < box.x ||
+            bbox.y < box.y ||
+            bbox.x + bbox.width > box.x + box.width ||
+            bbox.y + bbox.height > box.y + box.height
+        ) {
+            maskOverflow = `The mask reaches ${bbox.x} ${bbox.y} ${bbox.width} ${bbox.height}, past MASK_BOX`
+        }
+        const copy = svg.cloneNode(true)
+        if (!(copy instanceof SVGSVGElement)) throw new Error('The mask copy is not an svg')
+        const originals = [svg, ...svg.querySelectorAll('*')]
+        const copies = [copy, ...copy.querySelectorAll('*')]
+        const PAINT = [
+            'fill',
+            'stroke',
+            'stroke-width',
+            'stroke-linecap',
+            'stroke-linejoin',
+            'opacity',
+            'fill-opacity',
+            'stroke-opacity'
+        ]
+        originals.forEach((element, index) => {
+            const style = getComputedStyle(element)
+            const target = copies[index]
+            if (!(target instanceof SVGElement)) return
+            for (const property of PAINT) {
+                target.style.setProperty(property, style.getPropertyValue(property))
+            }
+        })
+        const big = MASK_PIXELS * 4
+        copy.setAttribute('viewBox', `${box.x} ${box.y} ${box.width} ${box.height}`)
+        copy.setAttribute('width', String(box.width * big))
+        copy.setAttribute('height', String(box.height * big))
+        copy.style.overflow = 'hidden'
+        const markup = new XMLSerializer().serializeToString(copy)
+        const image = new Image()
+        image.src = URL.createObjectURL(new Blob([markup], { type: 'image/svg+xml' }))
+        await image.decode()
+        let canvas = document.createElement('canvas')
+        canvas.width = box.width * big
+        canvas.height = box.height * big
+        canvas.getContext('2d')?.drawImage(image, 0, 0)
+        URL.revokeObjectURL(image.src)
+        for (let halving = 0; halving < 2; halving++) {
+            const half = document.createElement('canvas')
+            half.width = canvas.width / 2
+            half.height = canvas.height / 2
+            const context = half.getContext('2d')
+            if (context) {
+                context.imageSmoothingQuality = 'high'
+                context.drawImage(canvas, 0, 0, half.width, half.height)
+            }
+            canvas = half
+        }
+        return canvas.toDataURL('image/webp', 0.9)
+    }
+
     function toUrl(bitmap: Bitmap, quality: number): string {
         const canvas = document.createElement('canvas')
         canvas.width = bitmap.width
@@ -101,7 +174,7 @@
         return canvas.toDataURL('image/webp', quality)
     }
 
-    onMount(() => {
+    onMount(async () => {
         const start = performance.now()
         const drawn: Record<string, string> = {}
         drawn[PAVING_LOOK] = toUrl(renderPaving(PAVING), 0.86)
@@ -161,6 +234,7 @@
             drawn[pilliShineLook(tilt === FLAT)] = toUrl(look.shine, 0.92)
             traced[name] = look.outline
         }
+        drawn[MASK_LOOK] = await drawMask()
         urls = drawn
         outlines = traced
         figures = Object.fromEntries(
@@ -252,6 +326,8 @@
 {/snippet}
 
 <main class="looks">
+    <div class="mask-drawing" bind:this={maskHost}><MaskDrawing size={80} /></div>
+    {#if maskOverflow}<p class="warning">{maskOverflow}</p>{/if}
     {#if urls}
         <p>Drawn in {millis} ms.</p>
         <section data-looks={JSON.stringify(urls)} data-outlines={JSON.stringify(outlines)}>
@@ -329,6 +405,16 @@
 </main>
 
 <style>
+    .mask-drawing {
+        position: absolute;
+        left: -1000px;
+    }
+
+    .warning {
+        color: #b00;
+        font-weight: bold;
+    }
+
     .looks {
         min-height: 100vh;
         padding: 16px;
