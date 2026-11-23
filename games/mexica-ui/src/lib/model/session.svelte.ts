@@ -72,15 +72,18 @@ export class MexicaGameSession extends GameSession<MexicaGameState, HydratedMexi
     // still steps through the rest of its replay, which nothing may show.
     private abandonedState: HydratedMexicaGameState | undefined
 
+    // Whether the selection was spent on an action that has not been shown yet. It stays on the
+    // board until that action is, and Undo passes it by to take the action back.
+    private spent = false
+
     constructor(options: SessionOptions) {
         super(options)
-        this.localSelections.register(
-            undoableStagedSelection(
-                MexicaStageOrder,
-                () => this.ownSelection,
-                (selection) => this.select(selection)
-            )
+        const staged = undoableStagedSelection(
+            MexicaStageOrder,
+            () => this.ownSelection,
+            (selection) => this.select(selection)
         )
+        this.localSelections.register({ ...staged, undo: () => !this.spent && staged.undo() })
     }
 
     readonly preferences: TitlePreferences<typeof MexicaPreferences> = this.createPreferences(
@@ -145,17 +148,18 @@ export class MexicaGameSession extends GameSession<MexicaGameState, HydratedMexi
     }
 
     // Undo pressed while a move is still being shown waits for it to land, and then takes it back:
-    // until then the move is not yet the last action, and the selection it was made with is spent.
-    // Presses in a row queue, each taking back one more.
+    // until then the move is not yet the last action. Presses in a row queue, each taking back
+    // one more.
     private undoing: Promise<void> = Promise.resolve()
 
-    override undo(): Promise<void> {
+    override undoCommittedAction(target?: GameAction): Promise<void> {
         // An earlier press that failed has said so to its caller; this one still runs.
         this.undoing = this.undoing
             .catch(() => undefined)
             .then(async () => {
                 if (this.updatingVisibleState) await this.waitForVisibleTransitionSettled()
-                await super.undo()
+                // The action to take back is the last one shown once the move has landed.
+                await super.undoCommittedAction(target)
                 await this.waitForVisibleTransitionSettled()
             })
         return this.undoing
@@ -404,14 +408,14 @@ export class MexicaGameSession extends GameSession<MexicaGameState, HydratedMexi
         if (this.updatingVisibleState) return
         if (this.canChooseStart) {
             if (this.startCells.has(cell)) {
-                await this.applyAction(this.createPlayerAction(ChooseStart, { cell }))
+                await this.act(this.createPlayerAction(ChooseStart, { cell }))
             }
             return
         }
         const tool = this.tool
         if (tool === undefined) {
             if (this.moves.has(cell)) {
-                await this.applyAction(this.createPlayerAction(MovePilli, { to: cell }))
+                await this.act(this.createPlayerAction(MovePilli, { to: cell }))
             }
             return
         }
@@ -425,9 +429,9 @@ export class MexicaGameSession extends GameSession<MexicaGameState, HydratedMexi
             return
         }
         if (typeof tool === 'number') {
-            await this.applyAction(this.createPlayerAction(BuildTemple, { cell, level: tool }))
+            await this.act(this.createPlayerAction(BuildTemple, { cell, level: tool }))
         } else if (tool === 'found') {
-            await this.applyAction(this.createPlayerAction(FoundDistrict, { cell }))
+            await this.act(this.createPlayerAction(FoundDistrict, { cell }))
         } else if (tool === 'canal') {
             await this.chooseCanalCell(cell)
         } else if (tool === 'bridge') {
@@ -467,13 +471,13 @@ export class MexicaGameSession extends GameSession<MexicaGameState, HydratedMexi
         const dig = this.createPlayerAction(DigCanal, { cells })
         const another = this.apAvailable >= 2 && this.gameState.canalTilesLeft() >= 2
         this.keepsCanalAfter = another ? dig.id : undefined
-        await this.applyAction(dig)
+        await this.act(dig)
     }
 
     private async chooseBridgeCell(cell: Cell) {
         const axes = AXES.filter((axis) => this.gameState.canBuildBridge(cell, axis))
         if (axes.length === 1) {
-            await this.applyAction(this.createPlayerAction(BuildBridge, { cell, axis: axes[0] }))
+            await this.act(this.createPlayerAction(BuildBridge, { cell, axis: axes[0] }))
             return
         }
         this.select(setMexicaSelection(this.ownSelection, 'cell', cell))
@@ -487,7 +491,7 @@ export class MexicaGameSession extends GameSession<MexicaGameState, HydratedMexi
         }
         const axes = AXES.filter((axis) => this.gameState.canMoveBridge(moving, cell, axis))
         if (axes.length === 1) {
-            await this.applyAction(
+            await this.act(
                 this.createPlayerAction(MoveBridge, { bridgeCell: moving, cell, axis: axes[0] })
             )
             return
@@ -498,27 +502,34 @@ export class MexicaGameSession extends GameSession<MexicaGameState, HydratedMexi
     async chooseAxis(axis: Axis) {
         if (this.updatingVisibleState || !this.axisChoices.includes(axis)) return
         if (this.tool === 'bridge' && this.chosenCell !== undefined) {
-            await this.applyAction(
-                this.createPlayerAction(BuildBridge, { cell: this.chosenCell, axis })
-            )
+            await this.act(this.createPlayerAction(BuildBridge, { cell: this.chosenCell, axis }))
         } else if (this.chosenCell !== undefined && this.chosenDestination !== undefined) {
             const bridgeCell = this.chosenCell
             const cell = this.chosenDestination
-            await this.applyAction(this.createPlayerAction(MoveBridge, { bridgeCell, cell, axis }))
+            await this.act(this.createPlayerAction(MoveBridge, { bridgeCell, cell, axis }))
         }
     }
 
     async takeToken() {
         if (this.updatingVisibleState || !this.canTakeToken) return
-        await this.applyAction(this.createPlayerAction(TakeToken, {}))
+        await this.act(this.createPlayerAction(TakeToken, {}))
     }
 
     async endTurn() {
         if (this.updatingVisibleState || !this.canEndTurn) return
-        await this.applyAction(this.createPlayerAction(EndTurn, {}))
+        await this.act(this.createPlayerAction(EndTurn, {}))
+    }
+
+    // Takes an action; the selection it was chosen with is spent until the action is shown, which
+    // clears it. An action refused before it is shown leaves the selection as it was.
+    private async act(action: GameAction) {
+        const applying = this.applyAction(action)
+        this.spent = this.tool !== undefined && this.updatingVisibleState
+        await applying
     }
 
     private select(selection: MexicaSelection) {
+        this.spent = false
         this.selection = selection
         this.selectionOwner = this.myPlayer?.id
     }
