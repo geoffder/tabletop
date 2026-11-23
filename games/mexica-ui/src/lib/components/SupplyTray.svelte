@@ -9,7 +9,8 @@
     const me = $derived(session.myPlayer?.id)
     const game = $derived(session.gameState)
     const ended = $derived(session.gameState.result !== undefined && !session.isViewingHistory)
-    const shown = $derived(me !== undefined && game.machineState === 'Acting')
+    // Only on your turn: while you wait, the last move is shown over the card in its place.
+    const shown = $derived(session.isActing)
     const tokens = $derived(me === undefined ? 0 : game.getPlayerState(me).actionTokens)
     const fill = $derived(me === undefined ? '#888' : session.playerFill(me))
     const left = (level: Level) => (me === undefined ? 0 : game.templesLeft(me, level))
@@ -23,6 +24,12 @@
             <MaskIcon spent={pip >= session.apLeft} size={34} />
         {/each}
         {#if tokens > 0}<span class="tokens" title="Action tokens">+{tokens}</span>{/if}
+        <button
+            type="button"
+            class="end"
+            disabled={!session.canEndTurn}
+            onclick={() => session.endTurn()}>End turn</button
+        >
     </div>
     <div class="tools">
         {#each LEVELS as level (level)}
@@ -109,15 +116,53 @@
         display: none;
     }
 
+    /* The action points and End turn share a row, the masks as big as leaves it room: the row
+       is six masks and about 120 px of gaps, token count and button, in the card's width. */
     .ap {
+        --mask: clamp(20px, calc((100vw - 184px) / 6), 30px);
         display: flex;
         align-items: center;
-        gap: 6px;
+        gap: 2px;
         min-height: 36px;
     }
 
+    .ap > :global(svg) {
+        width: var(--mask);
+        height: var(--mask);
+    }
+
+    .end {
+        margin-left: 6px;
+        padding: 2px 8px;
+        border-radius: 8px;
+        font-size: 16px;
+        font-weight: 600;
+        white-space: nowrap;
+        color: var(--mx-ink);
+        background: var(--mx-panel-inset);
+        box-shadow:
+            inset 0 0 0 1.5px var(--mx-toggle-on),
+            0 1px 2px rgb(60 40 20 / 0.25);
+    }
+
+    .end:disabled {
+        opacity: 0.38;
+    }
+
+    @media (max-width: 639px) {
+        .end {
+            font-size: 15px;
+        }
+    }
+
+    @media (hover: hover) {
+        .end:not(:disabled):hover {
+            background: var(--mx-panel-hover);
+        }
+    }
+
     .tokens {
-        margin-left: 4px;
+        margin-left: 2px;
         font-weight: 800;
         font-size: 16px;
     }

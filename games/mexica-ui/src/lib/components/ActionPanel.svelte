@@ -8,13 +8,13 @@
 
     const session = getGameSession()
 
-    const lastEntry = $derived(historyEntries(session.actions).at(-1))
     const acting = $derived(
         !session.isViewingHistory && (session.canChooseStart || session.isActing)
     )
     const foundingSize = $derived(
         session.foundingToken === undefined ? undefined : tokenSize(session.foundingToken)
     )
+    const lastEntry = $derived(historyEntries(session.actions).at(-1))
     const ended = $derived(session.gameState.result !== undefined && !session.isViewingHistory)
     const tool = $derived(session.tool)
     const singles = $derived(session.gameState.singleCanalsLeft())
@@ -24,18 +24,61 @@
     }
 </script>
 
-{#snippet endTurn()}
-    <button type="button" class="inline" onclick={() => session.endTurn()}>End turn</button>
-{/snippet}
-
-<!-- One row: the last move while you wait, the prompt on your turn, the winner at the end. Held at
-     its tallest, so the board stays put as the game ends. -->
+<!-- One row: the prompt on your turn, the winner at the end. Held at its tallest, so the board stays
+     put as the game ends. -->
 <div class="panel" class:ended {@attach holdTallest}>
     {#if ended}
         <GameEndPanel />
     {:else if !acting}
+        <!-- Left empty: the last move is shown over the whole card. -->
+    {:else if session.canChooseStart}
+        <span>Choose a palace space to start</span>
+    {:else if session.axisChoices.length > 1}
+        <span
+            >Which way does it run? {#each session.axisChoices as axis (axis)}<button
+                    type="button"
+                    class="inline"
+                    onclick={() => session.chooseAxis(axis)}>{AXIS_NAMES[axis]}</button
+                >{/each}</span
+        >
+    {:else if tool === 'canal' && session.chosenCell !== undefined && session.canDigChosenAlone}
+        <span>Extend into double, or make a single</span>
+    {:else if tool === 'canal' && session.chosenCell !== undefined}
+        <span>Choose a neighbour to finish</span>
+    {:else if tool === 'canal' && singles > 0}
+        <span>Dig 2 adjacent spaces, or 1 twice</span>
+    {:else if tool === 'canal'}
+        <span>Dig 2 adjacent spaces</span>
+    {:else if tool === 'bridge'}
+        <span>Build a bridge</span>
+    {:else if tool === 'moveBridge'}
+        <span
+            >{session.chosenCell === undefined
+                ? 'Choose a bridge to move'
+                : 'Choose where it goes'}</span
+        >
+    {:else if tool === 'found'}
+        <span>Found the district: choose a space</span>
+    {:else if typeof tool === 'number'}
+        <span>Build a {tool}-level temple</span>
+    {:else if foundingSize !== undefined}
+        <span
+            ><button type="button" class="inline" onclick={() => session.pickTool('found')}
+                >Found</button
+            >
+            a district of {foundingSize}, or move</span
+        >
+    {:else}
+        <span>{session.apAvailable === 0 ? 'No action points left' : 'Move, or pick a piece'}</span>
+    {/if}
+</div>
+
+<!-- While you wait, the last move has the whole card, the tray hidden under it: what the tray
+     showed, the board and the player cards show too. -->
+{#if !ended && !acting}
+    <div class="waiting">
         {#if lastEntry}
-            <HistoryEntryLine entry={lastEntry} brief />
+            <HistoryEntryLine entry={lastEntry} />
         {:else}
             <span
                 >{session.isViewingHistory
@@ -43,58 +86,26 @@
                     : 'Waiting for the first player'}</span
             >
         {/if}
-    {:else if session.canChooseStart}
-        <span>Choose a starting space in the palace</span>
-    {:else if session.axisChoices.length > 1}
-        <span
-            >Which way does the bridge run? {#each session.axisChoices as axis (axis)}<button
-                    type="button"
-                    class="inline"
-                    onclick={() => session.chooseAxis(axis)}>{AXIS_NAMES[axis]}</button
-                >{/each}</span
-        >
-    {:else if tool === 'canal' && session.chosenCell !== undefined && session.canDigChosenAlone}
-        <span>A neighbour for a double, this space again for a single, or {@render endTurn()}</span>
-    {:else if tool === 'canal' && session.chosenCell !== undefined}
-        <span>Choose a neighbour to finish the canal, or {@render endTurn()}</span>
-    {:else if tool === 'canal' && singles > 0}
-        <span
-            >Choose two neighbouring spaces, or one twice for a single, or {@render endTurn()}</span
-        >
-    {:else if tool === 'canal'}
-        <span>Choose 2 neighbouring spaces to dig, or {@render endTurn()}</span>
-    {:else if tool === 'bridge'}
-        <span>Build a bridge: choose a canal, or {@render endTurn()}</span>
-    {:else if tool === 'moveBridge'}
-        <span
-            >{session.chosenCell === undefined
-                ? 'Move a bridge: choose the bridge'
-                : 'Then choose the destination'}, or {@render endTurn()}</span
-        >
-    {:else if tool === 'found'}
-        <span>Found the district: choose a space for the token, or {@render endTurn()}</span>
-    {:else if typeof tool === 'number'}
-        <span>Build a {tool}-level temple: choose a space, or {@render endTurn()}</span>
-    {:else if foundingSize !== undefined}
-        <span
-            ><button type="button" class="inline" onclick={() => session.pickTool('found')}
-                >Found</button
-            >
-            a district of {foundingSize}, move, pick a piece, or {@render endTurn()}</span
-        >
-    {:else}
-        <span
-            >{#if session.apAvailable === 0}No action points left{:else}Choose where to move, or
-                pick a piece{/if}
-            {@render endTurn()}</span
-        >
-    {/if}
-</div>
+    </div>
+{/if}
 
 <style>
     /* The ending fills the card, the tray gone from under it. */
     .panel.ended {
         flex: 1;
+    }
+
+    .waiting {
+        position: absolute;
+        inset: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 6px 16px;
+        text-align: center;
+        font-size: 18px;
+        letter-spacing: 0.02em;
+        color: var(--mx-ink);
     }
 
     .panel {
@@ -103,7 +114,7 @@
         align-items: center;
         justify-content: center;
         gap: 4px 8px;
-        min-height: 50px;
+        min-height: 34px;
         padding: 4px 16px;
         text-align: center;
         font-size: 18px;
@@ -131,7 +142,8 @@
     }
 
     @media (max-width: 639px) {
-        .panel {
+        .panel,
+        .waiting {
             font-size: 15px;
             padding: 4px 8px;
         }

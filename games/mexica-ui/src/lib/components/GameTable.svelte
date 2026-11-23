@@ -272,6 +272,7 @@
     }
 
     .action-card {
+        position: relative;
         display: flex;
         flex-direction: column;
         margin: 0 8px;
