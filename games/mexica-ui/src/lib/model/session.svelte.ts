@@ -232,7 +232,7 @@ export class MexicaGameSession extends GameSession<MexicaGameState, HydratedMexi
         const free = state.everyoneFreeAfter(playerId)
         for (const [cell, move] of state.moves(playerId, this.layout)) {
             if (move.cost > ap) continue
-            if (!free((s) => s.placePilli(playerId, cell))) continue
+            if (!free({ pilli: { playerId, cell } })) continue
             moves.set(cell, move)
         }
         return moves
@@ -278,7 +278,7 @@ export class MexicaGameSession extends GameSession<MexicaGameState, HydratedMexi
                 LAND_CELLS.filter(
                     (cell) =>
                         state.canBuildTemple(playerId, cell, tool, layout) &&
-                        free((s) => s.buildTemple(playerId, cell, tool))
+                        free({ temple: { cell, level: tool, playerId } })
                 )
             )
         }
@@ -287,7 +287,7 @@ export class MexicaGameSession extends GameSession<MexicaGameState, HydratedMexi
                 LAND_CELLS.filter(
                     (cell) =>
                         state.canFound(playerId, cell, layout) &&
-                        free((s) => s.found(playerId, cell))
+                        free(state.foundingChange(playerId, cell))
                 )
             )
         }
@@ -312,7 +312,7 @@ export class MexicaGameSession extends GameSession<MexicaGameState, HydratedMexi
                 AXES.some(
                     (axis) =>
                         state.canMoveBridge(moving, cell, axis, layout) &&
-                        free((s) => s.moveBridge(moving, cell, axis))
+                        free({ bridge: { from: moving, to: { cell, axis } } })
                 )
             )
         )
@@ -375,7 +375,7 @@ export class MexicaGameSession extends GameSession<MexicaGameState, HydratedMexi
         const singles = state.singleCanalsLeft() > 0
         const doubles = state.doubleCanalsLeft() > 0
         const free = state.everyoneFreeAfter(playerId)
-        const allowed = (cells: Cell[]) => free((s) => s.dig(cells))
+        const allowed = (cells: Cell[]) => free({ dug: cells })
         if (first !== undefined) {
             const seconds = diggable.filter(
                 (cell) => doubles && areAdjacent(first, cell) && allowed([first, cell])

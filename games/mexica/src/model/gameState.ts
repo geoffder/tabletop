@@ -20,7 +20,7 @@ import {
     isStart,
     LAND_CELLS
 } from './board.js'
-import { Layout } from './layout.js'
+import { Layout, type LayoutChange } from './layout.js'
 import { canStop, reachedFrom, type Route, routesFrom } from './movement.js'
 import {
     ACTION_TOKEN_COUNT,
@@ -289,6 +289,13 @@ export class HydratedMexicaGameState
         return district !== undefined && district.includes(cell) && layout.isBuildable(cell)
     }
 
+    // What founding the district on the square puts on the island, for leavesEveryoneFree.
+    foundingChange(playerId: string, cell: Cell): LayoutChange {
+        const tokenId = this.foundingToken(playerId)
+        assertExists(tokenId, 'A token must match the district')
+        return { token: { tokenId, cell } }
+    }
+
     // The founder scores the token's second value, every other player with a Pilli Mexica in the
     // district its third.
     found(playerId: string, cell: Cell): { tokenId: number; visitors: string[] } {
@@ -371,17 +378,13 @@ export class HydratedMexicaGameState
     }
 
     // In the first round, no action may shut in or cut off another player's Pilli Mexica.
-    leavesEveryoneFree(
-        playerId: string,
-        change: (state: HydratedMexicaGameState) => void
-    ): boolean {
+    leavesEveryoneFree(playerId: string, change: LayoutChange): boolean {
         return this.everyoneFreeAfter(playerId)(change)
     }
 
-    // The same test for many changes in one position: who is free now is found once.
-    everyoneFreeAfter(
-        playerId: string
-    ): (change: (state: HydratedMexicaGameState) => void) => boolean {
+    // The same test for many changes to one position: who is free now is found once, and each
+    // change is laid over this position's layout rather than played on a copy of the game.
+    everyoneFreeAfter(playerId: string): (change: LayoutChange) => boolean {
         if (!this.isFirstRound()) return () => true
         const layout = this.layout()
         const others = this.players
@@ -389,10 +392,8 @@ export class HydratedMexicaGameState
             .filter((other) => other !== playerId && this.isFree(other, layout))
         if (others.length === 0) return () => true
         return (change) => {
-            const after = new HydratedMexicaGameState(structuredClone(this.dehydrate()))
-            change(after)
-            const afterLayout = after.layout()
-            return others.every((other) => after.isFree(other, afterLayout))
+            const after = layout.after(change)
+            return others.every((other) => this.isFree(other, after))
         }
     }
 

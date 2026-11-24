@@ -117,15 +117,27 @@ export function isStart(cell: Cell): boolean {
 }
 
 // The neighbouring cell in a direction, or undefined beyond the board's edge (which is lake).
+// Looked up rather than worked out: the rule queries ask it of every square many times over.
+const NEXT = new Map(
+    DIRECTIONS.map((direction) => {
+        const { dx, dy } = STEP[direction]
+        return [
+            direction,
+            ALL_CELLS.map((cell) => cellAt(columnOf(cell) + dx, rowOf(cell) + dy))
+        ] as const
+    })
+)
 export function neighbour(cell: Cell, direction: Direction): Cell | undefined {
-    const { dx, dy } = STEP[direction]
-    return cellAt(columnOf(cell) + dx, rowOf(cell) + dy)
+    return NEXT.get(direction)?.[cell]
 }
 
-export function neighbours(cell: Cell): Cell[] {
-    return DIRECTIONS.map((direction) => neighbour(cell, direction)).filter(
+const NEIGHBOURS: readonly (readonly Cell[])[] = ALL_CELLS.map((cell) =>
+    DIRECTIONS.map((direction) => neighbour(cell, direction)).filter(
         (next): next is Cell => next !== undefined
     )
+)
+export function neighbours(cell: Cell): readonly Cell[] {
+    return NEIGHBOURS[cell] ?? []
 }
 
 export function areAdjacent(a: Cell, b: Cell): boolean {

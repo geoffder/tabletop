@@ -51,7 +51,7 @@ export class ActingStateHandler implements MachineStateHandler<
             return (
                 state.apAvailable(playerId) >= 1 &&
                 state.canDig(action.cells) &&
-                state.leavesEveryoneFree(playerId, (s) => s.dig(action.cells))
+                state.leavesEveryoneFree(playerId, { dug: action.cells })
             )
         }
         if (isBuildBridge(action)) {
@@ -63,30 +63,33 @@ export class ActingStateHandler implements MachineStateHandler<
             return (
                 state.apAvailable(playerId) >= 1 &&
                 state.canMoveBridge(action.bridgeCell, action.cell, action.axis) &&
-                state.leavesEveryoneFree(playerId, (s) =>
-                    s.moveBridge(action.bridgeCell, action.cell, action.axis)
-                )
+                state.leavesEveryoneFree(playerId, {
+                    bridge: {
+                        from: action.bridgeCell,
+                        to: { cell: action.cell, axis: action.axis }
+                    }
+                })
             )
         }
         if (isBuildTemple(action)) {
             return (
                 state.apAvailable(playerId) >= action.level &&
                 state.canBuildTemple(playerId, action.cell, action.level) &&
-                state.leavesEveryoneFree(playerId, (s) =>
-                    s.buildTemple(playerId, action.cell, action.level)
-                )
+                state.leavesEveryoneFree(playerId, {
+                    temple: { cell: action.cell, level: action.level, playerId }
+                })
             )
         }
         if (isMovePilli(action)) {
             return (
                 state.moveTo(playerId, action.to) !== undefined &&
-                state.leavesEveryoneFree(playerId, (s) => s.placePilli(playerId, action.to))
+                state.leavesEveryoneFree(playerId, { pilli: { playerId, cell: action.to } })
             )
         }
         if (isFoundDistrict(action)) {
             return (
                 state.canFound(playerId, action.cell) &&
-                state.leavesEveryoneFree(playerId, (s) => s.found(playerId, action.cell))
+                state.leavesEveryoneFree(playerId, state.foundingChange(playerId, action.cell))
             )
         }
         return false
