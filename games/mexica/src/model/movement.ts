@@ -8,30 +8,45 @@ export interface Route {
     path: Cell[]
 }
 
-// The cheapest way on foot and by boat to every cell the Pilli Mexica on `from` can stop on.
-// A bridge with another Pilli Mexica on it can be passed under, never stopped on.
-export function routesFrom(layout: Layout, from: Cell): Map<Cell, Route> {
-    const previous = new Map<Cell, Cell>([[from, from]])
-    const cost = new Map<Cell, number>([[from, 0]])
+// The fewest action points on foot and by boat from `from` to every cell it reaches, `from`
+// included at 0, with the cell each was reached from. A bridge with another Pilli Mexica on it
+// can be passed under, never stopped on.
+export function reachedFrom(
+    layout: Layout,
+    from: Cell
+): Map<Cell, { cost: number; previous: Cell }> {
+    const reached = new Map([[from, { cost: 0, previous: from }]])
     const queue = [from]
-    while (queue.length > 0) {
-        const cell = queue.shift()
-        if (cell === undefined) break
+    for (let next = 0; next < queue.length; next++) {
+        const cell = queue[next]
+        const cost = (reached.get(cell)?.cost ?? 0) + 1
         const passingUnder = cell !== from && layout.pillis.has(cell)
         for (const step of layout.steps(cell)) {
             if (passingUnder && !step.byBoat) continue
-            if (cost.has(step.cell)) continue
-            cost.set(step.cell, (cost.get(cell) ?? 0) + 1)
-            previous.set(step.cell, cell)
+            if (reached.has(step.cell)) continue
+            reached.set(step.cell, { cost, previous: cell })
             queue.push(step.cell)
         }
     }
+    return reached
+}
+
+// Whether the Pilli Mexica on `from` can stop on the cell: one not taken by another.
+export const canStop = (layout: Layout, from: Cell, cell: Cell) =>
+    cell === from || !layout.pillis.has(cell)
+
+// The cheapest way on foot and by boat to every cell the Pilli Mexica on `from` can stop on.
+export function routesFrom(layout: Layout, from: Cell): Map<Cell, Route> {
+    const reached = reachedFrom(layout, from)
     const routes = new Map<Cell, Route>()
-    for (const [cell, steps] of cost) {
-        if (cell === from || layout.pillis.has(cell)) continue
+    for (const [cell, { cost }] of reached) {
+        if (cell === from || !canStop(layout, from, cell)) continue
         const path = [cell]
-        while (path[0] !== from) path.unshift(previous.get(path[0]) ?? from)
-        routes.set(cell, { cost: steps, path })
+        for (let at = cell; at !== from;) {
+            at = reached.get(at)?.previous ?? from
+            path.push(at)
+        }
+        routes.set(cell, { cost, path: path.reverse() })
     }
     return routes
 }

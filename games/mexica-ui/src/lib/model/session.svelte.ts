@@ -229,9 +229,10 @@ export class MexicaGameSession extends GameSession<MexicaGameState, HydratedMexi
         const state = this.gameState
         const ap = state.apAvailable(playerId)
         const moves = new Map<Cell, Move>()
+        const free = state.everyoneFreeAfter(playerId)
         for (const [cell, move] of state.moves(playerId, this.layout)) {
             if (move.cost > ap) continue
-            if (!state.leavesEveryoneFree(playerId, (s) => s.placePilli(playerId, cell))) continue
+            if (!free((s) => s.placePilli(playerId, cell))) continue
             moves.set(cell, move)
         }
         return moves
@@ -271,8 +272,7 @@ export class MexicaGameSession extends GameSession<MexicaGameState, HydratedMexi
         if (!this.isActing || playerId === undefined || tool === undefined) return new Set()
         const state = this.gameState
         const layout = this.layout
-        const free = (change: (s: HydratedMexicaGameState) => void) =>
-            state.leavesEveryoneFree(playerId, change)
+        const free = state.everyoneFreeAfter(playerId)
         if (typeof tool === 'number') {
             return new Set(
                 LAND_CELLS.filter(
@@ -374,7 +374,8 @@ export class MexicaGameSession extends GameSession<MexicaGameState, HydratedMexi
         const first = this.chosenCell
         const singles = state.singleCanalsLeft() > 0
         const doubles = state.doubleCanalsLeft() > 0
-        const allowed = (cells: Cell[]) => state.leavesEveryoneFree(playerId, (s) => s.dig(cells))
+        const free = state.everyoneFreeAfter(playerId)
+        const allowed = (cells: Cell[]) => free((s) => s.dig(cells))
         if (first !== undefined) {
             const seconds = diggable.filter(
                 (cell) => doubles && areAdjacent(first, cell) && allowed([first, cell])

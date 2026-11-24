@@ -21,7 +21,7 @@ import {
     LAND_CELLS
 } from './board.js'
 import { Layout } from './layout.js'
-import { type Route, routesFrom } from './movement.js'
+import { canStop, reachedFrom, type Route, routesFrom } from './movement.js'
 import {
     ACTION_TOKEN_COUNT,
     BASE_AP,
@@ -348,13 +348,18 @@ export class HydratedMexicaGameState
     // Whether the Pilli Mexica is free: it has a step to take and can still reach the island's
     // largest district on foot or by boat. The first round forbids shutting one in or cutting one
     // off, so that it would need a bridge or the teleport to get out.
-    isFree(playerId: string): boolean {
-        const layout = this.layout()
+    isFree(playerId: string, layout: Layout = this.layout()): boolean {
         const from = this.pilliOf(playerId)
-        const routes = routesFrom(layout, from)
-        if (![...routes.values()].some((route) => route.cost === 1)) return false
+        // A step costs one action point: these are the cells a point reaches.
+        if (!layout.steps(from).some((step) => canStop(layout, from, step.cell))) return false
         const largest = Math.max(...layout.districts().map((district) => district.length))
-        return [from, ...routes.keys()].some((cell) => layout.districtOf(cell)?.length === largest)
+        const inLargest = (cell: Cell) => layout.districtOf(cell)?.length === largest
+        // Standing in it already, as every Pilli Mexica does on the opening mainland, needs no
+        // search.
+        if (inLargest(from)) return true
+        return [...reachedFrom(layout, from).keys()].some(
+            (cell) => canStop(layout, from, cell) && inLargest(cell)
+        )
     }
 
     // The first round of play, after each player has placed their Pilli Mexica: every player's
@@ -370,13 +375,25 @@ export class HydratedMexicaGameState
         playerId: string,
         change: (state: HydratedMexicaGameState) => void
     ): boolean {
-        if (!this.isFirstRound()) return true
+        return this.everyoneFreeAfter(playerId)(change)
+    }
+
+    // The same test for many changes in one position: who is free now is found once.
+    everyoneFreeAfter(
+        playerId: string
+    ): (change: (state: HydratedMexicaGameState) => void) => boolean {
+        if (!this.isFirstRound()) return () => true
+        const layout = this.layout()
         const others = this.players
             .map((player) => player.playerId)
-            .filter((other) => other !== playerId && this.isFree(other))
-        const after = new HydratedMexicaGameState(structuredClone(this.dehydrate()))
-        change(after)
-        return others.every((other) => after.isFree(other))
+            .filter((other) => other !== playerId && this.isFree(other, layout))
+        if (others.length === 0) return () => true
+        return (change) => {
+            const after = new HydratedMexicaGameState(structuredClone(this.dehydrate()))
+            change(after)
+            const afterLayout = after.layout()
+            return others.every((other) => after.isFree(other, afterLayout))
+        }
     }
 
     // Starting spaces
