@@ -222,10 +222,11 @@ export class MexicaGameSession extends GameSession<MexicaGameState, HydratedMexi
             : undefined
     )
 
-    // Where the Pilli Mexica can go now, and for how much.
-    moves: ReadonlyMap<Cell, Move> = $derived.by(() => {
+    // Where the Pilli Mexica can go in the state shown, kept while a tool is picked up and put
+    // down so the moves are found once per state.
+    private reachable: ReadonlyMap<Cell, Move> = $derived.by(() => {
         const playerId = this.me
-        if (!this.isActing || playerId === undefined || this.tool !== undefined) return new Map()
+        if (!this.isActing || playerId === undefined) return new Map()
         const state = this.gameState
         const ap = state.apAvailable(playerId)
         const moves = new Map<Cell, Move>()
@@ -237,6 +238,9 @@ export class MexicaGameSession extends GameSession<MexicaGameState, HydratedMexi
         }
         return moves
     })
+
+    // Where the Pilli Mexica can go now, and for how much, while no tool is picked up.
+    moves: ReadonlyMap<Cell, Move> = $derived(this.tool === undefined ? this.reachable : new Map())
 
     templeLevels: readonly Level[] = $derived(
         this.me === undefined || !this.isActing
@@ -287,7 +291,7 @@ export class MexicaGameSession extends GameSession<MexicaGameState, HydratedMexi
                 LAND_CELLS.filter(
                     (cell) =>
                         state.canFound(playerId, cell, layout) &&
-                        free(state.foundingChange(playerId, cell))
+                        free(state.foundingChange(playerId, cell, layout))
                 )
             )
         }

@@ -290,8 +290,8 @@ export class HydratedMexicaGameState
     }
 
     // What founding the district on the square puts on the island, for leavesEveryoneFree.
-    foundingChange(playerId: string, cell: Cell): LayoutChange {
-        const tokenId = this.foundingToken(playerId)
+    foundingChange(playerId: string, cell: Cell, layout: Layout = this.layout()): LayoutChange {
+        const tokenId = this.foundingToken(playerId, layout)
         assertExists(tokenId, 'A token must match the district')
         return { token: { tokenId, cell } }
     }
