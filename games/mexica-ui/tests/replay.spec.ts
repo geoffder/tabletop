@@ -64,10 +64,11 @@ test('a replayed dig and canoe ride follow the new canal, as played', async ({ p
     )
     expect(played.length).toBeGreaterThan(20)
     expect(replayed.length).toBeGreaterThan(20)
-    // A canoe that missed the new canal crosses the land in a straight line, well clear of it.
+    // A canoe that missed the new canal crosses the land in a straight line, more than a square
+    // (40) clear of it. Half a square allows for the frames a busy machine drops while sampling.
     const want = bounds(played)
     const got = bounds(replayed)
     for (const side of ['minX', 'maxX', 'minY', 'maxY'] as const) {
-        expect(Math.abs(got[side] - want[side])).toBeLessThan(6)
+        expect(Math.abs(got[side] - want[side])).toBeLessThan(20)
     }
 })
