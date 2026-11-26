@@ -53,6 +53,19 @@ const WALL = 3
 const SAME_SIZE_NEST = 0.3
 const TOKEN_RADIUS = 50
 const TOKEN_GAP = 22
+// The token's edge below its face, on screen.
+const TOKEN_THICKNESS = 6
+// Spots tried round a homeworld: this many steps to each side of its right, half a turn in all,
+// and this many steps out of this length where something is in the way.
+const TOKEN_TURNS = 8
+const TOKEN_STEPS = 4
+const TOKEN_STEP = 24
+// On screen, the token keeps this clear of systems, names and the other token.
+const TOKEN_CLEAR = 6
+// A spot further round from the right is taken only for a board this much larger.
+const TOKEN_GAIN = 1.01
+// The most spots round each homeworld tried with the Bank.
+const TOKEN_CHOICES = 3
 const LABEL_ROOM = 26
 const LABEL_HALF_WIDTH = 72
 
@@ -270,9 +283,10 @@ const WIDE_SCREEN = 1.7
 const BANK_TRIES = 24
 
 // The Bank's board as in the box: a column per colour, Large at the back, Small at the front,
-// each size stacked in a tower, each row only as deep as its size. It lies in the far corner on
-// the viewer's homeworld's side, and where the map leaves no room there, moves left or further
-// away, wherever the board then fits the screen it is laid out for the largest.
+// each size stacked in a tower, each row only as deep as its size. It stays in the board's top
+// left corner, with nothing further left or higher: in the map's far corner on the viewer's
+// homeworld's side, and where the map leaves no room there, moved left or further away,
+// wherever the board then fits the screen it is laid out for the largest.
 function bankLayout(
     systems: readonly SystemPlacement[],
     view: BoardView,
@@ -301,37 +315,59 @@ function bankLayout(
                 y: near + BANK_MARGIN + rowAt[row]
             }))
         )
-    // The plate, and every tower standing full, as seen on screen.
-    const shapeOf = (left: number, near: number): Point[] =>
-        hull([
-            ...roundedRect(left, near, width, depth, BANK_CORNER).map((point) =>
-                onTable(view, point.x, point.y)
-            ),
-            ...towersAt(left, near).flatMap((tower) => {
-                const at = onTable(view, tower.x, tower.y)
-                const half = PYRAMID_BASE[tower.size] / 2
-                return [
-                    { x: at.x, y: at.y - towerHeight(tower.size) * view.rise },
-                    { x: at.x - half, y: at.y },
-                    { x: at.x + half, y: at.y }
-                ]
-            })
-        ])
-    const screen = wide ? WIDE_SCREEN : TALL_SCREEN
+    // The plate, and every tower standing full, as seen on screen; the table's projection is
+    // linear, so the shape is found once and moved.
+    const origin = onTable(view, 0, 0)
+    const shapeHere = hull([
+        ...roundedRect(0, 0, width, depth, BANK_CORNER).map((point) =>
+            onTable(view, point.x, point.y)
+        ),
+        ...towersAt(0, 0).flatMap((tower) => {
+            const at = onTable(view, tower.x, tower.y)
+            const half = PYRAMID_BASE[tower.size] / 2
+            return [
+                { x: at.x, y: at.y - towerHeight(tower.size) * view.rise },
+                { x: at.x - half, y: at.y },
+                { x: at.x + half, y: at.y }
+            ]
+        })
+    ])
+    const boxHere = boxOf(shapeHere)
+    const shapeOf = (left: number, near: number): Point[] => {
+        const at = onTable(view, left, near)
+        return shapeHere.map((point) => ({
+            x: point.x + at.x - origin.x,
+            y: point.y + at.y - origin.y
+        }))
+    }
+    const fitOf = fitter(wide)
     const start = { left: map.left, near: systems.length > 0 ? map.far - depth : 0 }
+    const around = boxOf(content)
+    const boxes = shapes.map(boxOf)
     let best = { ...start, fit: -1 }
     for (let across = 0; across < BANK_TRIES; across++) {
         for (let away = 0; away < BANK_TRIES; away++) {
             const left = start.left - across * BANK_STEP
             const near = start.near + away * BANK_STEP
+            const at = onTable(view, left, near)
+            const corner = {
+                left: boxHere.left + at.x - origin.x,
+                right: boxHere.right + at.x - origin.x,
+                near: boxHere.near + at.y - origin.y,
+                far: boxHere.far + at.y - origin.y
+            }
+            if (corner.left > around.left || corner.near > around.near) continue
+            const fit = fitOf([
+                { x: corner.left, y: corner.near },
+                { x: Math.max(corner.right, around.right), y: Math.max(corner.far, around.far) }
+            ])
+            if (fit <= best.fit + 1e-9) continue
             const shape = shapeOf(left, near)
-            if (shapes.some((other) => convexNear(shape, other, BANK_GAP))) continue
-            const extent = boxOf([...content, ...shape])
-            const fit = Math.min(
-                screen / (extent.right - extent.left),
-                1 / (extent.far - extent.near)
+            const blocked = shapes.some(
+                (other, index) =>
+                    boxesNear(corner, boxes[index], BANK_GAP) && convexNear(shape, other, BANK_GAP)
             )
-            if (fit > best.fit + 1e-9) best = { left, near, fit }
+            if (!blocked) best = { left, near, fit }
         }
     }
     return {
@@ -344,6 +380,26 @@ function bankLayout(
             outline: roundedRect(best.left, best.near, width, depth, BANK_CORNER)
         },
         points: shapeOf(best.left, best.near)
+    }
+}
+
+// Whether two boxes come within `gap` of each other.
+function boxesNear(a: Box, b: Box | undefined, gap: number): boolean {
+    if (b === undefined) return false
+    return !(
+        a.right + gap < b.left ||
+        b.right + gap < a.left ||
+        a.far + gap < b.near ||
+        b.far + gap < a.near
+    )
+}
+
+// How large a board holding these screen points is drawn on the screen its map is laid out for.
+function fitter(wide: boolean) {
+    const screen = wide ? WIDE_SCREEN : TALL_SCREEN
+    return (points: readonly Point[]) => {
+        const extent = boxOf(points)
+        return Math.min(screen / (extent.right - extent.left), 1 / (extent.far - extent.near))
     }
 }
 
@@ -428,28 +484,6 @@ export function tableLayout(
         u += halfDepth + ROW_GAP
     }
 
-    // The token rests beside the homeworld of the player whose turn it is, on the map's right,
-    // away from the Bank and clear of the corners where the board's controls are.
-    const homeSpot = (home: SystemPlacement | undefined, side: number, fallback: number) => {
-        const centre = home ?? toTable(axes, fallback, 0)
-        const outward = toTable(axes, 0, side)
-        const reach = home
-            ? Math.max(
-                  ...home.outline.map(
-                      (point) => (point.x - home.x) * outward.x + (point.y - home.y) * outward.y
-                  )
-              )
-            : 0
-        // Further when that side faces the viewer, past the system's name.
-        const pastName = (LABEL_ROOM * Math.max(0, -outward.y * side)) / view.tilt
-        const step = toTable(axes, 0, side * (reach + pastName + TOKEN_GAP + TOKEN_RADIUS))
-        return { x: centre.x + step.x, y: centre.y + step.y }
-    }
-    const nearHome = placed.find((system) => system.homeworldOf === seats.nearId)
-    const farHome = placed.find(
-        (system) => system.homeworldOf !== undefined && system.homeworldOf !== seats.nearId
-    )
-    const tokenSpots = { near: homeSpot(nearHome, 1, 0), far: homeSpot(farHome, 1, u) }
     const screen = (point: Point) => onTable(view, point.x, point.y)
     // Each piece's top as it stands, so the board ends where the pieces do.
     const systemOfTop = placed.flatMap((system) =>
@@ -467,54 +501,123 @@ export function tableLayout(
         })
     ])
     const ground = placed.flatMap((system) => system.outline.map(screen))
-    const tokenPoints = [tokenSpots.near, tokenSpots.far].flatMap((spot) => {
-        const centre = screen(spot)
-        return [
-            { x: centre.x - TOKEN_RADIUS, y: centre.y - TOKEN_RADIUS * view.tilt },
-            { x: centre.x + TOKEN_RADIUS, y: centre.y + TOKEN_RADIUS * view.tilt + 6 }
-        ]
-    })
     // Each system's name, under its ring's nearest point, about this wide either side.
-    const labelPoints = placed.flatMap((system) => {
+    const labelShapes = placed.map((system) => {
         const nearest = system.outline
             .map(screen)
             .reduce((best, point) => (point.y > best.y ? point : best))
         return [
-            { x: nearest.x - LABEL_HALF_WIDTH, y: nearest.y + LABEL_ROOM },
-            { x: nearest.x + LABEL_HALF_WIDTH, y: nearest.y + LABEL_ROOM }
+            { x: nearest.x - LABEL_HALF_WIDTH, y: nearest.y },
+            { x: nearest.x + LABEL_HALF_WIDTH, y: nearest.y },
+            { x: nearest.x + LABEL_HALF_WIDTH, y: nearest.y + LABEL_ROOM },
+            { x: nearest.x - LABEL_HALF_WIDTH, y: nearest.y + LABEL_ROOM }
         ]
     })
-    const content = [...ground, ...tops, ...tokenPoints, ...labelPoints]
-    // What the Bank must keep clear of: each system with its pieces and its name, and the tokens.
-    const shapes = [
-        ...placed.map((system) =>
-            hull([
-                ...system.outline.map(screen),
-                ...tops.filter((_, index) => systemOfTop[index] === system.id)
-            ])
-        ),
-        ...placed.map((system) => {
-            const nearest = system.outline
-                .map(screen)
-                .reduce((best, point) => (point.y > best.y ? point : best))
-            return [
-                { x: nearest.x - LABEL_HALF_WIDTH, y: nearest.y },
-                { x: nearest.x + LABEL_HALF_WIDTH, y: nearest.y },
-                { x: nearest.x + LABEL_HALF_WIDTH, y: nearest.y + LABEL_ROOM },
-                { x: nearest.x - LABEL_HALF_WIDTH, y: nearest.y + LABEL_ROOM }
-            ]
-        }),
-        ...[tokenSpots.near, tokenSpots.far].map((spot) => {
-            const centre = screen(spot)
-            return [
-                { x: centre.x - TOKEN_RADIUS, y: centre.y - TOKEN_RADIUS * view.tilt },
-                { x: centre.x + TOKEN_RADIUS, y: centre.y - TOKEN_RADIUS * view.tilt },
-                { x: centre.x + TOKEN_RADIUS, y: centre.y + TOKEN_RADIUS * view.tilt },
-                { x: centre.x - TOKEN_RADIUS, y: centre.y + TOKEN_RADIUS * view.tilt }
-            ]
-        })
+    const systemShapes = placed.map((system) =>
+        hull([
+            ...system.outline.map(screen),
+            ...tops.filter((_, index) => systemOfTop[index] === system.id)
+        ])
+    )
+    const mapPoints = [...ground, ...tops, ...labelShapes.flat()]
+    const fitOf = fitter(wide)
+    const mapBox = boxOf(mapPoints)
+    const mapCorners = [
+        { x: mapBox.left, y: mapBox.near },
+        { x: mapBox.right, y: mapBox.far }
     ]
-    const { towers, bank, points: bankPoints } = bankLayout(placed, view, wide, content, shapes)
+
+    // The token rests beside the homeworld of the player whose turn it is: to the map's right
+    // where that costs nothing, else wherever round it the board fits the screen the largest.
+    const tokenShape = (spot: Point) => {
+        const centre = screen(spot)
+        const rx = TOKEN_RADIUS
+        const ry = TOKEN_RADIUS * view.tilt
+        return [
+            { x: centre.x - rx, y: centre.y - ry },
+            { x: centre.x + rx, y: centre.y - ry },
+            { x: centre.x + rx, y: centre.y + ry + TOKEN_THICKNESS },
+            { x: centre.x - rx, y: centre.y + ry + TOKEN_THICKNESS }
+        ]
+    }
+    // A few spots round a homeworld worth trying: the first clear one from its right, and those
+    // that make the board the largest.
+    const homeSpots = (home: SystemPlacement | undefined, taken: Point[][]): Point[] => {
+        if (home === undefined) return []
+        const others = [...systemShapes, ...labelShapes, ...taken]
+        const otherBoxes = others.map(boxOf)
+        const takenPoints = taken.flat()
+        const found: { spot: Point; fit: number }[] = []
+        // Turning ever further from the right, either way, and stepping out.
+        for (let turn = 0; turn <= TOKEN_TURNS; turn++) {
+            for (const sign of turn === 0 || turn === TOKEN_TURNS ? [1] : [1, -1]) {
+                const angle = (sign * turn * Math.PI) / TOKEN_TURNS
+                const outward = toTable(axes, Math.sin(angle), Math.cos(angle))
+                const reach = Math.max(
+                    ...home.outline.map(
+                        (point) => (point.x - home.x) * outward.x + (point.y - home.y) * outward.y
+                    )
+                )
+                for (let out = 0; out < TOKEN_STEPS; out++) {
+                    const distance = reach + TOKEN_GAP + TOKEN_RADIUS + out * TOKEN_STEP
+                    const spot = {
+                        x: home.x + outward.x * distance,
+                        y: home.y + outward.y * distance
+                    }
+                    const shape = tokenShape(spot)
+                    const box = boxOf(shape)
+                    const blocked = others.some(
+                        (other, index) =>
+                            boxesNear(box, otherBoxes[index], TOKEN_CLEAR) &&
+                            convexNear(shape, other, TOKEN_CLEAR)
+                    )
+                    if (blocked) continue
+                    found.push({ spot, fit: fitOf([...mapCorners, ...takenPoints, ...shape]) })
+                    break
+                }
+            }
+        }
+        const [first, ...rest] = found
+        if (first === undefined) return []
+        // The stable sort keeps the spots nearest the right first among equals.
+        const larger = rest
+            .filter((spot) => spot.fit > first.fit * TOKEN_GAIN)
+            .toSorted((x, y) => y.fit - x.fit)
+        return [first, ...larger.slice(0, TOKEN_CHOICES - 1)].map(({ spot }) => spot)
+    }
+    const nearHome = placed.find((system) => system.homeworldOf === seats.nearId)
+    const farHome = placed.find(
+        (system) => system.homeworldOf !== undefined && system.homeworldOf !== seats.nearId
+    )
+    // The Bank is laid out with each pair of spots, and the pair that leaves the board largest
+    // kept, the first tried among equals.
+    let best:
+        | {
+              fit: number
+              tokenSpots: TableLayout['tokenSpots']
+              content: Point[]
+              bank: ReturnType<typeof bankLayout>
+          }
+        | undefined
+    const nearSpots = homeSpots(nearHome, [])
+    for (const near of nearSpots.length > 0 ? nearSpots : [toTable(axes, 0, 0)]) {
+        const farSpots = homeSpots(farHome, [tokenShape(near)])
+        for (const far of farSpots.length > 0 ? farSpots : [toTable(axes, u, 0)]) {
+            const tokenShapes = [tokenShape(near), tokenShape(far)]
+            const content = [...mapPoints, ...tokenShapes.flat()]
+            // What the Bank must keep clear of: each system with its pieces and its name, and
+            // the tokens.
+            const shapes = [...systemShapes, ...labelShapes, ...tokenShapes]
+            const bank = bankLayout(placed, view, wide, content, shapes)
+            const fit = fitOf([...content, ...bank.points])
+            if (best === undefined || fit > best.fit + 1e-9) {
+                best = { fit, tokenSpots: { near, far }, content, bank }
+            }
+        }
+    }
+    if (best === undefined) throw Error('A token spot is always tried')
+    const { tokenSpots, content } = best
+    const { towers, bank, points: bankPoints } = best.bank
     const all = [...content, ...bankPoints]
     const margin = 14
     const minX = Math.min(...all.map((point) => point.x)) - margin

@@ -34,8 +34,14 @@ export function convexNear(a: readonly Point[], b: readonly Point[], gap: number
             if (length === 0) continue
             const axis = { x: (from.y - to.y) / length, y: (to.x - from.x) / length }
             const span = (points: readonly Point[]) => {
-                const along = points.map((point) => point.x * axis.x + point.y * axis.y)
-                return { low: Math.min(...along), high: Math.max(...along) }
+                let low = Infinity
+                let high = -Infinity
+                for (const point of points) {
+                    const along = point.x * axis.x + point.y * axis.y
+                    low = Math.min(low, along)
+                    high = Math.max(high, along)
+                }
+                return { low, high }
             }
             const first = span(a)
             const second = span(b)
