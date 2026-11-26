@@ -113,13 +113,25 @@ export class HomeworldsGameSession extends GameSession<
         this.preferences.set({ wideMap: !this.wideMap })
     }
 
-    // The viewer's homeworld is nearest them; a spectator sits on the first player's side.
-    nearId: string | undefined = $derived(
-        this.myPlayer?.id ?? this.gameState.turnManager.turnOrder[0]
+    // The table seen from the other player's side, half a turn round.
+    turned: boolean = $derived(this.preferences.values.turned)
+
+    toggleTurned() {
+        this.moveInterrupter?.interrupt()
+        this.preferences.set({ turned: !this.turned })
+    }
+
+    // The side the viewer sits on, which never changes with the turn: their own seat, or the
+    // first player's for a spectator and in hotseat, where the seat on the clock changes hands.
+    private homeId: string | undefined = $derived(
+        (this.primaryGame.hotseat ? undefined : this.myPrimaryPlayer?.id) ??
+            this.gameState.turnManager.turnOrder[0]
     )
-    farId: string | undefined = $derived(
-        this.gameState.players.find((player) => player.playerId !== this.nearId)?.playerId
+    private awayId: string | undefined = $derived(
+        this.gameState.players.find((player) => player.playerId !== this.homeId)?.playerId
     )
+    nearId: string | undefined = $derived(this.turned ? this.awayId : this.homeId)
+    farId: string | undefined = $derived(this.turned ? this.homeId : this.awayId)
 
     // The map as shown: the homeworld being built stands at home before it is committed.
     private shownSystems: StarSystem[] = $derived.by(() => {

@@ -109,6 +109,28 @@
                         <div
                             class="pointer-events-auto absolute right-0 bottom-11 z-10 flex items-center gap-1.5"
                         >
+                            <!-- Half a turn round, to sit on the other player's side. -->
+                            <OverlayToggle
+                                label="Far side"
+                                pressed={gameSession.turned}
+                                onToggle={() => gameSession.toggleTurned()}
+                            >
+                                <svg
+                                    viewBox="-8 -8 16 16"
+                                    width="16"
+                                    height="16"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    stroke-width="1.4"
+                                    stroke-linecap="round"
+                                    stroke-linejoin="round"
+                                    aria-hidden="true"
+                                >
+                                    <path
+                                        d="M -5.5 -1 A 5.5 5.5 0 0 1 4.5 -3.2 M 2 -5 L 4.8 -3 L 2.2 -0.8 M 5.5 1 A 5.5 5.5 0 0 1 -4.5 3.2 M -2 5 L -4.8 3 L -2.2 0.8"
+                                    ></path>
+                                </svg>
+                            </OverlayToggle>
                             <OverlayToggle
                                 label="Wide map"
                                 pressed={gameSession.wideMap}

@@ -4,7 +4,8 @@ import type { TitlePreferenceDefinition } from '@tabletop/common'
 export const HomeworldsPreferences = Type.Object(
     {
         flatBoard: Type.Boolean(),
-        wideMap: Type.Boolean()
+        wideMap: Type.Boolean(),
+        turned: Type.Boolean()
     },
     { additionalProperties: false }
 )
@@ -14,7 +15,8 @@ export const HomeworldsPreferenceDefinition = {
         schema: HomeworldsPreferences,
         defaults: {
             flatBoard: false,
-            wideMap: false
+            wideMap: false,
+            turned: false
         },
         version: 1
     }
