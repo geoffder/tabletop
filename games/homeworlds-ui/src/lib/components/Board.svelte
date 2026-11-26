@@ -3,7 +3,8 @@
     import { getGameSession } from '$lib/model/sessionContext.svelte.js'
     import { towerKey } from '$lib/model/session.svelte.js'
     import { onTable } from '$lib/board/view.js'
-    import { drawPyramid, PYRAMID_BASE, shipFootprint } from '$lib/board/pyramid.js'
+    import { starName } from '$lib/board/starNames.js'
+    import { drawPyramid, PYRAMID_BASE, slantHeight } from '$lib/board/pyramid.js'
     import { type SystemPlacement, TURN_TOKEN_RADIUS } from '$lib/board/layout.js'
     import Pyramid from './Pyramid.svelte'
     import { BoardAnimator } from '$lib/animators/boardAnimator.svelte.js'
@@ -88,12 +89,25 @@
 
     const selectable = $derived(session.shipPowers)
 
-    // The ground ring round a lying ship.
-    function shipRing(piece: number) {
+    // The ring on the table round a lying ship, long along its heading.
+    function shipRing(piece: number): string | undefined {
         const ship = shipsById.get(piece)
         if (!ship) return undefined
-        const { across, deep } = shipFootprint(pieceSize(piece), ship.heading)
-        return { x: ship.x, y: ship.y, rx: across / 2 + 5, ry: (deep / 2 + 5) * view.tilt }
+        const size = pieceSize(piece)
+        const long = slantHeight(size) / 2 + 6
+        const wide = PYRAMID_BASE[size] / 2 + 6
+        const along = { x: Math.sin(ship.heading), y: Math.cos(ship.heading) }
+        return Array.from({ length: 28 }, (_, step) => {
+            const turn = (step / 28) * Math.PI * 2
+            const a = Math.cos(turn) * long
+            const b = Math.sin(turn) * wide
+            const point = onTable(
+                view,
+                ship.x + a * along.x + b * along.y,
+                ship.y + a * along.y - b * along.x
+            )
+            return `${point.x},${point.y}`
+        }).join(' ')
     }
 
     function towerRing(kind: PieceKind) {
@@ -115,13 +129,25 @@
         return { x: system.x, y: system.y, rx: half, ry: half * view.tilt }
     }
 
-    function systemArea(system: SystemPlacement) {
-        return {
-            x: system.x,
-            y: system.y,
-            rx: system.halfWidth + 6,
-            ry: (system.halfDepth + 10) * view.tilt
-        }
+    function outlinePoints(system: SystemPlacement): string {
+        return system.outline
+            .map((point) => onTable(view, point.x, point.y))
+            .map((point) => `${point.x},${point.y}`)
+            .join(' ')
+    }
+
+    // A system's name stands on the table just in front of its ring.
+    function labelSpot(system: SystemPlacement) {
+        const points = system.outline.map((point) => onTable(view, point.x, point.y))
+        const nearest = points.reduce((best, point) => (point.y > best.y ? point : best))
+        return { x: nearest.x, y: nearest.y + 15 }
+    }
+
+    function systemName(system: SystemPlacement): string {
+        if (system.homeworldOf === undefined) return starName(system.id)
+        return system.homeworldOf === session.myPlayer?.id
+            ? 'Your homeworld'
+            : `${session.getPlayerName(system.homeworldOf)}'s homeworld`
     }
 
     const catastrophes = $derived(
@@ -170,6 +196,36 @@
         ]
     })
 </script>
+
+{#snippet token()}
+    <g
+        class="token"
+        class:live={session.canEndTurn}
+        transform={at(tokenSpot.x, tokenSpot.y)}
+        role="button"
+        aria-disabled={!session.canEndTurn}
+        tabindex={session.canEndTurn ? 0 : -1}
+        aria-label={session.canEndTurn ? 'End your turn' : 'Turn token'}
+        onclick={() => session.endTurn()}
+        onkeydown={(event) => onKey(event, () => session.endTurn())}
+    >
+        <g {@attach animator.tokenNode}>
+            {#if session.canEndTurn}
+                <ellipse
+                    class="mark target"
+                    rx={TURN_TOKEN_RADIUS + 8}
+                    ry={(TURN_TOKEN_RADIUS + 8) * view.tilt}
+                ></ellipse>
+            {/if}
+            <TurnToken
+                radius={TURN_TOKEN_RADIUS}
+                {view}
+                facingFar={animator.tokenFacing === 'far'}
+                uid="{uid}-token"
+            />
+        </g>
+    </g>
+{/snippet}
 
 <div class="tap-off" role="presentation" onclick={tapOff}>
     <svg
@@ -220,6 +276,27 @@
             {/each}
         </g>
 
+        <!-- Each system ringed on the table, its name in front. -->
+        <g class="systems">
+            {#each layout.systems as system (system.id)}
+                <polygon
+                    class="ring"
+                    class:home={system.homeworldOf !== undefined}
+                    class:open={session.moveTargets.has(system.id)}
+                    points={outlinePoints(system)}
+                ></polygon>
+                {@const label = labelSpot(system)}
+                <text
+                    class="label"
+                    x={label.x}
+                    y={label.y}
+                    dy="4.2"
+                    text-anchor="middle"
+                    font-size="12">{systemName(system)}</text
+                >
+            {/each}
+        </g>
+
         <!-- Wormholes between connected systems, brightest where the chosen ship can go. -->
         <g class="lanes">
             {#each lanes as lane (lane.key)}
@@ -259,30 +336,19 @@
             {#each [...selectable.keys()] as piece (piece)}
                 {@const ring = shipRing(piece)}
                 {#if ring}
-                    {@const centre = onTable(view, ring.x, ring.y)}
-                    <ellipse
+                    <polygon
                         class="mark ship"
                         class:chosen={session.selectedShip === piece}
                         class:faded={session.selectedShip !== undefined &&
                             session.selectedShip !== piece}
-                        cx={centre.x}
-                        cy={centre.y}
-                        rx={ring.rx}
-                        ry={ring.ry}
-                    ></ellipse>
+                        points={ring}
+                    ></polygon>
                 {/if}
             {/each}
             {#each [...session.captureTargets] as piece (piece)}
                 {@const ring = shipRing(piece)}
                 {#if ring}
-                    {@const centre = onTable(view, ring.x, ring.y)}
-                    <ellipse
-                        class="mark capture"
-                        cx={centre.x}
-                        cy={centre.y}
-                        rx={ring.rx}
-                        ry={ring.ry}
-                    ></ellipse>
+                    <polygon class="mark capture" points={ring}></polygon>
                 {/if}
             {/each}
             {#each [...session.towerTargets.keys()] as key (key)}
@@ -304,33 +370,9 @@
         </g>
 
         <!-- The turn token, on the side of the player whose turn it is. -->
-        <g
-            class="token"
-            class:live={session.canEndTurn}
-            transform={at(tokenSpot.x, tokenSpot.y)}
-            role="button"
-            aria-disabled={!session.canEndTurn}
-            tabindex={session.canEndTurn ? 0 : -1}
-            aria-label={session.canEndTurn ? 'End your turn' : 'Turn token'}
-            onclick={() => session.endTurn()}
-            onkeydown={(event) => onKey(event, () => session.endTurn())}
-        >
-            <g {@attach animator.tokenNode}>
-                {#if session.canEndTurn}
-                    <ellipse
-                        class="mark target"
-                        rx={TURN_TOKEN_RADIUS + 8}
-                        ry={(TURN_TOKEN_RADIUS + 8) * view.tilt}
-                    ></ellipse>
-                {/if}
-                <TurnToken
-                    radius={TURN_TOKEN_RADIUS}
-                    {view}
-                    facingFar={animator.tokenSide === 'far'}
-                    uid="{uid}-token"
-                />
-            </g>
-        </g>
+        {#if !animator.tokenFlying}
+            {@render token()}
+        {/if}
 
         <!-- The pieces. -->
         {#each pieces as drawn (drawn.piece)}
@@ -341,24 +383,24 @@
             </g>
         {/each}
 
+        <!-- Carried across to the other side, the token passes over everything. -->
+        {#if animator.tokenFlying}
+            {@render token()}
+        {/if}
+
         <!-- Hit areas over the pieces, nearest last so it takes the overlap. -->
         <g class="hits">
             {#each layout.systems as system (system.id)}
                 {#if session.moveTargets.has(system.id)}
-                    {@const ring = systemArea(system)}
-                    {@const centre = onTable(view, ring.x, ring.y)}
-                    <ellipse
+                    <polygon
                         class="hit"
-                        cx={centre.x}
-                        cy={centre.y}
-                        rx={ring.rx}
-                        ry={ring.ry + 30}
+                        points={outlinePoints(system)}
                         role="button"
                         tabindex="0"
                         aria-label="Move to system {system.id}"
                         onclick={() => session.moveTo(system.id)}
                         onkeydown={(event) => onKey(event, () => session.moveTo(system.id))}
-                    ></ellipse>
+                    ></polygon>
                 {/if}
             {/each}
             {#each pieces as drawn (drawn.piece)}
@@ -457,6 +499,31 @@
 
     .hw-board {
         overflow: visible;
+    }
+
+    .ring {
+        fill: rgb(120 140 255 / 0.05);
+        stroke: rgb(170 185 255 / 0.32);
+        stroke-width: 1.2;
+        transition: stroke 0.2s;
+    }
+
+    .ring.home {
+        stroke: rgb(236 230 211 / 0.5);
+        stroke-width: 1.6;
+    }
+
+    .ring.open {
+        stroke: var(--hw-mark);
+    }
+
+    .label {
+        fill: var(--hw-table-ink);
+        fill-opacity: 0.8;
+        letter-spacing: 1.2px;
+        text-transform: uppercase;
+        font-weight: 600;
+        pointer-events: none;
     }
 
     .lane {

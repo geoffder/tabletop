@@ -165,26 +165,20 @@ function round(value: number): number {
 }
 
 // The pip count of each size, in a row near the base of every face.
-function pipsOn(
-    view: BoardView,
-    size: PyramidSize,
-    from: Vec3,
-    to: Vec3,
-    apex: Vec3,
-    lift: number
-): Pip[] {
+function pipsOn(view: BoardView, size: PyramidSize, from: Vec3, to: Vec3, apex: Vec3): Pip[] {
+    const length = Math.hypot(...sub(to, from))
     const along = normalize(sub(to, from))
     const middle = scale(add(from, to), 0.5)
     const up = normalize(sub(apex, middle))
     const normal = cross(along, up)
-    const radius = PYRAMID_BASE[size] * 0.045
-    const spacing = PYRAMID_BASE[size] * 0.16
-    const raise = PYRAMID_BASE[size] * 0.16 + lift
-    const count = size
-    return Array.from({ length: count }, (_, index) => {
-        const offset = (index - (count - 1) / 2) * spacing
+    const base = PYRAMID_BASE[size]
+    const radius = base * 0.042
+    const spacing = base * 0.12
+    // Moulded in a row along the base, off towards one corner of each face, as on the pieces.
+    const first = length * 0.82 - spacing * (size - 1)
+    return Array.from({ length: size }, (_, index) => {
         const centre = add(
-            add(add(middle, scale(along, offset)), scale(up, raise - lift)),
+            add(add(from, scale(along, first + index * spacing)), scale(up, base * 0.1)),
             scale(normal, 0.4)
         )
         const c = project(view, centre)
@@ -254,10 +248,9 @@ export function drawPyramid(
         })),
         ...sides.map((side) => ({ d: line(side.from, side.to), facing: side.facing }))
     ].toSorted((a, b) => Number(a.facing) - Number(b.facing))
-    const lift = pose.kind === 'star' ? pose.lift : 0
     const pips = sides
         .filter((side) => side.facing)
-        .flatMap((side) => pipsOn(view, size, side.from, side.to, apex, lift))
+        .flatMap((side) => pipsOn(view, size, side.from, side.to, apex))
     let baseNormal = normalize(cross(sub(base[1], base[0]), sub(base[3], base[0])))
     if (dot(baseNormal, sub(apex, centre)) > 0) baseNormal = scale(baseNormal, -1)
     const mouthFacing = dot(baseNormal, view.toViewer) > 0.05

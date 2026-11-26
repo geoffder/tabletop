@@ -105,6 +105,14 @@ export class HomeworldsGameSession extends GameSession<
 
     view: BoardView = $derived(boardView(this.flatBoard))
 
+    // The map turned a quarter: homeworlds in the lower right and upper left corners.
+    turnedBoard: boolean = $derived(this.preferences.values.turnedBoard)
+
+    toggleTurnedBoard() {
+        this.moveInterrupter?.interrupt()
+        this.preferences.set({ turnedBoard: !this.turnedBoard })
+    }
+
     // The viewer's homeworld is nearest them; a spectator sits on the first player's side.
     nearId: string | undefined = $derived(
         this.myPlayer?.id ?? this.gameState.turnManager.turnOrder[0]
@@ -129,7 +137,12 @@ export class HomeworldsGameSession extends GameSession<
     })
 
     layout: TableLayout = $derived(
-        tableLayout(this.shownSystems, { nearId: this.nearId, farId: this.farId }, this.view)
+        tableLayout(
+            this.shownSystems,
+            { nearId: this.nearId, farId: this.farId },
+            this.view,
+            this.turnedBoard
+        )
     )
 
     // The selection is the player's who made it: in hotseat the other player never inherits it.

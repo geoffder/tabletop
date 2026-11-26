@@ -110,6 +110,28 @@
                             class="pointer-events-auto absolute right-3 bottom-2 z-10 flex items-center gap-1.5"
                         >
                             <OverlayToggle
+                                label="Turn the map"
+                                pressed={gameSession.turnedBoard}
+                                onToggle={() => gameSession.toggleTurnedBoard()}
+                            >
+                                <!-- A quarter turn, as an arrow round a corner. -->
+                                <svg
+                                    viewBox="0 0 16 16"
+                                    width="16"
+                                    height="16"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    stroke-width="1.4"
+                                    stroke-linecap="round"
+                                    stroke-linejoin="round"
+                                    aria-hidden="true"
+                                >
+                                    <path
+                                        d="M3 9 A5.5 5.5 0 1 0 8 3.5 M8 3.5 L5.6 1.6 M8 3.5 L5.8 5.8"
+                                    ></path>
+                                </svg>
+                            </OverlayToggle>
+                            <OverlayToggle
                                 label="Top-down view"
                                 pressed={gameSession.flatBoard}
                                 onToggle={() => gameSession.toggleFlatBoard()}

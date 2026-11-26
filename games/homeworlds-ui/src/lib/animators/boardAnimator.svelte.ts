@@ -27,7 +27,8 @@ const ANIMATED_KINDS: ReadonlySet<TransitionKind> = new Set<TransitionKind>([
 // one that only shifts with the map glides. A step without an action ends within QUICK.
 const FLIGHT = { least: 0.36, most: 0.6, perUnit: 1 / 1600, arc: 0.3, highest: 120, lowest: 26 }
 const GLIDE = 0.34
-const TOKEN_SLIDE = 0.42
+const TOKEN_SLIDE = 0.5
+const TOKEN_LIFT = 46
 const QUICK = 0.18
 const QUICK_ARC = 12
 // The motion waits for the board to draw what it moves, but never longer than this.
@@ -51,6 +52,11 @@ export class BoardAnimator implements MoveInterrupter {
         return new Set<number>()
     })
     tokenSide: TokenSide = $derived.by(() => this.sideOf(this.session.gameState))
+    // While carried to the other side, the token is drawn over the pieces.
+    tokenFlying: boolean = $derived.by(() => {
+        void this.session.gameState
+        return false
+    })
     tokenFacing: TokenSide = $derived.by(() => this.sideOf(this.session.gameState))
 
     private readonly parts = new Map<number, Parts>()
@@ -137,12 +143,16 @@ export class BoardAnimator implements MoveInterrupter {
         const view = this.session.view
         const seats = { nearId: this.session.nearId, farId: this.session.farId }
 
-        const toLayout = tableLayout(to.starMap.systems, seats, view)
+        const turned = this.session.turnedBoard
+        const toLayout = tableLayout(to.starMap.systems, seats, view, turned)
         // Your own move starts from the table as you saw it, with any homeworld you were building.
         const before =
             kind === 'own-action'
                 ? this.pieces
-                : drawnPieces(tableLayout(from.starMap.systems, seats, view), from.starMap.bank())
+                : drawnPieces(
+                      tableLayout(from.starMap.systems, seats, view, turned),
+                      from.starMap.bank()
+                  )
         const after = drawnPieces(toLayout, to.starMap.bank())
         const fromSide = this.sideOf(from)
         const toSide = this.sideOf(to)
@@ -158,6 +168,7 @@ export class BoardAnimator implements MoveInterrupter {
         this.flying = new Set(relocated.map(({ landing }) => landing.piece))
         this.tokenSide = fromSide
         this.tokenFacing = fromSide
+        this.tokenFlying = fromSide !== toSide
         const drawing = performance.now()
         await tick()
 
@@ -176,6 +187,7 @@ export class BoardAnimator implements MoveInterrupter {
             this.flying = new Set()
             this.tokenSide = toSide
             this.tokenFacing = toSide
+            this.tokenFlying = false
         }
         this.landMove = land
 
@@ -197,8 +209,9 @@ export class BoardAnimator implements MoveInterrupter {
             )
             const b = onTable(view, toLayout.tokenSpots[toSide].x, toLayout.tokenSpots[toSide].y)
             const slide = quick ? QUICK : TOKEN_SLIDE
+            const lift = quick ? QUICK_ARC : TOKEN_LIFT
             const motion = this.motion((u) =>
-                setPose(token, { x: (b.x - a.x) * u, y: (b.y - a.y) * u })
+                setPose(token, { x: (b.x - a.x) * u, y: (b.y - a.y) * u - lift * 4 * u * (1 - u) })
             )
             timeline.to(motion, { u: 1, duration: slide, ease: 'power2.inOut' }, 0)
             timeline.call(() => (this.tokenFacing = toSide), undefined, slide / 2)

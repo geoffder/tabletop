@@ -48,6 +48,15 @@
             fill="none"
         ></path>
     {/each}
+    <!-- The piece's silhouette, so stacked and touching pyramids read apart. -->
+    <polygon
+        points={drawing.outline}
+        fill="none"
+        stroke={deep}
+        stroke-width="1.5"
+        stroke-opacity="0.95"
+        stroke-linejoin="round"
+    ></polygon>
     {#each drawing.pips as pip, index (index)}
         <circle r="1" transform={pip.transform} fill={deep} fill-opacity="0.75"></circle>
     {/each}
