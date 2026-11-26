@@ -54,7 +54,6 @@ const TOKEN_RADIUS = 50
 const TOKEN_GAP = 22
 const LABEL_ROOM = 26
 const LABEL_HALF_WIDTH = 72
-const CONTROLS_ROOM = 40
 
 export const TURN_TOKEN_RADIUS = TOKEN_RADIUS
 
@@ -267,17 +266,19 @@ function boxOf(points: readonly Point[]): Box {
 
 // The Bank's board as in the box: a column per colour, Large at the back, Small at the front,
 // each size stacked in a tower.
-function bankLayout(systems: readonly SystemPlacement[], view: BoardView) {
+function bankLayout(systems: readonly SystemPlacement[], view: BoardView, wide: boolean) {
     const sizes = [PyramidSize.Small, PyramidSize.Medium, PyramidSize.Large]
     const width = PYRAMID_COLORS.length * BANK_CELL + BANK_MARGIN * 2
     const depth = sizes.length * BANK_CELL + BANK_MARGIN * 2
     const map = boxOf(systems.flatMap((system) => system.outline))
-    // In the far corner on the viewer's homeworld's side, which the map leaves free, moved further
-    // away until neither its towers nor the pieces in front of it stand over the other.
-    const left = map.left
-    let near = systems.length > 0 ? map.far - depth : 0
+    // In the far corner on the viewer's homeworld's side, which the map leaves free. If it does
+    // not fit there it moves the way the screen has room to spare: further left beside a tall
+    // map, further away above a wide one, so the map keeps its size where the screen is tight.
     const reach = (height: number) => (height * view.rise) / view.tilt
     const towerReach = reach(TALLEST + PYRAMID_HEIGHT[PyramidSize.Large] * 0.6)
+    // Its towers' tops level with the tallest the map can hold, so they add no height.
+    let left = map.left
+    let near = systems.length > 0 ? map.far - depth - (towerReach - reach(TALLEST)) : 0
     const clear = (box: Box) =>
         systems.every((system) => {
             const ring = boxOf(system.outline)
@@ -288,7 +289,8 @@ function bankLayout(systems: readonly SystemPlacement[], view: BoardView) {
             })
         })
     while (!clear({ left, right: left + width, near, far: near + depth + towerReach })) {
-        near += BANK_STEP
+        if (wide) near += BANK_STEP
+        else left -= BANK_STEP
     }
     const towers: TowerPlacement[] = PYRAMID_COLORS.flatMap((color, column) =>
         sizes.map((size, row) => ({
@@ -383,7 +385,7 @@ export function tableLayout(
         (system) => system.homeworldOf !== undefined && system.homeworldOf !== seats.nearId
     )
     const tokenSpots = { near: homeSpot(nearHome, 1, 0), far: homeSpot(farHome, 1, u) }
-    const { towers, bank } = bankLayout(placed, view)
+    const { towers, bank } = bankLayout(placed, view, wide)
 
     const screen = (point: Point) => onTable(view, point.x, point.y)
     const raised = placed.flatMap((system) =>
@@ -426,8 +428,7 @@ export function tableLayout(
     const minX = Math.min(...all.map((point) => point.x)) - margin
     const maxX = Math.max(...all.map((point) => point.x)) + margin
     const minY = Math.min(...all.map((point) => point.y)) - margin
-    // Room below for the zoom buttons and toggles, which lie over the board's bottom corners.
-    const maxY = Math.max(...all.map((point) => point.y)) + margin + CONTROLS_ROOM
+    const maxY = Math.max(...all.map((point) => point.y)) + margin
     return {
         systems: placed,
         towers,
