@@ -98,7 +98,7 @@
             <div class="grow-0 overflow-hidden pt-2" style="flex:1; min-height: 40dvh;">
                 <ScalingWrapper
                     justify="center"
-                    controls="bottom-left"
+                    controls="bottom-right"
                     maxScale={3}
                     maxFitScale={2}
                     renderAtViewScale
@@ -107,7 +107,7 @@
                     <Board />
                     {#snippet overlay()}
                         <div
-                            class="pointer-events-auto absolute right-3 bottom-2 z-10 flex items-center gap-1.5"
+                            class="pointer-events-auto absolute right-0 bottom-11 z-10 flex items-center gap-1.5"
                         >
                             <OverlayToggle
                                 label="Wide map"
