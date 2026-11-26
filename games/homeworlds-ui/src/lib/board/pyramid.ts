@@ -1,5 +1,6 @@
 import { PyramidColor, PyramidSize } from '@tabletop/homeworlds'
 import type { Point } from '@tabletop/common'
+import { hull } from './hull.js'
 import {
     add,
     type BoardView,
@@ -192,29 +193,6 @@ function pipsOn(view: BoardView, size: PyramidSize, from: Vec3, to: Vec3, apex: 
             transform: `matrix(${round(a.x - c.x)} ${round(a.y - c.y)} ${round(b.x - c.x)} ${round(b.y - c.y)} ${round(c.x)} ${round(c.y)})`
         }
     })
-}
-
-// The convex hull, by Andrew's monotone chain.
-function hull(points: readonly Point[]): Point[] {
-    const sorted = [...points].sort((a, b) => a.x - b.x || a.y - b.y)
-    const turnsLeft = (o: Point, a: Point, b: Point) =>
-        (a.x - o.x) * (b.y - o.y) - (a.y - o.y) * (b.x - o.x) > 0
-    const chain = (list: Point[]) => {
-        const result: Point[] = []
-        for (const point of list) {
-            for (
-                let last = result.at(-1), before = result.at(-2);
-                last && before && !turnsLeft(before, last, point);
-                last = result.at(-1), before = result.at(-2)
-            ) {
-                result.pop()
-            }
-            result.push(point)
-        }
-        result.pop()
-        return result
-    }
-    return [...chain(sorted), ...chain(sorted.toReversed())]
 }
 
 // The plastic is thick: about a tenth of the base, so edges and the base's rim show as bands.

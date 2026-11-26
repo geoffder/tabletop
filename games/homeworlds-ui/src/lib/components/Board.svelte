@@ -180,21 +180,16 @@
         session.letGo()
     }
 
+    // Kept off the rounded corners.
     const BANK_SPECKS = Array.from({ length: 70 }, (_, index) => ({
-        u: ((index * 7919) % 997) / 997,
-        v: ((index * 104729) % 991) / 991,
+        u: 0.1 + (((index * 7919) % 997) / 997) * 0.8,
+        v: 0.1 + (((index * 104729) % 991) / 991) * 0.8,
         r: 0.5 + ((index * 31) % 5) * 0.22
     }))
 
-    const bankCorners = $derived.by(() => {
-        const { x, y, width, depth } = layout.bank
-        return [
-            onTable(view, x, y),
-            onTable(view, x + width, y),
-            onTable(view, x + width, y + depth),
-            onTable(view, x, y + depth)
-        ]
-    })
+    const bankCorners = $derived(
+        layout.bank.outline.map((point) => onTable(view, point.x, point.y))
+    )
 </script>
 
 {#snippet token()}
