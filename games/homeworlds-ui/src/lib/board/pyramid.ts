@@ -134,8 +134,10 @@ function faceColor(color: PyramidColor, normal: Vec3): string {
         : css(mix(plastic.deep, plastic.body, light / 0.55))
 }
 
-export function plasticColor(color: PyramidColor, tone: 'body' | 'deep' | 'lit'): string {
-    return css(PLASTIC[color][tone])
+// The lit tone washed nearly white, for the pips.
+export function plasticColor(color: PyramidColor, tone: 'body' | 'deep' | 'lit' | 'pale'): string {
+    const plastic = PLASTIC[color]
+    return css(tone === 'pale' ? mix(plastic.lit, [255, 255, 255], 0.6) : plastic[tone])
 }
 
 export type Face = { points: string; fill: string; facing: boolean }
@@ -169,6 +171,28 @@ function round(value: number): number {
     return Math.round(value * 100) / 100
 }
 
+const PIP_LEAST_ROUNDNESS = 0.6
+// Faces turned further from the viewer than this show no pips, unless no face is turned nearer.
+const PIP_LEAST_FACING = 0.3
+
+// A unit circle mapped by the columns (ax, ay) and (bx, by), as an ellipse no flatter than
+// PIP_LEAST_ROUNDNESS: a face seen slantwise squashes its dots to dashes, which no longer read
+// as dots. The ellipse's axes come from the mapping's singular values.
+function roundedDot(ax: number, ay: number, bx: number, by: number, at: Point): string {
+    const e = (ax + by) / 2
+    const f = (ax - by) / 2
+    const g = (ay + bx) / 2
+    const h = (ay - bx) / 2
+    const q = Math.hypot(e, h)
+    const r = Math.hypot(f, g)
+    const major = q + r
+    const minor = Math.max(Math.abs(q - r), major * PIP_LEAST_ROUNDNESS)
+    const angle = (Math.atan2(g, f) + Math.atan2(h, e)) / 2
+    const cos = Math.cos(angle)
+    const sin = Math.sin(angle)
+    return `matrix(${round(cos * major)} ${round(sin * major)} ${round(-sin * minor)} ${round(cos * minor)} ${round(at.x)} ${round(at.y)})`
+}
+
 // The pip count of each size, in a row near the base of every face.
 function pipsOn(view: BoardView, size: PyramidSize, from: Vec3, to: Vec3, apex: Vec3): Pip[] {
     const length = Math.hypot(...sub(to, from))
@@ -177,21 +201,21 @@ function pipsOn(view: BoardView, size: PyramidSize, from: Vec3, to: Vec3, apex: 
     const up = normalize(sub(apex, middle))
     const normal = cross(along, up)
     const base = PYRAMID_BASE[size]
-    const radius = base * 0.042
-    const spacing = base * 0.12
-    // Moulded in a row along the base, off towards one corner of each face, as on the pieces.
-    const first = length * 0.82 - spacing * (size - 1)
+    // Larger than the moulded dots, and clear of the thick rim along the base, to read at a
+    // glance on a lying ship as on a star.
+    const radius = base * 0.072
+    const spacing = base * 0.185
+    // In a row along the base, off towards one corner of each face, as on the pieces.
+    const first = length * 0.76 - spacing * (size - 1)
     return Array.from({ length: size }, (_, index) => {
         const centre = add(
-            add(add(from, scale(along, first + index * spacing)), scale(up, base * 0.1)),
+            add(add(from, scale(along, first + index * spacing)), scale(up, base * 0.22)),
             scale(normal, 0.4)
         )
         const c = project(view, centre)
         const a = project(view, add(centre, scale(along, radius)))
         const b = project(view, add(centre, scale(up, radius)))
-        return {
-            transform: `matrix(${round(a.x - c.x)} ${round(a.y - c.y)} ${round(b.x - c.x)} ${round(b.y - c.y)} ${round(c.x)} ${round(c.y)})`
-        }
+        return { transform: roundedDot(a.x - c.x, a.y - c.y, b.x - c.x, b.y - c.y, c) }
     })
 }
 
@@ -253,8 +277,16 @@ export function drawPyramid(
         })),
         ...sides.map((side) => ({ d: line(side.from, side.to), facing: side.facing }))
     ].toSorted((a, b) => Number(a.facing) - Number(b.facing))
+    // Pips on the faces turned well towards the viewer: one seen nearly edge on would only
+    // smear them along its edge.
+    const toViewer = normalize(view.toViewer)
+    const facingBy = sides.map((side) => dot(side.normal, toViewer))
+    const most = Math.max(...facingBy)
     const pips = sides
-        .filter((side) => side.facing)
+        .filter((_, index) => {
+            const facing = facingBy[index] ?? 0
+            return facing > 0 && (facing >= PIP_LEAST_FACING || facing === most)
+        })
         .flatMap((side) => pipsOn(view, size, side.from, side.to, apex))
     const inner: Face[] = hollow.base.map((from, index) => {
         const to = hollow.base[(index + 1) % hollow.base.length]

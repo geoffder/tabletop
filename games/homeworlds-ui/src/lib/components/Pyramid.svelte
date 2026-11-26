@@ -13,6 +13,7 @@
     const drawing = $derived(drawPyramid(view, color, size, pose))
     const deep = $derived(plasticColor(color, 'deep'))
     const lit = $derived(plasticColor(color, 'lit'))
+    const pale = $derived(plasticColor(color, 'pale'))
 </script>
 
 <!-- Translucent plastic: the far faces show through the near ones, the edges deeper in colour
@@ -55,6 +56,14 @@
         stroke-linejoin="round"
     ></polygon>
     {#each drawing.pips as pip, index (index)}
-        <circle r="1" transform={pip.transform} fill={deep} fill-opacity="0.75"></circle>
+        <!-- Pale dots ringed in the deep tone, so they show on lit and shaded faces alike. -->
+        <circle
+            r="1"
+            transform={pip.transform}
+            fill={pale}
+            fill-opacity="0.9"
+            stroke={deep}
+            stroke-width="0.3"
+        ></circle>
     {/each}
 </g>
