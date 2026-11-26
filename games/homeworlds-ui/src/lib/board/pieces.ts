@@ -1,5 +1,5 @@
 import { pieceColor, pieceSize, type PyramidColor, type PyramidSize } from '@tabletop/homeworlds'
-import { nestLift, type TableLayout } from './layout.js'
+import { BANK_YAW, nestLift, type TableLayout } from './layout.js'
 import type { PyramidPose } from './pyramid.js'
 
 // A pyramid where it stands on the table: a star, a ship, or one of a tower in the Bank.
@@ -15,8 +15,6 @@ export type DrawnPiece = {
     systemId?: number
     ownerId?: string
 }
-
-const BANK_YAW = 0.3
 
 // Every piece, on the map or in the Bank, so each is always drawn somewhere.
 export function drawnPieces(layout: TableLayout, bank: readonly number[]): Map<number, DrawnPiece> {

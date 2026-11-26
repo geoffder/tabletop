@@ -243,8 +243,11 @@ function sideKey(system: StarSystem, seats: Seats): number {
     return near && !far ? 1 : far && !near ? -1 : 0
 }
 
-const BANK_CELL = 66
-const BANK_MARGIN = 14
+// How far the Bank's towers turn, so their faces catch the light.
+export const BANK_YAW = 0.3
+// Between the Bank's towers, and from the outer towers to the board's edge.
+const BANK_SPACING = 4
+const BANK_MARGIN = 10
 const BANK_STEP = 20
 
 type Box = { left: number; right: number; near: number; far: number }
@@ -258,20 +261,18 @@ function boxOf(points: readonly Point[]): Box {
     }
 }
 
-// The Bank's board as in the box: a column per colour, Large at the back, Small at the front,
-// each size stacked in a tower.
 // The screens each lean of the map is laid out for, as width over height: a phone's game column,
 // and a desktop's.
-const BANK_CORNER = 46
+const BANK_CORNER = 34
 const BANK_GAP = 10
 const TALL_SCREEN = 0.9
 const WIDE_SCREEN = 1.7
 const BANK_TRIES = 24
 
 // The Bank's board as in the box: a column per colour, Large at the back, Small at the front,
-// each size stacked in a tower. It lies in the far corner on the viewer's homeworld's side, and
-// where the map leaves no room there, moves left or further away, wherever the board then fits
-// the screen it is laid out for the largest.
+// each size stacked in a tower, each row only as deep as its size. It lies in the far corner on
+// the viewer's homeworld's side, and where the map leaves no room there, moves left or further
+// away, wherever the board then fits the screen it is laid out for the largest.
 function bankLayout(
     systems: readonly SystemPlacement[],
     view: BoardView,
@@ -280,16 +281,24 @@ function bankLayout(
     shapes: readonly Point[][]
 ) {
     const sizes = [PyramidSize.Small, PyramidSize.Medium, PyramidSize.Large]
-    const width = PYRAMID_COLORS.length * BANK_CELL + BANK_MARGIN * 2
-    const depth = sizes.length * BANK_CELL + BANK_MARGIN * 2
+    // A turned tower's base reaches further than its side.
+    const reach = (size: PyramidSize) =>
+        PYRAMID_BASE[size] * (Math.cos(BANK_YAW) + Math.sin(BANK_YAW)) + BANK_SPACING
+    const column = reach(PyramidSize.Large)
+    const rowDepth = sizes.map(reach)
+    const rowAt = rowDepth.map(
+        (depth, row) => rowDepth.slice(0, row).reduce((sum, before) => sum + before, 0) + depth / 2
+    )
+    const width = PYRAMID_COLORS.length * column + BANK_MARGIN * 2
+    const depth = rowDepth.reduce((sum, row) => sum + row, 0) + BANK_MARGIN * 2
     const map = boxOf(systems.flatMap((system) => system.outline))
     const towersAt = (left: number, near: number): TowerPlacement[] =>
-        PYRAMID_COLORS.flatMap((color, column) =>
+        PYRAMID_COLORS.flatMap((color, index) =>
             sizes.map((size, row) => ({
                 color,
                 size,
-                x: left + BANK_MARGIN + (column + 0.5) * BANK_CELL,
-                y: near + BANK_MARGIN + (row + 0.5) * BANK_CELL
+                x: left + BANK_MARGIN + (index + 0.5) * column,
+                y: near + BANK_MARGIN + rowAt[row]
             }))
         )
     // The plate, and every tower standing full, as seen on screen.
