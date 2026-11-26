@@ -1,0 +1,28 @@
+---
+name: new-game
+description: Build a new game title end to end — rules decisions, logic and UI packages, history, animation, harness scenarios and browser checks. Use when asked to add, implement or port a board game, to keep building one already started, or to rework a finished title's board or animation.
+---
+
+# Build a new game
+
+The architecture lives in `docs/DESIGN.md`, the table layout in `docs/game-ui-layout.md`, staged selection in `docs/user-interactions.md`; this skill is the order of work and the **lessons** earlier titles paid for. Read each reference file below when its step starts, before writing that step's code.
+
+Comment only what the code cannot say (coding policy #38–41): a rule reading, an outside constraint, a library workaround, the reason for a surprising choice. A comment that restates a name or the next line, or narrates a drawing or a motion, does not belong; the visual contract and `docs/rules-interpretations.md` hold that knowledge. GIPF's UI ran to 7% comment lines against under 1% in upstream titles, and was trimmed to its reasons in `6fea763d9`. Nor does a comment cite another title or precedent ("as Bus and Magna Grecia do", "shared with the other GIPF project titles"): the maintainer removed every one. Such references belong in this skill, not in the code.
+
+## Steps
+
+1. **Settle the rules.** Read the rules from the publisher's own pages, and BoardSpace's source (GPL Java, `github.com/ddyer0/boardspace.net`, `client/boardspace-java/boardspace-games/<title>/`) for how a long-running implementation reads each gap and names the spaces; its readings make good recommended answers (PÜNCT: bridges, simultaneous connections, column lengths). Then put every open choice to the user in one batch: which versions or variants to offer and which is the default, any option the rules make optional, and edge cases the rules leave out. Offer a recommended answer for each. Done when every choice has an answer and the answers are recorded where later sessions will find them.
+2. **Scaffold.** Branch from upstream's current `main` (`justinkwaugh/tabletop`), not the fork's: a branch built on a `main` 1,141 commits stale needed a tooling port on every title before it could be reviewed. Follow [`references/scaffold.md`](references/scaffold.md). Done when both packages type-check and the empty harness opens.
+3. **Logic.** Follow [`references/logic.md`](references/logic.md). Give every piece a stable id in State from the first commit: the maintainer's review rebuilt every title without one around ids. Done when every rule decision from step 1 has a test and random playouts of every variant end with a result.
+4. **Table UI.** Follow [`references/ui-lessons.md`](references/ui-lessons.md) on top of `docs/game-ui-layout.md`; for a board seen from the side of the table, also [`references/tilted-view.md`](references/tilted-view.md). Draw by `docs/phone-rendering.md` from the first commit; the review's gate 16 checks every rule in it, and all four GIPF project titles first reviewed had to be redrawn for it after their merge with `main`. Done when a full turn plays in the harness at desktop and phone sizes and the board's position is identical across your turn, the waiting view and history view.
+5. **Animation.** Load the `game-ui-animation` skill, then apply [`references/animation-lessons.md`](references/animation-lessons.md). Done when every lesson's check passes.
+6. **Scenarios.** Use the `add-harness-scenario` skill for each position worth opening directly (near a win, multi-step captures, rare rule cases). For each way the game ends, give the position a near miss as well as the ending (YINSH: the last marker ends the game, unless it completes a row and refills the pool). Done when each scenario's claims were played through the engine and its README entry written.
+7. **Check in a browser.** Follow [`references/browser-checks.md`](references/browser-checks.md) after every visible change, and look at the screenshots yourself before reporting. Done when the screenshots show what you are about to describe.
+8. **Measure on phone stand-ins.** Follow [`references/performance.md`](references/performance.md) once a full turn plays, and again after any change to how pieces are drawn or animated. Done when opening and a move meet its targets in Chromium slowed 4× and in WebKit, and `tools/webkit-probe` has measured memory and repaint as gate 16 asks.
+9. **Register** the title in `config/config-games/src/games.json`.
+10. **Check the published bundle.** Run `pnpm run bundle` in the UI package, then [`scripts/bundle-check.mjs`](scripts/bundle-check.mjs) as [`references/browser-checks.md`](references/browser-checks.md) describes under *The published bundle*. Done when it passes; repeat after adding any image, generated file list or new kind of import.
+11. **Ready for review.** Follow [`references/pr-readiness.md`](references/pr-readiness.md), including what the maintainer changed when the nine GIPF project titles merged, then run the `game-pr-readiness` skill against the commit below the title's first commit. Done when it reports READY, or the user has accepted each remaining violation; once the PR is open, when every finding of the PR bot is answered.
+
+## Reworking a finished title
+
+Read the reference files for the parts being changed and check the title against each lesson whose symptom it could show; later titles' lessons often apply to earlier ones. The GIPF project titles (GIPF, YINSH, DVONN, LYNGK, ZÈRTZ, TZAAR, MATRX GIPF, PÜNCT, GIPF with Potentials) all use the tilted view (`references/tilted-view.md`); keep a rework consistent with it. Then apply steps 5–8 to what changed, and steps 10 and 11 before it ships.
