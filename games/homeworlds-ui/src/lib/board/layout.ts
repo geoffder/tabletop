@@ -266,19 +266,33 @@ function boxOf(points: readonly Point[]): Box {
 
 // The Bank's board as in the box: a column per colour, Large at the back, Small at the front,
 // each size stacked in a tower.
-function bankLayout(systems: readonly SystemPlacement[], view: BoardView, wide: boolean) {
+// The screens each lean of the map is laid out for, as width over height: a phone's game column,
+// and a desktop's.
+const TALL_SCREEN = 0.9
+const WIDE_SCREEN = 1.7
+const BANK_TRIES = 24
+
+// Everything a board shows on screen, as the corners of its extent.
+function extentOf(points: readonly Point[]): Box {
+    return boxOf(points)
+}
+
+// The Bank's board as in the box: a column per colour, Large at the back, Small at the front,
+// each size stacked in a tower. It lies in the far corner on the viewer's homeworld's side, and
+// where the map leaves no room there, moves left or further away, wherever the board then fits
+// the screen it is laid out for the largest.
+function bankLayout(
+    systems: readonly SystemPlacement[],
+    view: BoardView,
+    wide: boolean,
+    content: readonly Point[]
+) {
     const sizes = [PyramidSize.Small, PyramidSize.Medium, PyramidSize.Large]
     const width = PYRAMID_COLORS.length * BANK_CELL + BANK_MARGIN * 2
     const depth = sizes.length * BANK_CELL + BANK_MARGIN * 2
     const map = boxOf(systems.flatMap((system) => system.outline))
-    // In the far corner on the viewer's homeworld's side, which the map leaves free. If it does
-    // not fit there it moves the way the screen has room to spare: further left beside a tall
-    // map, further away above a wide one, so the map keeps its size where the screen is tight.
     const reach = (height: number) => (height * view.rise) / view.tilt
     const towerReach = reach(TALLEST + PYRAMID_HEIGHT[PyramidSize.Large] * 0.6)
-    // Its towers' tops level with the tallest the map can hold, so they add no height.
-    let left = map.left
-    let near = systems.length > 0 ? map.far - depth - (towerReach - reach(TALLEST)) : 0
     const clear = (box: Box) =>
         systems.every((system) => {
             const ring = boxOf(system.outline)
@@ -288,19 +302,52 @@ function bankLayout(systems: readonly SystemPlacement[], view: BoardView, wide: 
                 far: ring.far + reach(TALLEST)
             })
         })
-    while (!clear({ left, right: left + width, near, far: near + depth + towerReach })) {
-        if (wide) near += BANK_STEP
-        else left -= BANK_STEP
+    const towersAt = (left: number, near: number): TowerPlacement[] =>
+        PYRAMID_COLORS.flatMap((color, column) =>
+            sizes.map((size, row) => ({
+                color,
+                size,
+                x: left + BANK_MARGIN + (column + 0.5) * BANK_CELL,
+                y: near + BANK_MARGIN + (row + 0.5) * BANK_CELL
+            }))
+        )
+    const screenOf = (left: number, near: number): Point[] => [
+        onTable(view, left, near),
+        onTable(view, left + width, near),
+        onTable(view, left, near + depth),
+        onTable(view, left + width, near + depth),
+        ...towersAt(left, near).map((tower) => {
+            const at = onTable(view, tower.x, tower.y)
+            return { x: at.x, y: at.y - towerHeight(tower.size) * view.rise }
+        })
+    ]
+    const screen = wide ? WIDE_SCREEN : TALL_SCREEN
+    const start = { left: map.left, near: systems.length > 0 ? map.far - depth : 0 }
+    let best = { ...start, fit: -1 }
+    for (let across = 0; across < BANK_TRIES; across++) {
+        for (let away = 0; away < BANK_TRIES; away++) {
+            const left = start.left - across * BANK_STEP
+            const near = start.near + away * BANK_STEP
+            if (!clear({ left, right: left + width, near, far: near + depth + towerReach }))
+                continue
+            const extent = extentOf([...content, ...screenOf(left, near)])
+            const fit = Math.min(
+                screen / (extent.right - extent.left),
+                1 / (extent.far - extent.near)
+            )
+            if (fit > best.fit + 1e-9) best = { left, near, fit }
+        }
     }
-    const towers: TowerPlacement[] = PYRAMID_COLORS.flatMap((color, column) =>
-        sizes.map((size, row) => ({
-            color,
-            size,
-            x: left + BANK_MARGIN + (column + 0.5) * BANK_CELL,
-            y: near + BANK_MARGIN + (row + 0.5) * BANK_CELL
-        }))
-    )
-    return { towers, bank: { x: left, y: near, width, depth } }
+    return {
+        towers: towersAt(best.left, best.near),
+        bank: { x: best.left, y: best.near, width, depth },
+        points: screenOf(best.left, best.near)
+    }
+}
+
+// A tower of three of a size, nested.
+function towerHeight(size: PyramidSize): number {
+    return PYRAMID_HEIGHT[size] + 2 * nestLift(size, size)
 }
 
 export function tableLayout(
@@ -385,27 +432,20 @@ export function tableLayout(
         (system) => system.homeworldOf !== undefined && system.homeworldOf !== seats.nearId
     )
     const tokenSpots = { near: homeSpot(nearHome, 1, 0), far: homeSpot(farHome, 1, u) }
-    const { towers, bank } = bankLayout(placed, view, wide)
-
     const screen = (point: Point) => onTable(view, point.x, point.y)
-    const raised = placed.flatMap((system) =>
-        system.outline
-            .map(screen)
-            .flatMap((point) => [
-                point,
-                { x: point.x, y: point.y - TALLEST * view.rise },
-                { x: point.x, y: point.y + LABEL_ROOM }
-            ])
-    )
-    const bankPoints = [
-        screen({ x: bank.x, y: bank.y }),
-        screen({ x: bank.x + bank.width, y: bank.y }),
-        {
-            ...screen({ x: bank.x, y: bank.y + bank.depth }),
-            y: screen({ x: bank.x, y: bank.y + bank.depth }).y - TALLEST * 1.6 * view.rise
-        },
-        screen({ x: bank.x + bank.width, y: bank.y + bank.depth })
-    ]
+    // Each piece's top as it stands, so the board ends where the pieces do.
+    const tops = placed.flatMap((system) => [
+        ...system.stars.map((star) => {
+            const at = screen(star)
+            const size = pieceSize(star.piece)
+            return { x: at.x, y: at.y - (star.lift + PYRAMID_HEIGHT[size]) * view.rise }
+        }),
+        ...system.ships.map((ship) => {
+            const at = screen(ship)
+            return { x: at.x, y: at.y - PYRAMID_BASE[pieceSize(ship.piece)] * view.rise }
+        })
+    ])
+    const ground = placed.flatMap((system) => system.outline.map(screen))
     const tokenPoints = [tokenSpots.near, tokenSpots.far].flatMap((spot) => {
         const centre = screen(spot)
         return [
@@ -423,7 +463,9 @@ export function tableLayout(
             { x: nearest.x + LABEL_HALF_WIDTH, y: nearest.y + LABEL_ROOM }
         ]
     })
-    const all = [...raised, ...bankPoints, ...tokenPoints, ...labelPoints]
+    const content = [...ground, ...tops, ...tokenPoints, ...labelPoints]
+    const { towers, bank, points: bankPoints } = bankLayout(placed, view, wide, content)
+    const all = [...content, ...bankPoints]
     const margin = 14
     const minX = Math.min(...all.map((point) => point.x)) - margin
     const maxX = Math.max(...all.map((point) => point.x)) + margin
