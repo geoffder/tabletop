@@ -143,14 +143,14 @@ export class BoardAnimator implements MoveInterrupter {
         const view = this.session.view
         const seats = { nearId: this.session.nearId, farId: this.session.farId }
 
-        const turned = this.session.turnedBoard
-        const toLayout = tableLayout(to.starMap.systems, seats, view, turned)
+        const wide = this.session.wideMap
+        const toLayout = tableLayout(to.starMap.systems, seats, view, wide)
         // Your own move starts from the table as you saw it, with any homeworld you were building.
         const before =
             kind === 'own-action'
                 ? this.pieces
                 : drawnPieces(
-                      tableLayout(from.starMap.systems, seats, view, turned),
+                      tableLayout(from.starMap.systems, seats, view, wide),
                       from.starMap.bank()
                   )
         const after = drawnPieces(toLayout, to.starMap.bank())

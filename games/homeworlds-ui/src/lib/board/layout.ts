@@ -54,6 +54,7 @@ const TOKEN_RADIUS = 50
 const TOKEN_GAP = 22
 const LABEL_ROOM = 26
 const LABEL_HALF_WIDTH = 72
+const CONTROLS_ROOM = 40
 
 export const TURN_TOKEN_RADIUS = TOKEN_RADIUS
 
@@ -91,9 +92,14 @@ function starsOf(system: StarSystem): StarPlacement[] {
 // corner opposite: `along` points that way, `right` to its right on the table.
 type Axes = { along: Point; right: Point }
 
-function axesFor(turned: boolean): Axes {
-    const half = Math.SQRT1_2
-    const along = turned ? { x: -half, y: half } : { x: half, y: half }
+// How far the map's line leans from straight away from the viewer, on the table: steeply for a
+// tall screen, or 45° further over for a wide one.
+const TALL_LEAN = Math.PI / 6
+const WIDE_LEAN = TALL_LEAN + Math.PI / 4
+
+function axesFor(wide: boolean): Axes {
+    const lean = wide ? WIDE_LEAN : TALL_LEAN
+    const along = { x: Math.sin(lean), y: Math.cos(lean) }
     return { along, right: { x: along.y, y: -along.x } }
 }
 
@@ -260,25 +266,29 @@ function boxOf(points: readonly Point[]): Box {
 }
 
 // The Bank's board as in the box: a column per colour, Large at the back, Small at the front,
-// each size stacked in a tower. It lies in the near corner the map leaves free, moved nearer the
-// viewer until it clears every system.
-function bankLayout(systems: readonly SystemPlacement[], turned: boolean, view: BoardView) {
+// each size stacked in a tower.
+function bankLayout(systems: readonly SystemPlacement[], view: BoardView) {
     const sizes = [PyramidSize.Small, PyramidSize.Medium, PyramidSize.Large]
     const width = PYRAMID_COLORS.length * BANK_CELL + BANK_MARGIN * 2
     const depth = sizes.length * BANK_CELL + BANK_MARGIN * 2
     const map = boxOf(systems.flatMap((system) => system.outline))
-    const left = turned ? map.left : map.right - width
-    let near = systems.length > 0 ? map.near : 0
-    // Leave room in front of each system for its name.
-    // Its towers stand tall on screen, so it keeps clear of what lies that far behind it too.
-    const towerReach = ((TALLEST + PYRAMID_HEIGHT[PyramidSize.Large] * 0.6) * view.rise) / view.tilt
+    // In the far corner on the viewer's homeworld's side, which the map leaves free, moved further
+    // away until neither its towers nor the pieces in front of it stand over the other.
+    const left = map.left
+    let near = systems.length > 0 ? map.far - depth : 0
+    const reach = (height: number) => (height * view.rise) / view.tilt
+    const towerReach = reach(TALLEST + PYRAMID_HEIGHT[PyramidSize.Large] * 0.6)
     const clear = (box: Box) =>
         systems.every((system) => {
             const ring = boxOf(system.outline)
-            return !overlaps(box, { ...ring, near: ring.near - LABEL_ROOM })
+            return !overlaps(box, {
+                ...ring,
+                near: ring.near - LABEL_ROOM,
+                far: ring.far + reach(TALLEST)
+            })
         })
     while (!clear({ left, right: left + width, near, far: near + depth + towerReach })) {
-        near -= BANK_STEP
+        near += BANK_STEP
     }
     const towers: TowerPlacement[] = PYRAMID_COLORS.flatMap((color, column) =>
         sizes.map((size, row) => ({
@@ -295,9 +305,9 @@ export function tableLayout(
     systems: readonly StarSystem[],
     seats: Seats,
     view: BoardView,
-    turned: boolean
+    wide: boolean
 ): TableLayout {
-    const axes = axesFor(turned)
+    const axes = axesFor(wide)
     const homes = {
         near: systems.find((system) => system.homeworldOf === seats.nearId),
         far: systems.find(
@@ -351,27 +361,29 @@ export function tableLayout(
         u += halfDepth + ROW_GAP
     }
 
-    // The token rests behind the homeworld of the player whose turn it is.
-    const homeSpot = (home: SystemPlacement | undefined, back: number, fallback: number) => {
+    // The token rests beside the homeworld of the player whose turn it is, on the map's right,
+    // away from the Bank and clear of the corners where the board's controls are.
+    const homeSpot = (home: SystemPlacement | undefined, side: number, fallback: number) => {
+        const centre = home ?? toTable(axes, fallback, 0)
+        const outward = toTable(axes, 0, side)
         const reach = home
             ? Math.max(
                   ...home.outline.map(
-                      (point) =>
-                          (point.x - home.x) * axes.along.x * back +
-                          (point.y - home.y) * axes.along.y * back
+                      (point) => (point.x - home.x) * outward.x + (point.y - home.y) * outward.y
                   )
               )
             : 0
-        const centre = home ?? toTable(axes, fallback, 0)
-        const step = toTable(axes, back * (reach + TOKEN_GAP + TOKEN_RADIUS), 0)
+        // Further when that side faces the viewer, past the system's name.
+        const pastName = (LABEL_ROOM * Math.max(0, -outward.y * side)) / view.tilt
+        const step = toTable(axes, 0, side * (reach + pastName + TOKEN_GAP + TOKEN_RADIUS))
         return { x: centre.x + step.x, y: centre.y + step.y }
     }
     const nearHome = placed.find((system) => system.homeworldOf === seats.nearId)
     const farHome = placed.find(
         (system) => system.homeworldOf !== undefined && system.homeworldOf !== seats.nearId
     )
-    const tokenSpots = { near: homeSpot(nearHome, -1, 0), far: homeSpot(farHome, 1, u) }
-    const { towers, bank } = bankLayout(placed, turned, view)
+    const tokenSpots = { near: homeSpot(nearHome, 1, 0), far: homeSpot(farHome, 1, u) }
+    const { towers, bank } = bankLayout(placed, view)
 
     const screen = (point: Point) => onTable(view, point.x, point.y)
     const raised = placed.flatMap((system) =>
@@ -414,7 +426,8 @@ export function tableLayout(
     const minX = Math.min(...all.map((point) => point.x)) - margin
     const maxX = Math.max(...all.map((point) => point.x)) + margin
     const minY = Math.min(...all.map((point) => point.y)) - margin
-    const maxY = Math.max(...all.map((point) => point.y)) + margin
+    // Room below for the zoom buttons and toggles, which lie over the board's bottom corners.
+    const maxY = Math.max(...all.map((point) => point.y)) + margin + CONTROLS_ROOM
     return {
         systems: placed,
         towers,

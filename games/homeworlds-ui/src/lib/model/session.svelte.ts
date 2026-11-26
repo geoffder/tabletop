@@ -105,12 +105,12 @@ export class HomeworldsGameSession extends GameSession<
 
     view: BoardView = $derived(boardView(this.flatBoard))
 
-    // The map turned a quarter: homeworlds in the lower right and upper left corners.
-    turnedBoard: boolean = $derived(this.preferences.values.turnedBoard)
+    // The map's line laid 45° flatter, favouring a wide screen over a tall one.
+    wideMap: boolean = $derived(this.preferences.values.wideMap)
 
-    toggleTurnedBoard() {
+    toggleWideMap() {
         this.moveInterrupter?.interrupt()
-        this.preferences.set({ turnedBoard: !this.turnedBoard })
+        this.preferences.set({ wideMap: !this.wideMap })
     }
 
     // The viewer's homeworld is nearest them; a spectator sits on the first player's side.
@@ -141,7 +141,7 @@ export class HomeworldsGameSession extends GameSession<
             this.shownSystems,
             { nearId: this.nearId, farId: this.farId },
             this.view,
-            this.turnedBoard
+            this.wideMap
         )
     )
 

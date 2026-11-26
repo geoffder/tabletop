@@ -148,6 +148,10 @@ export type PyramidDrawing = {
     // The size's dots near the base of each face turned to the viewer, as unit circles mapped
     // onto the face.
     pips: Pip[]
+    // The inside of the hollow, its faces seen through the walls.
+    inner: Face[]
+    // The thick rim round the open base, between the outer and inner edges.
+    rim: string
     // The open base, where it faces the viewer: a lying ship pointing away shows its hollow.
     mouth?: string
     // The shadow the piece casts on the table, light coloured by the plastic.
@@ -213,13 +217,36 @@ function hull(points: readonly Point[]): Point[] {
     return [...chain(sorted), ...chain(sorted.toReversed())]
 }
 
+// The plastic is thick: about a tenth of the base, so edges and the base's rim show as bands.
+const WALL_SHARE = 0.1
+
+// The hollow inside, the solid shrunk about its insphere's centre so the walls are equally thick.
+function hollowOf(size: PyramidSize, { base, apex }: Solid): Solid {
+    const half = PYRAMID_BASE[size] / 2
+    const height = PYRAMID_HEIGHT[size]
+    const slant = Math.hypot(height, half)
+    const volume = (4 * half * half * height) / 3
+    const surface = 4 * half * half + 4 * half * slant
+    const inradius = (3 * volume) / surface
+    const shrink = 1 - (PYRAMID_BASE[size] * WALL_SHARE) / inradius
+    const middle = scale(add(add(base[0], base[1]), add(base[2], base[3])), 0.25)
+    const centre = add(middle, scale(sub(apex, middle), inradius / height))
+    const toward = (corner: Vec3) => add(centre, scale(sub(corner, centre), shrink))
+    return {
+        base: [toward(base[0]), toward(base[1]), toward(base[2]), toward(base[3])],
+        apex: toward(apex)
+    }
+}
+
 export function drawPyramid(
     view: BoardView,
     color: PyramidColor,
     size: PyramidSize,
     pose: PyramidPose
 ): PyramidDrawing {
-    const { base, apex } = solid(size, pose)
+    const outer = solid(size, pose)
+    const { base, apex } = outer
+    const hollow = hollowOf(size, outer)
     const centre = scale(add(add(base[0], base[1]), add(base[2], base[3])), 0.25)
     const sides = base.map((from, index) => {
         const to = base[(index + 1) % base.length]
@@ -251,6 +278,21 @@ export function drawPyramid(
     const pips = sides
         .filter((side) => side.facing)
         .flatMap((side) => pipsOn(view, size, side.from, side.to, apex))
+    const inner: Face[] = hollow.base.map((from, index) => {
+        const to = hollow.base[(index + 1) % hollow.base.length]
+        const side = sides[index]
+        return {
+            points: pointsOf([from, to, hollow.apex].map((corner) => project(view, corner))),
+            fill: faceColor(color, side ? scale(side.normal, -1) : [0, 0, 1]),
+            facing: side?.facing ?? false
+        }
+    })
+    const loop = (corners: readonly Vec3[]) =>
+        corners
+            .map((corner) => project(view, corner))
+            .map((point, index) => `${index === 0 ? 'M' : 'L'}${round(point.x)} ${round(point.y)}`)
+            .join('') + 'Z'
+    const rim = loop(base) + loop(hollow.base)
     let baseNormal = normalize(cross(sub(base[1], base[0]), sub(base[3], base[0])))
     if (dot(baseNormal, sub(apex, centre)) > 0) baseNormal = scale(baseNormal, -1)
     const mouthFacing = dot(baseNormal, view.toViewer) > 0.05
@@ -261,9 +303,13 @@ export function drawPyramid(
     )
     return {
         faces,
+        inner,
+        rim,
         edges,
         pips,
-        ...(mouthFacing ? { mouth: pointsOf(base.map((corner) => project(view, corner))) } : {}),
+        ...(mouthFacing
+            ? { mouth: pointsOf(hollow.base.map((corner) => project(view, corner))) }
+            : {}),
         shadow: pointsOf(hull(cast)),
         outline: pointsOf(hull(corners.map((corner) => project(view, corner))))
     }

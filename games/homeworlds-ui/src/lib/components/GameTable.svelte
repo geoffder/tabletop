@@ -110,11 +110,11 @@
                             class="pointer-events-auto absolute right-3 bottom-2 z-10 flex items-center gap-1.5"
                         >
                             <OverlayToggle
-                                label="Turn the map"
-                                pressed={gameSession.turnedBoard}
-                                onToggle={() => gameSession.toggleTurnedBoard()}
+                                label="Wide map"
+                                pressed={gameSession.wideMap}
+                                onToggle={() => gameSession.toggleWideMap()}
                             >
-                                <!-- A quarter turn, as an arrow round a corner. -->
+                                <!-- An eighth of a turn, as an arrow round a corner. -->
                                 <svg
                                     viewBox="0 0 16 16"
                                     width="16"
