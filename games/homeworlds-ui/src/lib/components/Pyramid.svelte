@@ -14,10 +14,13 @@
     const deep = $derived(plasticColor(color, 'deep'))
     const lit = $derived(plasticColor(color, 'lit'))
     const pale = $derived(plasticColor(color, 'pale'))
+    const body = $derived(plasticColor(color, 'body'))
+    // Towards the light on screen, which falls from the upper left.
+    const TOWARD_LIGHT = { x: -0.6, y: -0.8 }
 </script>
 
 <!-- Translucent plastic: the far faces show through the near ones, the edges deeper in colour
-     where the plastic is thick, the pips catching the light. -->
+     where the plastic is thick, the pips pressed into the faces. -->
 <g class="pyramid">
     <!-- Far walls first: their outer faces, then the hollow's faces in front of them. -->
     {#each drawing.faces.filter((face) => !face.facing) as face, index (index)}
@@ -56,14 +59,21 @@
         stroke-linejoin="round"
     ></polygon>
     {#each drawing.pips as pip, index (index)}
-        <!-- Pale dots ringed in the deep tone, so they show on lit and shaded faces alike. -->
+        <!-- Pressed into the face: shaded on the side towards the light, lit on the far
+             side where the light meets its wall. -->
+        <circle r="1" transform={pip.transform} fill={body} fill-opacity="0.9"></circle>
         <circle
-            r="1"
-            transform={pip.transform}
+            cx={pip.x - TOWARD_LIGHT.x * pip.r * 0.3}
+            cy={pip.y - TOWARD_LIGHT.y * pip.r * 0.3}
+            r={pip.r * 0.72}
             fill={pale}
-            fill-opacity="0.9"
-            stroke={deep}
-            stroke-width="0.3"
+            fill-opacity="0.95"
+        ></circle>
+        <circle
+            cx={pip.x + TOWARD_LIGHT.x * pip.r * 0.22}
+            cy={pip.y + TOWARD_LIGHT.y * pip.r * 0.22}
+            r={pip.r * 0.72}
+            fill={deep}
         ></circle>
     {/each}
 </g>

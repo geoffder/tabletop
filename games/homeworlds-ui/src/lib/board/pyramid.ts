@@ -141,7 +141,8 @@ export function plasticColor(color: PyramidColor, tone: 'body' | 'deep' | 'lit' 
 }
 
 export type Face = { points: string; fill: string; facing: boolean }
-export type Pip = { transform: string }
+// A pip as a unit circle mapped onto the face, with its centre and largest radius on screen.
+export type Pip = { transform: string; x: number; y: number; r: number }
 
 export type PyramidDrawing = {
     // Faces turned away first, seen through the ones facing the viewer.
@@ -178,7 +179,7 @@ const PIP_LEAST_FACING = 0.3
 // A unit circle mapped by the columns (ax, ay) and (bx, by), as an ellipse no flatter than
 // PIP_LEAST_ROUNDNESS: a face seen slantwise squashes its dots to dashes, which no longer read
 // as dots. The ellipse's axes come from the mapping's singular values.
-function roundedDot(ax: number, ay: number, bx: number, by: number, at: Point): string {
+function roundedDot(ax: number, ay: number, bx: number, by: number, at: Point): Pip {
     const e = (ax + by) / 2
     const f = (ax - by) / 2
     const g = (ay + bx) / 2
@@ -190,7 +191,12 @@ function roundedDot(ax: number, ay: number, bx: number, by: number, at: Point): 
     const angle = (Math.atan2(g, f) + Math.atan2(h, e)) / 2
     const cos = Math.cos(angle)
     const sin = Math.sin(angle)
-    return `matrix(${round(cos * major)} ${round(sin * major)} ${round(-sin * minor)} ${round(cos * minor)} ${round(at.x)} ${round(at.y)})`
+    return {
+        transform: `matrix(${round(cos * major)} ${round(sin * major)} ${round(-sin * minor)} ${round(cos * minor)} ${round(at.x)} ${round(at.y)})`,
+        x: round(at.x),
+        y: round(at.y),
+        r: round(major)
+    }
 }
 
 // The pip count of each size, in a row near the base of every face.
@@ -215,7 +221,7 @@ function pipsOn(view: BoardView, size: PyramidSize, from: Vec3, to: Vec3, apex: 
         const c = project(view, centre)
         const a = project(view, add(centre, scale(along, radius)))
         const b = project(view, add(centre, scale(up, radius)))
-        return { transform: roundedDot(a.x - c.x, a.y - c.y, b.x - c.x, b.y - c.y, c) }
+        return roundedDot(a.x - c.x, a.y - c.y, b.x - c.x, b.y - c.y, c)
     })
 }
 
