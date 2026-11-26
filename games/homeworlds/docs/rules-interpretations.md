@@ -1,0 +1,15 @@
+# Homeworlds rules interpretations
+
+Rules base: the Looney Labs standalone _Homeworlds_ instructions (2020), with the official FAQ (faq.looneylabs.com/looney-pyramids/homeworlds). Each reading below has a test in `src/definition/game.spec.ts`.
+
+- **Players.** Two only. The rulebook says the multiplayer versions "have gone the way of Icehouse".
+- **Setup round.** FAQ #1414: the first player builds a homeworld (two stars of any sizes and colours, and one Large ship of any colour), then the second player builds theirs having seen it, then the first player takes the first turn. Gemini homeworlds and matching sizes are allowed; the rulebook only advises against them.
+- **First-game setup.** A game option that skips the setup round with the rulebook's suggestion for a first game: both players have a Large Green ship; the first player's homeworld is a Large Blue and a Small Red star, the second player's a Medium Red and a Small Blue.
+- **Connections.** Two systems are connected when no star of one is the size of a star of the other. A binary homeworld therefore joins only stars of its missing size, and once half of it is destroyed it joins every star of another size (FAQ #2033).
+- **Catastrophes.** Declared at any point in the player's own turn (the 2020 rule; FAQ #1717 notes the older end-of-turn rule, which is not offered): before the action, between a sacrifice's actions, or after. One colour per declaration when several are overpopulated (FAQ #1889).
+- **Sacrifice.** As many actions of the ship's colour as it has pips, each in any system where the player still has a ship. They may be left unused by ending the turn (FAQ #1400). A sacrificed piece is in the Bank at once and may be used by the same actions (FAQ #1413). Any ship may act, whatever it did earlier in the turn; the rules forbid none of it.
+- **Pass.** Ending the turn before any action passes it (2020 rules).
+- **Ending the turn.** The turn ends by itself once nothing optional is left: no sacrifice action still usable and no catastrophe to declare. Otherwise the player ends it with the turn token. It never ends by itself while the player has no ship at their homeworld, since ending it then loses the game.
+- **Elimination.** At the end of every turn, both players are checked: a player whose homeworld is gone, or who controls none of the ships there, is out. The rule text says "when your turn is over", but Direct Assault (capturing the last enemy ship at their homeworld) needs the opponent checked too. Both out at once is a draw (2020 rules, _Deadlocks & Draws_).
+- **Homeworlds stay.** An empty homeworld stays on the map; only basic stars return to the Bank when their last ship leaves.
+- **Deadlock.** The rules allow a draw when both players agree they are deadlocked (FAQ #1366). The game is drawn automatically when the same position (stars and ships by colour and size, homeworlds, owners and the player to move) comes round at the start of a turn for the third time. The Bank follows from the map, so it is part of the position.
