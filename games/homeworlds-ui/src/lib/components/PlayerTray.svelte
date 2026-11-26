@@ -6,12 +6,18 @@
         type HydratedHomeworldsPlayerState
     } from '@tabletop/homeworlds'
     import { getGameSession } from '$lib/model/sessionContext.svelte.js'
+    import { scale } from 'svelte/transition'
+    import { FLAT_VIEW } from '$lib/board/view.js'
     import PieceIcon from './PieceIcon.svelte'
+    import TurnToken from './TurnToken.svelte'
 
     let { playerState }: { playerState: HydratedHomeworldsPlayerState } = $props()
 
     const session = getGameSession()
     const playerId = $derived(playerState.playerId)
+    const uid = $props.id()
+    // The turn token, the size it is drawn on the card.
+    const TOKEN_RADIUS = 27
 
     const isActive = $derived(session.gameState.activePlayerIds.includes(playerId))
     const isWinner = $derived(
@@ -67,6 +73,34 @@
             <b class="count">{fleet.length}</b>
             {#each fleet as ship (ship)}<PieceIcon piece={ship} ship />{/each}
         </span>
+        <!-- The turn token lies on the card of the player whose turn it is; tapped, it ends
+             the turn. -->
+        <span class="token-spot">
+            {#if isActive && session.gameState.result === undefined}
+                <button
+                    class="token"
+                    class:live={session.canEndTurn}
+                    disabled={!session.canEndTurn}
+                    aria-label={session.canEndTurn ? 'End your turn' : 'Turn token'}
+                    onclick={() => session.endTurn()}
+                    transition:scale={{ duration: 220, start: 0.6 }}
+                >
+                    <svg
+                        viewBox="{-TOKEN_RADIUS - 4} {-TOKEN_RADIUS - 4} {TOKEN_RADIUS * 2 +
+                            8} {TOKEN_RADIUS * 2 + 8}"
+                        width={TOKEN_RADIUS * 2 + 8}
+                        height={TOKEN_RADIUS * 2 + 8}
+                    >
+                        <TurnToken
+                            radius={TOKEN_RADIUS}
+                            view={FLAT_VIEW}
+                            facingFar={false}
+                            uid="{uid}-token"
+                        />
+                    </svg>
+                </button>
+            {/if}
+        </span>
     </div>
 </div>
 
@@ -89,7 +123,7 @@
 
     .body {
         display: grid;
-        grid-template-columns: max-content 1fr;
+        grid-template-columns: max-content 1fr max-content;
         align-items: center;
         gap: 4px 10px;
         padding: 6px 12px 8px;
@@ -102,6 +136,30 @@
         align-items: center;
         gap: 0 1px;
         min-height: 22px;
+    }
+
+    .token-spot {
+        grid-column: 3;
+        grid-row: 1 / span 2;
+        width: 62px;
+        height: 62px;
+        margin: -4px -6px -4px 0;
+    }
+
+    .token {
+        display: block;
+        border-radius: 50%;
+        cursor: default;
+    }
+
+    .token.live {
+        cursor: pointer;
+        box-shadow: 0 0 0 3px var(--hw-mark);
+    }
+
+    .token:focus-visible {
+        outline: 2px solid var(--hw-mark);
+        outline-offset: 2px;
     }
 
     .gap {

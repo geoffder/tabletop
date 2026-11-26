@@ -5,11 +5,10 @@
     import { onTable } from '$lib/board/view.js'
     import { starName } from '$lib/board/starNames.js'
     import { drawPyramid, PYRAMID_BASE, slantHeight } from '$lib/board/pyramid.js'
-    import { type SystemPlacement, TURN_TOKEN_RADIUS } from '$lib/board/layout.js'
+    import type { SystemPlacement } from '$lib/board/layout.js'
     import Pyramid from './Pyramid.svelte'
     import { BoardAnimator } from '$lib/animators/boardAnimator.svelte.js'
     import { drawOrder, type DrawnPiece } from '$lib/board/pieces.js'
-    import TurnToken from './TurnToken.svelte'
     import PowerMenu from './PowerMenu.svelte'
 
     // Bright enough to read on the dark table.
@@ -157,8 +156,6 @@
         })
     )
 
-    const tokenSpot = $derived(layout.tokenSpots[animator.tokenSide])
-
     const uid = $props.id()
 
     function onKey(event: KeyboardEvent, act: () => void) {
@@ -191,36 +188,6 @@
         layout.bank.outline.map((point) => onTable(view, point.x, point.y))
     )
 </script>
-
-{#snippet token()}
-    <g
-        class="token"
-        class:live={session.canEndTurn}
-        transform={at(tokenSpot.x, tokenSpot.y)}
-        role="button"
-        aria-disabled={!session.canEndTurn}
-        tabindex={session.canEndTurn ? 0 : -1}
-        aria-label={session.canEndTurn ? 'End your turn' : 'Turn token'}
-        onclick={() => session.endTurn()}
-        onkeydown={(event) => onKey(event, () => session.endTurn())}
-    >
-        <g {@attach animator.tokenNode}>
-            {#if session.canEndTurn}
-                <ellipse
-                    class="mark target"
-                    rx={TURN_TOKEN_RADIUS + 8}
-                    ry={(TURN_TOKEN_RADIUS + 8) * view.tilt}
-                ></ellipse>
-            {/if}
-            <TurnToken
-                radius={TURN_TOKEN_RADIUS}
-                {view}
-                facingFar={animator.tokenFacing === 'far'}
-                uid="{uid}-token"
-            />
-        </g>
-    </g>
-{/snippet}
 
 <div class="tap-off" role="presentation" onclick={tapOff}>
     <svg
@@ -364,11 +331,6 @@
             {/each}
         </g>
 
-        <!-- The turn token, on the side of the player whose turn it is. -->
-        {#if !animator.tokenFlying}
-            {@render token()}
-        {/if}
-
         <!-- The pieces. -->
         {#each pieces as drawn (drawn.piece)}
             <g transform={at(drawn.x, drawn.y)}>
@@ -377,11 +339,6 @@
                 </g>
             </g>
         {/each}
-
-        <!-- Carried across to the other side, the token passes over everything. -->
-        {#if animator.tokenFlying}
-            {@render token()}
-        {/if}
 
         <!-- Hit areas over the pieces, nearest last so it takes the overlap. -->
         <g class="hits">
@@ -588,7 +545,6 @@
         stroke-width: 2;
     }
 
-    .token.live,
     .catastrophe {
         cursor: pointer;
         outline: none;

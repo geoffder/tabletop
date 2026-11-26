@@ -35,8 +35,6 @@ export type TableLayout = {
     towers: TowerPlacement[]
     // The Bank's board, a dark plate under the towers with rounded corners, as table points.
     bank: { x: number; y: number; width: number; depth: number; outline: Point[] }
-    // Where the turn token rests behind each homeworld, the viewer's first.
-    tokenSpots: { near: Point; far: Point }
     // The space the table needs on screen.
     frame: { x: number; y: number; width: number; height: number }
 }
@@ -51,25 +49,8 @@ const SHIPS_PER_LINE = 3
 const WALL = 3
 // A pyramid nested on one of its own size rests this share of its height above it.
 const SAME_SIZE_NEST = 0.3
-const TOKEN_RADIUS = 50
-const TOKEN_GAP = 22
-// The token's edge below its face, on screen.
-const TOKEN_THICKNESS = 6
-// Spots tried round a homeworld: this many steps to each side of its right, half a turn in all,
-// and this many steps out of this length where something is in the way.
-const TOKEN_TURNS = 8
-const TOKEN_STEPS = 4
-const TOKEN_STEP = 24
-// On screen, the token keeps this clear of systems, names and the other token.
-const TOKEN_CLEAR = 6
-// A spot further round from the right is taken only for a board this much larger.
-const TOKEN_GAIN = 1.01
-// The most spots round each homeworld tried with the Bank.
-const TOKEN_CHOICES = 3
 const LABEL_ROOM = 26
 const LABEL_HALF_WIDTH = 72
-
-export const TURN_TOKEN_RADIUS = TOKEN_RADIUS
 
 // A pyramid set over a smaller one slides down until its inside meets the one below.
 export function nestLift(below: PyramidSize, above: PyramidSize): number {
@@ -520,104 +501,10 @@ export function tableLayout(
         ])
     )
     const mapPoints = [...ground, ...tops, ...labelShapes.flat()]
-    const fitOf = fitter(wide)
-    const mapBox = boxOf(mapPoints)
-    const mapCorners = [
-        { x: mapBox.left, y: mapBox.near },
-        { x: mapBox.right, y: mapBox.far }
-    ]
-
-    // The token rests beside the homeworld of the player whose turn it is: to the map's right
-    // where that costs nothing, else wherever round it the board fits the screen the largest.
-    const tokenShape = (spot: Point) => {
-        const centre = screen(spot)
-        const rx = TOKEN_RADIUS
-        const ry = TOKEN_RADIUS * view.tilt
-        return [
-            { x: centre.x - rx, y: centre.y - ry },
-            { x: centre.x + rx, y: centre.y - ry },
-            { x: centre.x + rx, y: centre.y + ry + TOKEN_THICKNESS },
-            { x: centre.x - rx, y: centre.y + ry + TOKEN_THICKNESS }
-        ]
-    }
-    // A few spots round a homeworld worth trying: the first clear one from its right, and those
-    // that make the board the largest.
-    const homeSpots = (home: SystemPlacement | undefined, taken: Point[][]): Point[] => {
-        if (home === undefined) return []
-        const others = [...systemShapes, ...labelShapes, ...taken]
-        const otherBoxes = others.map(boxOf)
-        const takenPoints = taken.flat()
-        const found: { spot: Point; fit: number }[] = []
-        // Turning ever further from the right, either way, and stepping out.
-        for (let turn = 0; turn <= TOKEN_TURNS; turn++) {
-            for (const sign of turn === 0 || turn === TOKEN_TURNS ? [1] : [1, -1]) {
-                const angle = (sign * turn * Math.PI) / TOKEN_TURNS
-                const outward = toTable(axes, Math.sin(angle), Math.cos(angle))
-                const reach = Math.max(
-                    ...home.outline.map(
-                        (point) => (point.x - home.x) * outward.x + (point.y - home.y) * outward.y
-                    )
-                )
-                for (let out = 0; out < TOKEN_STEPS; out++) {
-                    const distance = reach + TOKEN_GAP + TOKEN_RADIUS + out * TOKEN_STEP
-                    const spot = {
-                        x: home.x + outward.x * distance,
-                        y: home.y + outward.y * distance
-                    }
-                    const shape = tokenShape(spot)
-                    const box = boxOf(shape)
-                    const blocked = others.some(
-                        (other, index) =>
-                            boxesNear(box, otherBoxes[index], TOKEN_CLEAR) &&
-                            convexNear(shape, other, TOKEN_CLEAR)
-                    )
-                    if (blocked) continue
-                    found.push({ spot, fit: fitOf([...mapCorners, ...takenPoints, ...shape]) })
-                    break
-                }
-            }
-        }
-        const [first, ...rest] = found
-        if (first === undefined) return []
-        // The stable sort keeps the spots nearest the right first among equals.
-        const larger = rest
-            .filter((spot) => spot.fit > first.fit * TOKEN_GAIN)
-            .toSorted((x, y) => y.fit - x.fit)
-        return [first, ...larger.slice(0, TOKEN_CHOICES - 1)].map(({ spot }) => spot)
-    }
-    const nearHome = placed.find((system) => system.homeworldOf === seats.nearId)
-    const farHome = placed.find(
-        (system) => system.homeworldOf !== undefined && system.homeworldOf !== seats.nearId
-    )
-    // The Bank is laid out with each pair of spots, and the pair that leaves the board largest
-    // kept, the first tried among equals.
-    let best:
-        | {
-              fit: number
-              tokenSpots: TableLayout['tokenSpots']
-              content: Point[]
-              bank: ReturnType<typeof bankLayout>
-          }
-        | undefined
-    const nearSpots = homeSpots(nearHome, [])
-    for (const near of nearSpots.length > 0 ? nearSpots : [toTable(axes, 0, 0)]) {
-        const farSpots = homeSpots(farHome, [tokenShape(near)])
-        for (const far of farSpots.length > 0 ? farSpots : [toTable(axes, u, 0)]) {
-            const tokenShapes = [tokenShape(near), tokenShape(far)]
-            const content = [...mapPoints, ...tokenShapes.flat()]
-            // What the Bank must keep clear of: each system with its pieces and its name, and
-            // the tokens.
-            const shapes = [...systemShapes, ...labelShapes, ...tokenShapes]
-            const bank = bankLayout(placed, view, wide, content, shapes)
-            const fit = fitOf([...content, ...bank.points])
-            if (best === undefined || fit > best.fit + 1e-9) {
-                best = { fit, tokenSpots: { near, far }, content, bank }
-            }
-        }
-    }
-    if (best === undefined) throw Error('A token spot is always tried')
-    const { tokenSpots, content } = best
-    const { towers, bank, points: bankPoints } = best.bank
+    const content = mapPoints
+    // What the Bank must keep clear of: each system with its pieces and its name.
+    const shapes = [...systemShapes, ...labelShapes]
+    const { towers, bank, points: bankPoints } = bankLayout(placed, view, wide, content, shapes)
     const all = [...content, ...bankPoints]
     const margin = 14
     const minX = Math.min(...all.map((point) => point.x)) - margin
@@ -628,7 +515,6 @@ export function tableLayout(
         systems: placed,
         towers,
         bank,
-        tokenSpots,
         frame: { x: minX, y: minY, width: maxX - minX, height: maxY - minY }
     }
 }

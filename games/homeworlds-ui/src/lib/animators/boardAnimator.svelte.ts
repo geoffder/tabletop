@@ -27,8 +27,6 @@ const ANIMATED_KINDS: ReadonlySet<TransitionKind> = new Set<TransitionKind>([
 // one that only shifts with the map glides. A step without an action ends within QUICK.
 const FLIGHT = { least: 0.36, most: 0.6, perUnit: 1 / 1600, arc: 0.3, highest: 120, lowest: 26 }
 const GLIDE = 0.34
-const TOKEN_SLIDE = 0.5
-const TOKEN_LIFT = 46
 const QUICK = 0.18
 const QUICK_ARC = 12
 // The motion waits for the board to draw what it moves, but never longer than this.
@@ -37,7 +35,6 @@ const DRAW_WAIT = 0.01
 type Timeline = gsap.core.Timeline
 type Step = TransitionStep<HydratedHomeworldsGameState, AnimationContext>
 type Parts = { body?: SVGGElement; shadow?: SVGElement }
-export type TokenSide = 'near' | 'far'
 
 export class BoardAnimator implements MoveInterrupter {
     // What the board draws. A move first draws every piece where it stood, then flies it to
@@ -51,16 +48,8 @@ export class BoardAnimator implements MoveInterrupter {
         void this.session.gameState
         return new Set<number>()
     })
-    tokenSide: TokenSide = $derived.by(() => this.sideOf(this.session.gameState))
-    // While carried to the other side, the token is drawn over the pieces.
-    tokenFlying: boolean = $derived.by(() => {
-        void this.session.gameState
-        return false
-    })
-    tokenFacing: TokenSide = $derived.by(() => this.sideOf(this.session.gameState))
 
     private readonly parts = new Map<number, Parts>()
-    private token: SVGGElement | undefined
     private readonly listener = (step: Step) => this.onGameStateChange(step)
     private landMove: (() => void) | undefined
     private timeline: Timeline | undefined
@@ -104,18 +93,6 @@ export class BoardAnimator implements MoveInterrupter {
         }
     }
 
-    readonly tokenNode: Attachment<SVGGElement> = (node) => {
-        this.token = node
-        return () => {
-            if (this.token === node) this.token = undefined
-        }
-    }
-
-    private sideOf(state: HydratedHomeworldsGameState): TokenSide {
-        const active = state.activePlayerIds[0] ?? state.turnManager.currentTurn()?.playerId
-        return active === undefined || active === this.session.nearId ? 'near' : 'far'
-    }
-
     private stop(): boolean {
         const land = this.landMove
         if (land === undefined) return false
@@ -154,8 +131,6 @@ export class BoardAnimator implements MoveInterrupter {
                       from.starMap.bank()
                   )
         const after = drawnPieces(toLayout, to.starMap.bank())
-        const fromSide = this.sideOf(from)
-        const toSide = this.sideOf(to)
 
         const moves = [...after.values()].flatMap((landing) => {
             const start = before.get(landing.piece)
@@ -166,9 +141,6 @@ export class BoardAnimator implements MoveInterrupter {
         this.layout = toLayout
         this.pieces = before
         this.flying = new Set(relocated.map(({ landing }) => landing.piece))
-        this.tokenSide = fromSide
-        this.tokenFacing = fromSide
-        this.tokenFlying = fromSide !== toSide
         const drawing = performance.now()
         await tick()
 
@@ -185,9 +157,6 @@ export class BoardAnimator implements MoveInterrupter {
             for (const node of touched) setPose(node, { x: 0, y: 0, scale: 1 })
             this.pieces = after
             this.flying = new Set()
-            this.tokenSide = toSide
-            this.tokenFacing = toSide
-            this.tokenFlying = false
         }
         this.landMove = land
 
@@ -197,24 +166,6 @@ export class BoardAnimator implements MoveInterrupter {
             touched.push(parts.body)
             if (parts.shadow) touched.push(parts.shadow)
             this.fly(timeline, view, parts, start, landing, quick)
-        }
-
-        if (fromSide !== toSide && this.token) {
-            const token = this.token
-            touched.push(token)
-            const a = onTable(
-                view,
-                toLayout.tokenSpots[fromSide].x,
-                toLayout.tokenSpots[fromSide].y
-            )
-            const b = onTable(view, toLayout.tokenSpots[toSide].x, toLayout.tokenSpots[toSide].y)
-            const slide = quick ? QUICK : TOKEN_SLIDE
-            const lift = quick ? QUICK_ARC : TOKEN_LIFT
-            const motion = this.motion((u) =>
-                setPose(token, { x: (b.x - a.x) * u, y: (b.y - a.y) * u - lift * 4 * u * (1 - u) })
-            )
-            timeline.to(motion, { u: 1, duration: slide, ease: 'power2.inOut' }, 0)
-            timeline.call(() => (this.tokenFacing = toSide), undefined, slide / 2)
         }
 
         animationContext.afterAnimations(() => {
