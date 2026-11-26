@@ -1,22 +1,13 @@
 <script lang="ts">
-    import {
-        pieceColor,
-        pieceSize,
-        type PieceKind,
-        PyramidColor,
-        type PyramidSize
-    } from '@tabletop/homeworlds'
+    import { pieceSize, type PieceKind, PyramidColor } from '@tabletop/homeworlds'
     import { getGameSession } from '$lib/model/sessionContext.svelte.js'
     import { towerKey } from '$lib/model/session.svelte.js'
     import { onTable } from '$lib/board/view.js'
-    import {
-        drawPyramid,
-        PYRAMID_BASE,
-        type PyramidPose,
-        shipFootprint
-    } from '$lib/board/pyramid.js'
-    import { nestLift, type SystemPlacement, TURN_TOKEN_RADIUS } from '$lib/board/layout.js'
+    import { drawPyramid, PYRAMID_BASE, shipFootprint } from '$lib/board/pyramid.js'
+    import { type SystemPlacement, TURN_TOKEN_RADIUS } from '$lib/board/layout.js'
     import Pyramid from './Pyramid.svelte'
+    import { BoardAnimator } from '$lib/animators/boardAnimator.svelte.js'
+    import { drawOrder, type DrawnPiece } from '$lib/board/pieces.js'
     import TurnToken from './TurnToken.svelte'
     import PowerMenu from './PowerMenu.svelte'
 
@@ -31,85 +22,18 @@
     const SIZE_NAME = ['', 'Small', 'Medium', 'Large']
 
     const session = getGameSession()
+    const animator = new BoardAnimator(session)
     const view = $derived(session.view)
-    const layout = $derived(session.layout)
+    const layout = $derived(animator.layout)
 
-    type Drawn = {
-        key: string
-        piece: number
-        color: PyramidColor
-        size: PyramidSize
-        pose: PyramidPose
-        x: number
-        y: number
-        role: 'star' | 'ship' | 'bank'
-        ownerId?: string
-    }
-
-    const bankCounts = $derived.by(() => {
-        const counts = new Map<string, number[]>()
-        for (const piece of session.shownBank) {
-            const key = towerKey({ color: pieceColor(piece), size: pieceSize(piece) })
-            counts.set(key, [...(counts.get(key) ?? []), piece])
-        }
-        return counts
+    // Still pieces far first; pieces in flight over everything, so they pass over what they cross.
+    const pieces: DrawnPiece[] = $derived.by(() => {
+        const all = [...animator.pieces.values()]
+        return [
+            ...drawOrder(all.filter((drawn) => !animator.flying.has(drawn.piece))),
+            ...drawOrder(all.filter((drawn) => animator.flying.has(drawn.piece)))
+        ]
     })
-
-    // Far first, so nearer pieces stand in front; a nested star after the one it sits on.
-    const pieces: Drawn[] = $derived.by(() => {
-        const drawn: Drawn[] = []
-        for (const system of layout.systems) {
-            for (const star of system.stars) {
-                drawn.push({
-                    key: `p${star.piece}`,
-                    piece: star.piece,
-                    color: pieceColor(star.piece),
-                    size: pieceSize(star.piece),
-                    pose: { kind: 'star', yaw: star.yaw, lift: star.lift },
-                    x: star.x,
-                    y: star.y,
-                    role: 'star'
-                })
-            }
-            for (const ship of system.ships) {
-                drawn.push({
-                    key: `p${ship.piece}`,
-                    piece: ship.piece,
-                    color: pieceColor(ship.piece),
-                    size: pieceSize(ship.piece),
-                    pose: { kind: 'ship', heading: ship.heading },
-                    x: ship.x,
-                    y: ship.y,
-                    role: 'ship',
-                    ownerId: ship.ownerId
-                })
-            }
-        }
-        for (const tower of layout.towers) {
-            const stack = bankCounts.get(towerKey(tower)) ?? []
-            stack.forEach((piece, level) => {
-                drawn.push({
-                    key: `p${piece}`,
-                    piece,
-                    color: tower.color,
-                    size: tower.size,
-                    pose: {
-                        kind: 'star',
-                        yaw: 0.3,
-                        lift: level * nestLift(tower.size, tower.size)
-                    },
-                    x: tower.x,
-                    y: tower.y,
-                    role: 'bank'
-                })
-            })
-        }
-        return drawn.toSorted((a, b) => b.y - a.y || liftOf(a) - liftOf(b) || a.x - b.x)
-    })
-
-    function liftOf(drawn: Drawn): number {
-        return drawn.pose.kind === 'star' ? drawn.pose.lift : 0
-    }
 
     function at(x: number, y: number): string {
         const point = onTable(view, x, y)
@@ -207,12 +131,7 @@
         })
     )
 
-    const activeId = $derived(session.gameState.activePlayerIds[0])
-    const tokenSpot = $derived(
-        activeId === undefined || activeId === session.nearId
-            ? layout.tokenSpots.near
-            : layout.tokenSpots.far
-    )
+    const tokenSpot = $derived(layout.tokenSpots[animator.tokenSide])
 
     const uid = $props.id()
 
@@ -254,7 +173,9 @@
 
 <div class="tap-off" role="presentation" onclick={tapOff}>
     <svg
+        {@attach animator.attach}
         class="hw-board"
+        class:updating={session.updatingVisibleState}
         viewBox="{layout.frame.x} {layout.frame.y} {layout.frame.width} {layout.frame.height}"
         width={layout.frame.width}
         height={layout.frame.height}
@@ -309,9 +230,10 @@
 
         <!-- Shadows on the table, under every piece. -->
         <g class="shadows">
-            {#each pieces as drawn (drawn.key)}
+            {#each pieces as drawn (drawn.piece)}
                 <g transform={at(drawn.x, drawn.y)}>
                     <polygon
+                        {@attach animator.part(drawn.piece, 'shadow')}
                         points={drawPyramid(view, drawn.color, drawn.size, drawn.pose).shadow}
                         fill="#000"
                         fill-opacity={drawn.role === 'bank' ? 0.25 : 0.32}
@@ -393,25 +315,29 @@
             onclick={() => session.endTurn()}
             onkeydown={(event) => onKey(event, () => session.endTurn())}
         >
-            {#if session.canEndTurn}
-                <ellipse
-                    class="mark target"
-                    rx={TURN_TOKEN_RADIUS + 8}
-                    ry={(TURN_TOKEN_RADIUS + 8) * view.tilt}
-                ></ellipse>
-            {/if}
-            <TurnToken
-                radius={TURN_TOKEN_RADIUS}
-                {view}
-                facingFar={activeId !== undefined && activeId !== session.nearId}
-                uid="{uid}-token"
-            />
+            <g {@attach animator.tokenNode}>
+                {#if session.canEndTurn}
+                    <ellipse
+                        class="mark target"
+                        rx={TURN_TOKEN_RADIUS + 8}
+                        ry={(TURN_TOKEN_RADIUS + 8) * view.tilt}
+                    ></ellipse>
+                {/if}
+                <TurnToken
+                    radius={TURN_TOKEN_RADIUS}
+                    {view}
+                    facingFar={animator.tokenSide === 'far'}
+                    uid="{uid}-token"
+                />
+            </g>
         </g>
 
         <!-- The pieces. -->
-        {#each pieces as drawn (drawn.key)}
+        {#each pieces as drawn (drawn.piece)}
             <g transform={at(drawn.x, drawn.y)}>
-                <Pyramid color={drawn.color} size={drawn.size} pose={drawn.pose} {view} />
+                <g {@attach animator.part(drawn.piece, 'body')}>
+                    <Pyramid color={drawn.color} size={drawn.size} pose={drawn.pose} {view} />
+                </g>
             </g>
         {/each}
 
@@ -435,7 +361,7 @@
                     ></ellipse>
                 {/if}
             {/each}
-            {#each pieces as drawn (drawn.key)}
+            {#each pieces as drawn (drawn.piece)}
                 {#if drawn.role === 'ship' && (selectable.has(drawn.piece) || session.captureTargets.has(drawn.piece))}
                     {@const capture = session.captureTargets.has(drawn.piece)}
                     <g transform={at(drawn.x, drawn.y)}>
@@ -552,6 +478,10 @@
         stroke: var(--hw-mark);
         stroke-opacity: 0.85;
         stroke-width: 3;
+    }
+
+    .updating .mark {
+        opacity: 0;
     }
 
     .mark {

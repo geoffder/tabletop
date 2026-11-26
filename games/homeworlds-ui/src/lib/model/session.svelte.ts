@@ -1,5 +1,6 @@
 import {
     GameSession,
+    type PresentedTransition,
     type TitlePreferences,
     undoableStagedSelection
 } from '@tabletop/frontend-components'
@@ -159,6 +160,14 @@ export class HomeworldsGameSession extends GameSession<
                 (selection) => this.selectTurn(selection)
             )
         )
+    }
+
+    get presentingState(): HydratedHomeworldsGameState | undefined {
+        return this.incomingGameState
+    }
+
+    override beforeNewState({ kind }: PresentedTransition): void {
+        if (kind === 'view-switch') this.moveInterrupter?.abandon()
     }
 
     private selectTurn(selection: TurnSelection) {
