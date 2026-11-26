@@ -1,0 +1,206 @@
+{
+ "game": {
+  "id": "scenario-middle-game",
+  "isPublic": false,
+  "status": "started",
+  "typeId": "homeworlds",
+  "deleted": false,
+  "name": "Middle game",
+  "ownerId": "owner",
+  "players": [
+   {
+    "id": "player-1",
+    "name": "Alice",
+    "isHuman": true,
+    "status": "joined"
+   },
+   {
+    "id": "player-2",
+    "name": "Bob",
+    "isHuman": true,
+    "status": "joined"
+   }
+  ],
+  "config": {
+   "setup": "FirstGame",
+   "firstPlayer": "Random"
+  },
+  "hotseat": false,
+  "winningPlayerIds": [],
+  "seed": 4105436061,
+  "activePlayerIds": [
+   "player-1"
+  ],
+  "createdAt": "2026-11-26T17:07:36.206Z",
+  "storage": "remote",
+  "category": "standard",
+  "startedAt": "2026-11-26T17:07:36.207Z"
+ },
+ "state": {
+  "systemVersion": 3,
+  "id": "H_2br8SVz55tzsDkUCHbh",
+  "gameId": "scenario-middle-game",
+  "seed": 4105436061,
+  "prng": {
+   "seed": 4105436061,
+   "invocations": 1
+  },
+  "protectedPrng": {
+   "algorithm": "chacha20-v1",
+   "seed": "1592e77e8d0fadb802ac0f5b3fd459e7850e638e38faa362a9ecf4dfca07b94e",
+   "invocations": 0
+  },
+  "masterSeed": "bcfc4c4a9163d562da9197ee58a1938a",
+  "activePlayerIds": [
+   "player-1"
+  ],
+  "winningPlayerIds": [],
+  "actionCount": 0,
+  "actionChecksum": 0,
+  "players": [
+   {
+    "playerId": "player-1",
+    "color": "purple"
+   },
+   {
+    "playerId": "player-2",
+    "color": "orange"
+   }
+  ],
+  "machineState": "TakingTurn",
+  "turnManager": {
+   "series": [
+    {
+     "type": "turn",
+     "playerId": "player-1",
+     "start": 0
+    }
+   ],
+   "turnOrder": [
+    "player-1",
+    "player-2"
+   ],
+   "turnCounts": {
+    "player-1": 0,
+    "player-2": 0
+   },
+   "seriesKeeps": "latest"
+  },
+  "starMap": {
+   "systems": [
+    {
+     "id": 36,
+     "stars": [
+      27,
+      3
+     ],
+     "ships": [
+      {
+       "piece": 24,
+       "ownerId": "player-1"
+      },
+      {
+       "piece": 12,
+       "ownerId": "player-1"
+      },
+      {
+       "piece": 28,
+       "ownerId": "player-1"
+      }
+     ],
+     "homeworldOf": "player-1"
+    },
+    {
+     "id": 37,
+     "stars": [
+      15,
+      29
+     ],
+     "ships": [
+      {
+       "piece": 25,
+       "ownerId": "player-2"
+      },
+      {
+       "piece": 0,
+       "ownerId": "player-2"
+      },
+      {
+       "piece": 18,
+       "ownerId": "player-2"
+      }
+     ],
+     "homeworldOf": "player-2"
+    },
+    {
+     "id": 26,
+     "stars": [
+      26
+     ],
+     "ships": [
+      {
+       "piece": 9,
+       "ownerId": "player-1"
+      },
+      {
+       "piece": 19,
+       "ownerId": "player-1"
+      },
+      {
+       "piece": 30,
+       "ownerId": "player-2"
+      }
+     ]
+    },
+    {
+     "id": 6,
+     "stars": [
+      6
+     ],
+     "ships": [
+      {
+       "piece": 21,
+       "ownerId": "player-1"
+      }
+     ]
+    },
+    {
+     "id": 31,
+     "stars": [
+      31
+     ],
+     "ships": [
+      {
+       "piece": 10,
+       "ownerId": "player-2"
+      },
+      {
+       "piece": 4,
+       "ownerId": "player-2"
+      }
+     ]
+    },
+    {
+     "id": 11,
+     "stars": [
+      11
+     ],
+     "ships": [
+      {
+       "piece": 33,
+       "ownerId": "player-1"
+      },
+      {
+       "piece": 1,
+       "ownerId": "player-2"
+      }
+     ]
+    }
+   ]
+  },
+  "positions": [
+   1011310689
+  ]
+ },
+ "actions": []
+}

@@ -1,0 +1,146 @@
+{
+ "game": {
+  "id": "scenario-direct-assault",
+  "isPublic": false,
+  "status": "started",
+  "typeId": "homeworlds",
+  "deleted": false,
+  "name": "Direct assault",
+  "ownerId": "owner",
+  "players": [
+   {
+    "id": "player-1",
+    "name": "Alice",
+    "isHuman": true,
+    "status": "joined"
+   },
+   {
+    "id": "player-2",
+    "name": "Bob",
+    "isHuman": true,
+    "status": "joined"
+   }
+  ],
+  "config": {
+   "setup": "FirstGame",
+   "firstPlayer": "Random"
+  },
+  "hotseat": false,
+  "winningPlayerIds": [],
+  "seed": 801942701,
+  "activePlayerIds": [
+   "player-1"
+  ],
+  "createdAt": "2026-11-26T17:07:36.217Z",
+  "storage": "remote",
+  "category": "standard",
+  "startedAt": "2026-11-26T17:07:36.217Z"
+ },
+ "state": {
+  "systemVersion": 3,
+  "id": "49IY_b95di3x4gyjPqhjp",
+  "gameId": "scenario-direct-assault",
+  "seed": 801942701,
+  "prng": {
+   "seed": 801942701,
+   "invocations": 1
+  },
+  "protectedPrng": {
+   "algorithm": "chacha20-v1",
+   "seed": "d87d8af95e5b54a240674148e731b6955fc94e8ff2cb089298c031d88c6bd47d",
+   "invocations": 0
+  },
+  "masterSeed": "ba928c6d6548d422d8b1c6b8b114bcbf",
+  "activePlayerIds": [
+   "player-1"
+  ],
+  "winningPlayerIds": [],
+  "actionCount": 0,
+  "actionChecksum": 0,
+  "players": [
+   {
+    "playerId": "player-1",
+    "color": "purple"
+   },
+   {
+    "playerId": "player-2",
+    "color": "orange"
+   }
+  ],
+  "machineState": "TakingTurn",
+  "turnManager": {
+   "series": [
+    {
+     "type": "turn",
+     "playerId": "player-1",
+     "start": 0
+    }
+   ],
+   "turnOrder": [
+    "player-1",
+    "player-2"
+   ],
+   "turnCounts": {
+    "player-1": 0,
+    "player-2": 0
+   },
+   "seriesKeeps": "latest"
+  },
+  "starMap": {
+   "systems": [
+    {
+     "id": 36,
+     "stars": [
+      27,
+      3
+     ],
+     "ships": [
+      {
+       "piece": 24,
+       "ownerId": "player-1"
+      },
+      {
+       "piece": 30,
+       "ownerId": "player-1"
+      }
+     ],
+     "homeworldOf": "player-1"
+    },
+    {
+     "id": 37,
+     "stars": [
+      6,
+      28
+     ],
+     "ships": [
+      {
+       "piece": 21,
+       "ownerId": "player-2"
+      },
+      {
+       "piece": 15,
+       "ownerId": "player-1"
+      }
+     ],
+     "homeworldOf": "player-2"
+    },
+    {
+     "id": 9,
+     "stars": [
+      9
+     ],
+     "ships": [
+      {
+       "piece": 18,
+       "ownerId": "player-2"
+      }
+     ]
+    }
+   ]
+  },
+  "positions": [
+   441264011
+  ]
+ },
+ "actions": []
+}

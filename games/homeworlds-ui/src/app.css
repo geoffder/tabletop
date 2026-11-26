@@ -1,0 +1,64 @@
+@import 'tailwindcss';
+@plugin 'flowbite/plugin';
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme {
+    --color-primary-50: #fff5f2;
+    --color-primary-100: #fff1ee;
+    --color-primary-200: #ffe4de;
+    --color-primary-300: #ffd5cc;
+    --color-primary-400: #ffbcad;
+    --color-primary-500: #fe795d;
+    --color-primary-600: #ef562f;
+    --color-primary-700: #eb4f27;
+    --color-primary-800: #cc4522;
+    --color-primary-900: #a5371b;
+
+    --color-secondary-50: #f0f9ff;
+    --color-secondary-100: #e0f2fe;
+    --color-secondary-200: #bae6fd;
+    --color-secondary-300: #7dd3fc;
+    --color-secondary-400: #38bdf8;
+    --color-secondary-500: #0ea5e9;
+    --color-secondary-600: #0284c7;
+    --color-secondary-700: #0369a1;
+    --color-secondary-800: #075985;
+    --color-secondary-900: #0c4a6e;
+}
+
+@source "../node_modules/flowbite-svelte/dist";
+@source "../node_modules/flowbite-svelte-icons/dist";
+@source "../../../libs/frontend-components/src/**/*.{html,js,svelte,ts}";
+@source "./**/*.{html,js,svelte,ts}";
+
+@layer base {
+    /* disable chrome cancel button */
+    input[type='search']::-webkit-search-cancel-button {
+        display: none;
+    }
+}
+
+:root {
+    /* Deep space, as on the box: the pyramids glow on it like the real ones on a dark table. */
+    --hw-table: #151320;
+    --hw-table-deep: #0c0b14;
+    /* Cards and controls in the box's cream with its navy ink, lifted by a soft shadow. */
+    --hw-panel: #f1ebda;
+    --hw-panel-edge: rgb(20 20 50 / 0.18);
+    --hw-panel-shadow: 0 2px 10px rgb(0 0 0 / 0.45);
+    --hw-panel-hover: color-mix(in srgb, var(--hw-panel), #1d2550 8%);
+    --hw-panel-inset: color-mix(in srgb, var(--hw-panel), #ffffff 50%);
+    --hw-panel-rule: color-mix(in srgb, var(--hw-panel), #1d2550 20%);
+    /* The ring round a toggle that is on. */
+    --hw-toggle-on: #0a8fb0;
+    --hw-ink: #1d2550;
+    --hw-ink-quiet: #5c6184;
+    --hw-control-off: #a9a9bd;
+    /* Text standing straight on the table. */
+    --hw-table-ink: #ece6d3;
+    /* The active player's card, in the box's orange. */
+    --hw-target: #e8542a;
+    /* Marks on the table and pieces. */
+    --hw-mark: #5ef0ff;
+}

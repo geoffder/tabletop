@@ -1,0 +1,162 @@
+{
+ "game": {
+  "id": "scenario-sacrifice",
+  "isPublic": false,
+  "status": "started",
+  "typeId": "homeworlds",
+  "deleted": false,
+  "name": "Sacrifice",
+  "ownerId": "owner",
+  "players": [
+   {
+    "id": "player-1",
+    "name": "Alice",
+    "isHuman": true,
+    "status": "joined"
+   },
+   {
+    "id": "player-2",
+    "name": "Bob",
+    "isHuman": true,
+    "status": "joined"
+   }
+  ],
+  "config": {
+   "setup": "FirstGame",
+   "firstPlayer": "Random"
+  },
+  "hotseat": false,
+  "winningPlayerIds": [],
+  "seed": 3902760689,
+  "activePlayerIds": [
+   "player-1"
+  ],
+  "createdAt": "2026-11-26T17:07:36.215Z",
+  "storage": "remote",
+  "category": "standard",
+  "startedAt": "2026-11-26T17:07:36.216Z"
+ },
+ "state": {
+  "systemVersion": 3,
+  "id": "2E54CXSLe5smi3SylNiN3",
+  "gameId": "scenario-sacrifice",
+  "seed": 3902760689,
+  "prng": {
+   "seed": 3902760689,
+   "invocations": 1
+  },
+  "protectedPrng": {
+   "algorithm": "chacha20-v1",
+   "seed": "eb3a1caa7b6347bc6debe84ca5532cac467ba2124506d68dae7746efdf9cd970",
+   "invocations": 0
+  },
+  "masterSeed": "4442919ace647809e9bc6fd676a9e9d9",
+  "activePlayerIds": [
+   "player-1"
+  ],
+  "winningPlayerIds": [],
+  "actionCount": 0,
+  "actionChecksum": 0,
+  "players": [
+   {
+    "playerId": "player-1",
+    "color": "purple"
+   },
+   {
+    "playerId": "player-2",
+    "color": "orange"
+   }
+  ],
+  "machineState": "TakingTurn",
+  "turnManager": {
+   "series": [
+    {
+     "type": "turn",
+     "playerId": "player-1",
+     "start": 0
+    }
+   ],
+   "turnOrder": [
+    "player-1",
+    "player-2"
+   ],
+   "turnCounts": {
+    "player-1": 0,
+    "player-2": 0
+   },
+   "seriesKeeps": "latest"
+  },
+  "starMap": {
+   "systems": [
+    {
+     "id": 36,
+     "stars": [
+      27,
+      3
+     ],
+     "ships": [
+      {
+       "piece": 24,
+       "ownerId": "player-1"
+      },
+      {
+       "piece": 15,
+       "ownerId": "player-1"
+      }
+     ],
+     "homeworldOf": "player-1"
+    },
+    {
+     "id": 37,
+     "stars": [
+      12,
+      28
+     ],
+     "ships": [
+      {
+       "piece": 25,
+       "ownerId": "player-2"
+      },
+      {
+       "piece": 0,
+       "ownerId": "player-2"
+      }
+     ],
+     "homeworldOf": "player-2"
+    },
+    {
+     "id": 26,
+     "stars": [
+      26
+     ],
+     "ships": [
+      {
+       "piece": 29,
+       "ownerId": "player-1"
+      },
+      {
+       "piece": 1,
+       "ownerId": "player-1"
+      }
+     ]
+    },
+    {
+     "id": 6,
+     "stars": [
+      6
+     ],
+     "ships": [
+      {
+       "piece": 18,
+       "ownerId": "player-2"
+      }
+     ]
+    }
+   ]
+  },
+  "positions": [
+   -1913440676
+  ]
+ },
+ "actions": []
+}

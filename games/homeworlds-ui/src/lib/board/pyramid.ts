@@ -1,0 +1,277 @@
+import { PyramidColor, PyramidSize } from '@tabletop/homeworlds'
+import type { Point } from '@tabletop/common'
+import {
+    add,
+    type BoardView,
+    cross,
+    dot,
+    normalize,
+    project,
+    scale,
+    sub,
+    type Vec3
+} from './view.js'
+
+// Looney Pyramids in table units (half a millimetre): a square base and a height, Small, Medium
+// and Large nesting inside one another.
+export const PYRAMID_BASE: Record<PyramidSize, number> = {
+    [PyramidSize.Small]: 28.6,
+    [PyramidSize.Medium]: 39.6,
+    [PyramidSize.Large]: 50.8
+}
+
+export const PYRAMID_HEIGHT: Record<PyramidSize, number> = {
+    [PyramidSize.Small]: 50.8,
+    [PyramidSize.Medium]: 69.8,
+    [PyramidSize.Large]: 89
+}
+
+// Standing as a star, turned about its upright axis; or lying on a face as a ship, its tip
+// pointing `heading` radians round from straight away from the viewer.
+export type PyramidPose =
+    { kind: 'star'; yaw: number; lift: number } | { kind: 'ship'; heading: number }
+
+export function slantHeight(size: PyramidSize): number {
+    return Math.hypot(PYRAMID_HEIGHT[size], PYRAMID_BASE[size] / 2)
+}
+
+// How far a lying ship reaches across the table and away, pointing `heading` round.
+export function shipFootprint(
+    size: PyramidSize,
+    heading: number
+): { across: number; deep: number } {
+    const length = slantHeight(size)
+    const width = PYRAMID_BASE[size]
+    const sin = Math.abs(Math.sin(heading))
+    const cos = Math.abs(Math.cos(heading))
+    return { across: length * sin + width * cos, deep: length * cos + width * sin }
+}
+
+type Solid = { base: [Vec3, Vec3, Vec3, Vec3]; apex: Vec3 }
+
+function turn([x, y, z]: Vec3, angle: number): Vec3 {
+    const cos = Math.cos(angle)
+    const sin = Math.sin(angle)
+    return [x * cos - y * sin, x * sin + y * cos, z]
+}
+
+// The corners about the piece's footprint centre on the table.
+export function solid(size: PyramidSize, pose: PyramidPose): Solid {
+    const half = PYRAMID_BASE[size] / 2
+    const height = PYRAMID_HEIGHT[size]
+    if (pose.kind === 'star') {
+        const corners: [Vec3, Vec3, Vec3, Vec3] = [
+            [-half, -half, pose.lift],
+            [half, -half, pose.lift],
+            [half, half, pose.lift],
+            [-half, half, pose.lift]
+        ]
+        return {
+            base: [
+                turn(corners[0], pose.yaw),
+                turn(corners[1], pose.yaw),
+                turn(corners[2], pose.yaw),
+                turn(corners[3], pose.yaw)
+            ],
+            apex: [0, 0, height + pose.lift]
+        }
+    }
+    // Lying on a face: that face's base edge on the table at the back, the tip ahead on the
+    // table, and the open base standing up from the back edge, leaning forward as the face's
+    // slope leans.
+    const slant = slantHeight(size)
+    const base = PYRAMID_BASE[size]
+    const slope = Math.atan2(height, half)
+    const back = -slant / 2
+    const lean = base * Math.cos(slope)
+    const top = base * Math.sin(slope)
+    const corners: [Vec3, Vec3, Vec3, Vec3] = [
+        [-half, back, 0],
+        [half, back, 0],
+        [half, back + lean, top],
+        [-half, back + lean, top]
+    ]
+    return {
+        base: [
+            turn(corners[0], -pose.heading),
+            turn(corners[1], -pose.heading),
+            turn(corners[2], -pose.heading),
+            turn(corners[3], -pose.heading)
+        ],
+        apex: turn([0, slant / 2, 0], -pose.heading)
+    }
+}
+
+type Rgb = readonly [number, number, number]
+
+// The translucent plastic: the colour light takes through it, its deep tone where the plastic is
+// thick, and how light its lit faces get.
+const PLASTIC: Record<PyramidColor, { body: Rgb; deep: Rgb; lit: Rgb }> = {
+    [PyramidColor.Red]: { body: [232, 34, 30], deep: [138, 8, 16], lit: [255, 128, 104] },
+    [PyramidColor.Yellow]: { body: [250, 208, 22], deep: [184, 124, 4], lit: [255, 244, 150] },
+    [PyramidColor.Green]: { body: [30, 176, 62], deep: [6, 98, 34], lit: [128, 232, 130] },
+    [PyramidColor.Blue]: { body: [52, 56, 214], deep: [22, 16, 128], lit: [128, 140, 255] }
+}
+
+const LIGHT: Vec3 = normalize([-0.5, 0.35, 0.8])
+
+function mix(a: Rgb, b: Rgb, amount: number): Rgb {
+    const blend = (from: number, to: number) => from + (to - from) * amount
+    return [blend(a[0], b[0]), blend(a[1], b[1]), blend(a[2], b[2])]
+}
+
+function css([r, g, b]: Rgb): string {
+    return `rgb(${Math.round(r)} ${Math.round(g)} ${Math.round(b)})`
+}
+
+// A face lit by how squarely it meets the light, from the plastic's deep tone up to its lit one.
+function faceColor(color: PyramidColor, normal: Vec3): string {
+    const plastic = PLASTIC[color]
+    const light = Math.max(0, dot(normal, LIGHT))
+    return light > 0.55
+        ? css(mix(plastic.body, plastic.lit, (light - 0.55) / 0.45))
+        : css(mix(plastic.deep, plastic.body, light / 0.55))
+}
+
+export function plasticColor(color: PyramidColor, tone: 'body' | 'deep' | 'lit'): string {
+    return css(PLASTIC[color][tone])
+}
+
+export type Face = { points: string; fill: string; facing: boolean }
+export type Pip = { transform: string }
+
+export type PyramidDrawing = {
+    // Faces turned away first, seen through the ones facing the viewer.
+    faces: Face[]
+    // The plastic's edges, thicker and so deeper in colour.
+    edges: { d: string; facing: boolean }[]
+    // The size's dots near the base of each face turned to the viewer, as unit circles mapped
+    // onto the face.
+    pips: Pip[]
+    // The open base, where it faces the viewer: a lying ship pointing away shows its hollow.
+    mouth?: string
+    // The shadow the piece casts on the table, light coloured by the plastic.
+    shadow: string
+    // The outline on screen, for hit areas.
+    outline: string
+}
+
+function pointsOf(points: readonly Point[]): string {
+    return points.map(({ x, y }) => `${round(x)},${round(y)}`).join(' ')
+}
+
+function round(value: number): number {
+    return Math.round(value * 100) / 100
+}
+
+// The pip count of each size, in a row near the base of every face.
+function pipsOn(
+    view: BoardView,
+    size: PyramidSize,
+    from: Vec3,
+    to: Vec3,
+    apex: Vec3,
+    lift: number
+): Pip[] {
+    const along = normalize(sub(to, from))
+    const middle = scale(add(from, to), 0.5)
+    const up = normalize(sub(apex, middle))
+    const normal = cross(along, up)
+    const radius = PYRAMID_BASE[size] * 0.045
+    const spacing = PYRAMID_BASE[size] * 0.16
+    const raise = PYRAMID_BASE[size] * 0.16 + lift
+    const count = size
+    return Array.from({ length: count }, (_, index) => {
+        const offset = (index - (count - 1) / 2) * spacing
+        const centre = add(
+            add(add(middle, scale(along, offset)), scale(up, raise - lift)),
+            scale(normal, 0.4)
+        )
+        const c = project(view, centre)
+        const a = project(view, add(centre, scale(along, radius)))
+        const b = project(view, add(centre, scale(up, radius)))
+        return {
+            transform: `matrix(${round(a.x - c.x)} ${round(a.y - c.y)} ${round(b.x - c.x)} ${round(b.y - c.y)} ${round(c.x)} ${round(c.y)})`
+        }
+    })
+}
+
+// The convex hull, by Andrew's monotone chain.
+function hull(points: readonly Point[]): Point[] {
+    const sorted = [...points].sort((a, b) => a.x - b.x || a.y - b.y)
+    const turnsLeft = (o: Point, a: Point, b: Point) =>
+        (a.x - o.x) * (b.y - o.y) - (a.y - o.y) * (b.x - o.x) > 0
+    const chain = (list: Point[]) => {
+        const result: Point[] = []
+        for (const point of list) {
+            for (
+                let last = result.at(-1), before = result.at(-2);
+                last && before && !turnsLeft(before, last, point);
+                last = result.at(-1), before = result.at(-2)
+            ) {
+                result.pop()
+            }
+            result.push(point)
+        }
+        result.pop()
+        return result
+    }
+    return [...chain(sorted), ...chain(sorted.toReversed())]
+}
+
+export function drawPyramid(
+    view: BoardView,
+    color: PyramidColor,
+    size: PyramidSize,
+    pose: PyramidPose
+): PyramidDrawing {
+    const { base, apex } = solid(size, pose)
+    const centre = scale(add(add(base[0], base[1]), add(base[2], base[3])), 0.25)
+    const sides = base.map((from, index) => {
+        const to = base[(index + 1) % base.length]
+        let normal = normalize(cross(sub(to, from), sub(apex, from)))
+        // Outward, away from the base's middle.
+        if (dot(normal, sub(from, centre)) < 0) normal = scale(normal, -1)
+        return { from, to, normal, facing: dot(normal, view.toViewer) > 0 }
+    })
+    const faces: Face[] = sides
+        .map((side) => ({
+            points: pointsOf([side.from, side.to, apex].map((corner) => project(view, corner))),
+            // A face seen from inside shows its inner side, lit from the other way.
+            fill: faceColor(color, side.facing ? side.normal : scale(side.normal, -1)),
+            facing: side.facing
+        }))
+        .toSorted((a, b) => Number(a.facing) - Number(b.facing))
+    const line = (a: Vec3, b: Vec3) => {
+        const p = project(view, a)
+        const q = project(view, b)
+        return `M${round(p.x)} ${round(p.y)}L${round(q.x)} ${round(q.y)}`
+    }
+    const edges = [
+        ...sides.map((side, index) => ({
+            d: line(side.from, apex),
+            facing: side.facing || (sides.at(index - 1)?.facing ?? false)
+        })),
+        ...sides.map((side) => ({ d: line(side.from, side.to), facing: side.facing }))
+    ].toSorted((a, b) => Number(a.facing) - Number(b.facing))
+    const lift = pose.kind === 'star' ? pose.lift : 0
+    const pips = sides
+        .filter((side) => side.facing)
+        .flatMap((side) => pipsOn(view, size, side.from, side.to, apex, lift))
+    let baseNormal = normalize(cross(sub(base[1], base[0]), sub(base[3], base[0])))
+    if (dot(baseNormal, sub(apex, centre)) > 0) baseNormal = scale(baseNormal, -1)
+    const mouthFacing = dot(baseNormal, view.toViewer) > 0.05
+    const corners = [...base, apex]
+    // Cast along the light onto the table.
+    const cast = corners.map(([x, y, z]) =>
+        project(view, [x - (LIGHT[0] / LIGHT[2]) * z, y - (LIGHT[1] / LIGHT[2]) * z, 0])
+    )
+    return {
+        faces,
+        edges,
+        pips,
+        ...(mouthFacing ? { mouth: pointsOf(base.map((corner) => project(view, corner))) } : {}),
+        shadow: pointsOf(hull(cast)),
+        outline: pointsOf(hull(corners.map((corner) => project(view, corner))))
+    }
+}
