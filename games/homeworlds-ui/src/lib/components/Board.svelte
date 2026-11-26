@@ -1,5 +1,5 @@
 <script lang="ts">
-    import { pieceSize, type PieceKind, PyramidColor } from '@tabletop/homeworlds'
+    import { pieceSize, type PieceKind, PyramidColor, type PyramidSize } from '@tabletop/homeworlds'
     import { getGameSession } from '$lib/model/sessionContext.svelte.js'
     import { towerKey } from '$lib/model/session.svelte.js'
     import { onTable } from '$lib/board/view.js'
@@ -33,6 +33,45 @@
             ...drawOrder(all.filter((drawn) => !animator.flying.has(drawn.piece))),
             ...drawOrder(all.filter((drawn) => animator.flying.has(drawn.piece)))
         ]
+    })
+
+    // Seen from straight above, pieces of one size stacked in one spot look like one. Every tower
+    // in the Bank wears its count, as does a homeworld of two stars the same size.
+    const stackCounts = $derived.by(() => {
+        if (!view.flat) return []
+        const stacks = new Map<
+            string,
+            {
+                x: number
+                y: number
+                size: PyramidSize
+                color: PyramidColor
+                bank: boolean
+                count: number
+            }
+        >()
+        for (const drawn of pieces) {
+            if (drawn.role === 'ship' || animator.flying.has(drawn.piece)) continue
+            const key = `${drawn.x},${drawn.y},${drawn.size}`
+            const stack = stacks.get(key)
+            if (stack) stack.count += 1
+            else
+                stacks.set(key, {
+                    x: drawn.x,
+                    y: drawn.y,
+                    size: drawn.size,
+                    color: drawn.color,
+                    bank: drawn.role === 'bank',
+                    count: 1
+                })
+        }
+        return [...stacks.entries()]
+            .filter(([, stack]) => stack.bank || stack.count > 1)
+            .map(([key, stack]) => {
+                // On the stack's near right corner, where it covers least of the pieces.
+                const reach = PYRAMID_BASE[stack.size] * 0.42
+                return { key, ...stack, at: onTable(view, stack.x + reach, stack.y - reach) }
+            })
     })
 
     function at(x: number, y: number): string {
@@ -340,6 +379,14 @@
             </g>
         {/each}
 
+        <!-- How many stand in each stack the top-down view hides. -->
+        {#each stackCounts as stack (stack.key)}
+            <g class="stack-count" transform="translate({stack.at.x} {stack.at.y})">
+                <circle r="8.5" stroke={PLASTIC_INK[stack.color]}></circle>
+                <text dy="3.85" text-anchor="middle" font-size="11">{stack.count}</text>
+            </g>
+        {/each}
+
         <!-- Hit areas over the pieces, nearest last so it takes the overlap. -->
         <g class="hits">
             {#each layout.systems as system (system.id)}
@@ -476,6 +523,21 @@
         text-transform: uppercase;
         font-weight: 600;
         pointer-events: none;
+    }
+
+    .stack-count {
+        pointer-events: none;
+    }
+
+    .stack-count circle {
+        fill: #101018;
+        fill-opacity: 0.92;
+        stroke-width: 1.6;
+    }
+
+    .stack-count text {
+        fill: #f4f1e6;
+        font-weight: 700;
     }
 
     .lane {
