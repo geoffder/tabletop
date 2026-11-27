@@ -212,9 +212,10 @@ export function cloisterDrawing(
     const outline: string[] = []
     const detail: string[] = []
     for (const stroke of CLOISTER_STROKES) {
-        let points = stroke.points.map(
-            ([x, y]) => [x + wobble() * 0.8, y + wobble() * 0.8] as [number, number]
-        )
+        let points = stroke.points.map(([x, y]): [number, number] => [
+            x + wobble() * 0.8,
+            y + wobble() * 0.8
+        ])
         const [dx, dy] = [wobble(), wobble()]
         if (stroke.overshoot && points.length === 2) {
             const [[ax, ay], [bx, by]] = points

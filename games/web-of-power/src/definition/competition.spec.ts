@@ -13,18 +13,26 @@ import {
     startGame
 } from './tests/playthrough.js'
 
-const SEATS = ['p1', 'p2', 'p3', 'p4']
-const orders = [SEATS, ['p3', 'p1', 'p4', 'p2']]
+// Every table size the game seats, each with seat order and an order assigned by a tournament.
+const TABLES = [
+    { seats: ['p1', 'p2', 'p3'], assigned: ['p3', 'p1', 'p2'] },
+    { seats: ['p1', 'p2', 'p3', 'p4'], assigned: ['p3', 'p1', 'p4', 'p2'] },
+    { seats: ['p1', 'p2', 'p3', 'p4', 'p5'], assigned: ['p3', 'p1', 'p5', 'p2', 'p4'] }
+]
 
 function rename(state: WebOfPowerGameState, mapping: Record<string, string>): WebOfPowerGameState {
     return JSON.parse(
-        JSON.stringify(state).replace(/"p[1-4]"/g, (id) => `"${mapping[id.slice(1, -1)]}"`)
+        JSON.stringify(state).replace(/"p[1-5]"/g, (id) => `"${mapping[id.slice(1, -1)]}"`)
     )
 }
 
-describe.each([{}, { fasterVariant: true }])('Web of Power tournaments %o', (config) => {
+describe.each(
+    [{}, { fasterVariant: true }].flatMap((config) => TABLES.map((table) => ({ config, ...table })))
+)('Web of Power tournaments $config at $seats.length players', ({ config, seats, assigned }) => {
+    const orders = [seats, assigned]
+
     it('starts the player in seat one, then seat two', () => {
-        const game = createGame(config, SEATS)
+        const game = createGame(config, seats)
         for (const order of orders) {
             const initialState = startGame(game, MASTER_SEED, order)
             expect(initialState.turnManager.turnOrder).toEqual(order)
@@ -43,7 +51,7 @@ describe.each([{}, { fasterVariant: true }])('Web of Power tournaments %o', (con
     })
 
     it('leaves the seeded setup unchanged apart from who sits where', () => {
-        const game = createGame(config, SEATS)
+        const game = createGame(config, seats)
         const uninitialized = engine.generateUninitializedState(game, MASTER_SEED)
         const initialize = (playerIds: string[]) =>
             WebOfPowerRuntime.initializer
@@ -58,7 +66,7 @@ describe.each([{}, { fasterVariant: true }])('Web of Power tournaments %o', (con
     })
 
     it('finishes an assigned game with a valid result and its points as scores', () => {
-        const game = createGame(config, SEATS)
+        const game = createGame(config, seats)
         const initialState = startGame(game, MASTER_SEED, orders[1])
         const finished = playToEnd(game, initialState, 7)
         assert(WebOfPowerGameStateValidator.Check(finished), 'The finished state is canonical')

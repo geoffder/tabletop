@@ -9,8 +9,9 @@ import { chromium } from '@playwright/test'
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..')
 const IMAGES = join(ROOT, 'src', 'lib', 'images')
 
-// Pixels per map unit: 2.5 times the board's largest fit (maxFitScale 1.5 in GameTable).
-const SCALE = 2.5 * 1.5
+// Pixels per map unit: 2.5 times the board's largest scale on screen, 1.12 (1617 px wide at
+// 2560x1440 in full screen); it never reaches GameTable's maxFitScale of 1.5.
+const SCALE = 2.5 * 1.12
 const SAMPLES = 3
 
 const LOOK = { ambient: 0.8, diffuse: 0.58, broad: 0.05, tight: 0.08, grain: 0.045, rim: 0.24 }
@@ -199,7 +200,9 @@ function render(piece) {
     const width = Math.ceil((x1 - x0) * SCALE)
     const height = Math.ceil((y1 - y0) * SCALE)
     const rgba = new Uint8ClampedArray(width * height * 4)
-    const fine = 4
+    // The outline is traced at a fixed 15 to 17 samples per map unit, whatever the light's size, so
+    // its edges simplify to straight lines.
+    const fine = Math.ceil(15 / SCALE)
     const [fw, fh] = [width * fine, height * fine]
     const mask = new Uint8Array(fw * fh)
     for (let py = 0; py < fh; py++) {

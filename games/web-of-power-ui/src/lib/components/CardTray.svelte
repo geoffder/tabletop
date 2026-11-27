@@ -274,7 +274,7 @@
         border: 1.5px dashed var(--wop-panel-rule);
     }
 
-    :global(.discard-view) {
+    .fit :global(.discard-view) {
         background: var(--wop-panel) !important;
         border: none !important;
         border-radius: 10px !important;

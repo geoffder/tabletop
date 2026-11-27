@@ -67,7 +67,6 @@ export const Advisor = Type.Object({
 export type Placement = Type.Static<typeof Placement>
 export const Placement = Type.Object({
     country: CountrySchema,
-    kind: Type.Enum(PieceKind),
     // The country held no cloister before this piece.
     opened: Type.Boolean()
 })
@@ -267,7 +266,7 @@ export class HydratedWebOfPowerGameState
         } else {
             this.advisors.push({ country: target.country, playerId })
         }
-        this.placements.push({ country: target.country, kind: target.kind, opened })
+        this.placements.push({ country: target.country, opened })
     }
 
     exchange(playerId: string, card: CardColor) {

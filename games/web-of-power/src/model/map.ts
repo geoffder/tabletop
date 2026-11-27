@@ -224,10 +224,6 @@ export function spaceOf(abbey: Abbey): CloisterSpace {
     return space
 }
 
-export function isAbbey(value: unknown): value is Abbey {
-    return typeof value === 'string' && SPACE_BY_ABBEY.has(value as Abbey)
-}
-
 export function spacesIn(country: Country): CloisterSpace[] {
     return SPACES.filter((space) => space.country === country)
 }
