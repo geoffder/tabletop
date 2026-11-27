@@ -67,9 +67,9 @@ const definition: GameUiDefinition<GameState, HydratedGameState> = {
 // into an asset lookup.
 const SCENARIOS = join(dirname(fileURLToPath(import.meta.url)), '../../scenarios')
 
-// The harness's Late game, Alice to play, with the harness user in her seat.
-function lateGame() {
-    const scenario = JSON.parse(readFileSync(join(SCENARIOS, 'late-game.json'), 'utf8'))
+// A harness scenario (Late game unless named), Alice to play, with the harness user in her seat.
+function scenarioGame(file = 'late-game.json') {
+    const scenario = JSON.parse(readFileSync(join(SCENARIOS, file), 'utf8'))
     const game: Game = {
         ...scenario.game,
         storage: GameStorage.Local,
@@ -94,8 +94,8 @@ afterEach(() => {
 
 let current: WebOfPowerGameSession
 
-async function aliceSession() {
-    const { game, state, actions } = lateGame()
+async function aliceSession(file?: string) {
+    const { game, state, actions } = scenarioGame(file)
     const app = createHarnessAppContext(definition)
     vi.spyOn(app.gameService, 'saveGameLocally').mockResolvedValue(undefined)
     const bridgedContext = new BridgedContext({
@@ -280,6 +280,35 @@ describe('cardMoves', () => {
         await settled(session.drawFromDeck())
         expect(cardMoves(drawing, session.gameState, BOB)).toEqual([
             { card: undefined, from: { kind: 'deck' }, to: { kind: 'hand', playerId: ALICE } }
+        ])
+    })
+
+    it('moves the reshuffled pile once, and the drawn card, across the interim scoring', async () => {
+        const session = await aliceSession('interim-scoring.json')
+        session.chooseCard([...session.placeableIndices][0])
+        await placeFirstTarget(session)
+        if (session.canEndPlacing) await settled(session.endPlacing())
+        const drawing = session.gameState
+        const held = [...session.hand]
+        await settled(session.drawFromDeck())
+        const scored = session.gameState
+        expect(scored.discard).toHaveLength(0)
+        const drawn = session.hand.find((card) => {
+            const kept = held.indexOf(card)
+            if (kept >= 0) held.splice(kept, 1)
+            return kept < 0
+        })
+        if (drawn === undefined) throw Error('The draw adds a card to the hand')
+        const index = session.hand.indexOf(drawn)
+        const pile = drawing.discard.at(-1)
+
+        expect(cardMoves(drawing, scored, ALICE)).toEqual([
+            { card: pile, from: { kind: 'discard' }, to: { kind: 'deck' } },
+            { card: drawn, from: { kind: 'deck' }, to: { kind: 'hand', playerId: ALICE, index } }
+        ])
+        expect(cardMoves(scored, drawing, ALICE)).toEqual([
+            { card: pile, from: { kind: 'deck' }, to: { kind: 'discard' } },
+            { card: drawn, from: { kind: 'hand', playerId: ALICE, index }, to: { kind: 'deck' } }
         ])
     })
 })

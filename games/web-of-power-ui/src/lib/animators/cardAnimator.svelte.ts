@@ -89,18 +89,26 @@ export function cardMoves(
         index
     })
 
+    // The interim scoring turns the whole discard pile into the deck: it moves as one pile, either
+    // way, with any card the same step drew or gave back.
     const reshuffled =
         from.discard.length > 0 &&
         to.discard.length === 0 &&
         to.deck.remaining > from.deck.remaining
+    const unshuffled =
+        to.discard.length > 0 &&
+        from.discard.length === 0 &&
+        from.deck.remaining > to.deck.remaining
     if (reshuffled) {
         moves.push({ card: from.discard.at(-1), from: { kind: 'discard' }, to: { kind: 'deck' } })
-        return moves
+    } else if (unshuffled) {
+        moves.push({ card: to.discard.at(-1), from: { kind: 'deck' }, to: { kind: 'discard' } })
     }
 
     let handLeft = handDelta
-    const discarded = to.discard.slice(from.discard.length)
-    const undiscarded = from.discard.slice(to.discard.length)
+    const pileMoved = reshuffled || unshuffled
+    const discarded = pileMoved ? [] : to.discard.slice(from.discard.length)
+    const undiscarded = pileMoved ? [] : from.discard.slice(to.discard.length)
     for (const card of discarded) {
         moves.push({ card, from: handPlace(takeFrom(fromHand, card)), to: { kind: 'discard' } })
         handLeft += 1
@@ -221,8 +229,10 @@ export class CardAnimator implements MoveInterrupter {
         this.stop()
     }
 
+    // Even between steps: the rest of the replay is still to come.
     abandon() {
-        if (this.stop()) this.abandoned = this.session.presentingState
+        this.stop()
+        this.abandoned = this.session.presentingState
     }
 
     // The tray is drawn twice in full screen; the one on view is used.
@@ -310,11 +320,11 @@ export class CardAnimator implements MoveInterrupter {
         const rowBefore = this.rectsOf('display', before.display.length)
         const width = this.cardWidth()
 
-        // A pile counts an arriving card only once it lands.
+        // A pile counts an arriving card only once it lands, and lets one go as its timeline starts.
         this.table = {
             hand: after.hand,
             display: after.display,
-            discard: after.discard.length < before.discard.length ? after.discard : before.discard,
+            discard: before.discard,
             deckCount: Math.min(before.deckCount, after.deckCount)
         }
         const fliers = moves.flatMap((move, order) => {
@@ -349,6 +359,17 @@ export class CardAnimator implements MoveInterrupter {
             : animationContext.actionTimeline
         owner.add(timeline, 0)
         this.timeline = timeline
+        if (after.discard.length < before.discard.length) {
+            timeline.call(
+                () => {
+                    if (this.session.gameState === shown) {
+                        this.table = { ...this.table, discard: after.discard }
+                    }
+                },
+                undefined,
+                0
+            )
+        }
         const touched: HTMLElement[] = []
         const slide = (node: HTMLElement, from: DOMRect, to: DOMRect, turn = 0) => {
             const x = from.left + from.width / 2 - (to.left + to.width / 2)

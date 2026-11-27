@@ -95,8 +95,10 @@ export class PieceAnimator implements MoveInterrupter {
         this.stop()
     }
 
+    // Even between steps: the rest of the replay is still to come.
     abandon() {
-        if (this.stop()) this.abandoned = this.session.presentingState
+        this.stop()
+        this.abandoned = this.session.presentingState
     }
 
     house(abbey: string): Attachment<SVGGElement> {

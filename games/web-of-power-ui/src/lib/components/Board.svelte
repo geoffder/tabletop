@@ -322,7 +322,7 @@
                     {/each}
                     {#if beat.alliance !== undefined}
                         {@const box = ALLIANCE_BOXES[beat.alliance]}
-                        <circle cx={box.x} cy={box.y} r="24" class="target-halo"></circle>
+                        <circle cx={box.x} cy={box.y} r="24" class="beat-halo"></circle>
                         <circle cx={box.x} cy={box.y} r="24" class="beat-ring"></circle>
                     {/if}
                 </g>
@@ -519,31 +519,21 @@
 
     .target-halo {
         fill: none;
-        stroke: #fff4d0;
-        stroke-width: 7;
-        stroke-opacity: 0.85;
+        stroke: #0d1626;
+        stroke-width: 8;
     }
 
     .target-ring {
         fill: none;
-        stroke: var(--wop-lit-ink);
-        stroke-width: 3;
-        stroke-dasharray: 7 5;
+        stroke: #22c8e8;
+        stroke-width: 4.5;
     }
 
-    /* Stepped, and only once a choice's own motion has settled: WebKit redraws the whole board
-       for each change (38 against 57 fps while a card was chosen). */
-    @media (prefers-reduced-motion: no-preference) {
-        .target-halo,
-        .target-ring {
-            animation: target-pulse 1.6s steps(16, jump-none) 0.5s infinite;
-        }
-    }
-
-    @keyframes target-pulse {
-        50% {
-            stroke-opacity: 0.4;
-        }
+    .beat-halo {
+        fill: none;
+        stroke: #fff4d0;
+        stroke-width: 7;
+        stroke-opacity: 0.85;
     }
 
     .lit,

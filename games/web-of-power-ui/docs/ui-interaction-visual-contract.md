@@ -43,7 +43,7 @@ The session derives what may be chosen and where (`placeableIndices`, `targets`,
 - **Map** (`Board.svelte`, `board/mapData.ts` from `tmp/web-of-power/map/`): the Rio Grande board traced, in the printed colours washed a quarter toward parchment, each country deepening to its printed colour at its edges (baked into `coast.webp`), with no border lines. Roads in rough black ink with smudged edges; sea routes dash-dotted; alliance tags on worn parchment straddling the border between their two countries; each country's coat of arms on its seal.
 - **Pieces** (`Piece.svelte`): a house or peg outline in the player's colour under a pre-rendered light image (`pnpm run render-pieces`). On the board they cast their whole ground shadow; on the player cards (`small`) the light stays within the outline and a small shadow sits just past the edge.
 - **Cloister drawings**: every space keeps its printed cloister sketch; a house stands on it, never replaces it.
-- **Target ring**: a dashed ink ring on a pale halo, radius 35 round a cloister drawing's middle and 57 round a seal. Pulses (stroke opacity to 0.4 and back in 1.6 s) after 0.5 s, in 16 steps per cycle rather than smoothly, so WebKit repaints the board 10 times a second instead of every frame; no pulse with reduced motion.
+- **Target ring**: a solid cyan ring (`#22c8e8`, 4.5 wide) over a dark band (`#0d1626`, 8 wide), radius 35 round a cloister drawing's middle and 57 round a seal. It stays still while it waits: a repeating animation keeps WebKit repainting the whole board on phones.
 - **Lit country**: drawn over the coast and under mountains, labels, roads and tags, so the map's lettering and roads stay readable on it; red, green and purple are held near their printed colours so pieces keep their contrast.
 - **Cards** (`Card.svelte`): arms only, no names; the deck's back shows the Kardinal & König seal. Choosable: a 2px gold edge. Chosen: lifted 11px, 4px gold ring, deeper shadow. Dimmed: 45%.
 - **Tray** (`CardTray.svelte`): the viewer's hand fanned (8° apart, each over 45% of the one to its left), a divider, the market, then the deck and discard in a recess, each group captioned ("Market", "Deck", "Discard") on one line. Card width is the tray's `--wop-card-width`.
@@ -80,7 +80,7 @@ Draw order inside the board, which taps depend on: sea, routes, land, countries,
 - **Table as drawn** (`CardAnimator.table`, `fliers`; `PieceAnimator.cloisters`, `advisors`, `ringSizes`; `ScoringAnimator.scores`, `beats`, `heading`, `label`):
     - Meaning: what the tray, board and player cards draw, which lags the published state while a move plays.
     - Lifetime: each animated step sets it to the state the step leaves and lands it on the arriving state (`afterAnimations`); the landing writes only while the state it began on is still shown, so a switch of view is never covered.
-- **Stopping a move** (`moveInterrupters`): `beforeNewState` abandons every animator's move on `view-switch`; each recognises the abandoned presentation's later steps by `presentingState` and skips them.
+- **Stopping a move** (`moveInterrupters`): `beforeNewState` abandons every animator's move on `view-switch`; each, playing or between steps, records the abandoned presentation and skips its later steps by `presentingState`.
 - **History steps** (`shouldAutoStepAction`): a step takes a move with the system actions after it, so a turn's closing refill (and a scoring) goes with the move that caused it, and a turn's replay from History ends with its own refill.
 
 ### Motion
@@ -91,7 +91,7 @@ Draw order inside the board, which taps depend on: sea, routes, land, countries,
 - **Refill**: cards fly from the deck to the market's gaps, turning over on the way.
 - **Reshuffle**: at the interim scoring the discard pile flies to the deck after the scoring's beats (`finalTimeline`).
 - **Scoring**: each entry about 1 s (lights 0.24 s, chips 0.3 s, count 0.4 s, hold 1 s, fade 0.3 s, the next starting as it fades); a chain draws road by road (0.2 s each) and holds 0.8 s. Only a step with the scoring action plays it; Undo and state-only history land it at once.
-- **Steps without an action** (Undo, state-only history, exploration): every motion within 0.18 s.
+- **Steps without an action** (Undo, state-only history, exploration): every motion done within 0.19 s (a piece starts 0.01 s in and moves for 0.18 s).
 - **Slow frames**: while a piece drops, a frame longer than 100 ms advances GSAP by only 33 ms (put back as the move lands), so a stalling phone shows the drop late rather than skipping it.
 
 ## 6. Verification Scenarios

@@ -54,6 +54,7 @@ export class ScoringAnimator implements MoveInterrupter {
     private readonly tweened = new Set<object>()
     private landMove: (() => void) | undefined
     private timeline: gsap.core.Timeline | undefined
+    private abandoned: HydratedWebOfPowerGameState | undefined
 
     constructor(private readonly session: WebOfPowerGameSession) {}
 
@@ -71,8 +72,10 @@ export class ScoringAnimator implements MoveInterrupter {
         this.stop()
     }
 
+    // Even between steps: the rest of the replay is still to come.
     abandon() {
         this.stop()
+        this.abandoned = this.session.presentingState
     }
 
     part(name: string): Attachment<SVGElement> {
@@ -159,6 +162,9 @@ export class ScoringAnimator implements MoveInterrupter {
     private async present({ kind, from, action, animationContext }: Step) {
         // A scoring shows only as it happens; Undo and a step back land it at once.
         if (from === undefined || !ANIMATED_KINDS.has(kind) || action === undefined) return
+        const presenting = this.session.presentingState
+        if (presenting !== undefined && presenting === this.abandoned) return
+        this.abandoned = undefined
         const beats = this.beatsOf(action)
         if (beats.length === 0) return
         const scores = new Map(from.players.map((player) => [player.playerId, player.score]))

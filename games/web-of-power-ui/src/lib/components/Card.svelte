@@ -91,9 +91,9 @@
         box-shadow:
             inset 0 0 0 1px rgb(40 30 20 / 0.4),
             0 1px 3px rgb(40 30 20 / 0.3);
-        transition:
-            transform 0.15s,
-            opacity 0.15s;
+        /* Only the lift a hover or a choice gives eases; a pile's tilt and a dimmed card follow the
+           state at once. */
+        transition: translate 0.15s;
     }
 
     .art {
@@ -128,12 +128,12 @@
 
     @media (hover: hover) {
         button.card:not(.chosen):hover {
-            transform: translateY(-4px);
+            translate: 0 -4px;
         }
     }
 
     .card.chosen {
-        transform: translateY(-11px);
+        translate: 0 -11px;
         box-shadow:
             inset 0 0 0 1px rgb(40 30 20 / 0.4),
             0 0 0 2px var(--wop-card-ink),
