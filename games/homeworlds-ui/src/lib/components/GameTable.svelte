@@ -106,9 +106,36 @@
                 >
                     <Board />
                     {#snippet overlay()}
+                        <!-- Right-aligned rows no wider than the zoom controls below, so they take
+                             no more of the board's width; the far side last, by the zoom. -->
                         <div
-                            class="pointer-events-auto absolute right-0 bottom-11 z-10 flex items-center gap-1.5"
+                            class="board-toggles pointer-events-auto absolute right-0 bottom-11 z-10"
                         >
+                            <OverlayToggle
+                                label="Top-down view"
+                                pressed={gameSession.flatBoard}
+                                onToggle={() => gameSession.toggleFlatBoard()}
+                            >
+                                <!-- A pyramid seen from straight above: a square crossed corner to corner. -->
+                                <svg
+                                    viewBox="0 0 16 16"
+                                    width="16"
+                                    height="16"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    stroke-width="1.4"
+                                    stroke-linejoin="round"
+                                    aria-hidden="true"
+                                >
+                                    <path d="M2 2 H14 V14 H2 Z M2 2 L14 14 M14 2 L2 14"></path>
+                                </svg>
+                            </OverlayToggle>
+                            <!-- The map's line laid an eighth of a turn flatter, named by its angle as PÜNCT's 90°. -->
+                            <OverlayToggle
+                                label="Map turned 45°"
+                                pressed={gameSession.wideMap}
+                                onToggle={() => gameSession.toggleWideMap()}>45°</OverlayToggle
+                            >
                             <!-- Half a turn round, to sit on the other player's side. -->
                             <OverlayToggle
                                 label="Far side"
@@ -129,47 +156,6 @@
                                     <path
                                         d="M -5.5 -1 A 5.5 5.5 0 0 1 4.5 -3.2 M 2 -5 L 4.8 -3 L 2.2 -0.8 M 5.5 1 A 5.5 5.5 0 0 1 -4.5 3.2 M -2 5 L -4.8 3 L -2.2 0.8"
                                     ></path>
-                                </svg>
-                            </OverlayToggle>
-                            <OverlayToggle
-                                label="Wide map"
-                                pressed={gameSession.wideMap}
-                                onToggle={() => gameSession.toggleWideMap()}
-                            >
-                                <!-- An eighth of a turn, as an arrow round a corner. -->
-                                <svg
-                                    viewBox="0 0 16 16"
-                                    width="16"
-                                    height="16"
-                                    fill="none"
-                                    stroke="currentColor"
-                                    stroke-width="1.4"
-                                    stroke-linecap="round"
-                                    stroke-linejoin="round"
-                                    aria-hidden="true"
-                                >
-                                    <path
-                                        d="M3 9 A5.5 5.5 0 1 0 8 3.5 M8 3.5 L5.6 1.6 M8 3.5 L5.8 5.8"
-                                    ></path>
-                                </svg>
-                            </OverlayToggle>
-                            <OverlayToggle
-                                label="Top-down view"
-                                pressed={gameSession.flatBoard}
-                                onToggle={() => gameSession.toggleFlatBoard()}
-                            >
-                                <!-- A pyramid seen from straight above: a square crossed corner to corner. -->
-                                <svg
-                                    viewBox="0 0 16 16"
-                                    width="16"
-                                    height="16"
-                                    fill="none"
-                                    stroke="currentColor"
-                                    stroke-width="1.4"
-                                    stroke-linejoin="round"
-                                    aria-hidden="true"
-                                >
-                                    <path d="M2 2 H14 V14 H2 Z M2 2 L14 14 M14 2 L2 14"></path>
                                 </svg>
                             </OverlayToggle>
                         </div>
@@ -222,6 +208,14 @@
         box-shadow:
             inset 0 0 0 1px var(--hw-panel-edge),
             var(--hw-panel-shadow);
+    }
+
+    .board-toggles {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: flex-end;
+        gap: 6px;
+        max-width: 112px;
     }
 
     .fullscreen-backdrop {
