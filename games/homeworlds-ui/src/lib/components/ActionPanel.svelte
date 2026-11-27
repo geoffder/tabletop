@@ -7,6 +7,7 @@
     import { holdTallest } from './holdTallest.js'
     import GameEndPanel from './GameEndPanel.svelte'
     import PieceIcon from './PieceIcon.svelte'
+    import PowerChoices from './PowerChoices.svelte'
 
     const session = getGameSession()
 
@@ -67,7 +68,7 @@
     {:else if ship !== undefined && session.selectedPower === ShipPower.Capture}
         <span>Capture a ship circled in red</span>
     {:else if ship !== undefined}
-        <span>What should <PieceIcon piece={ship} ship /> do?</span>
+        <PowerChoices />
     {:else if machineState === MachineState.SacrificeActions && session.sacrificeColor}
         <span
             >{session.sacrificeLeft}

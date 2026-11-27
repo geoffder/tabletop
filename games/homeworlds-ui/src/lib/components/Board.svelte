@@ -9,7 +9,6 @@
     import Pyramid from './Pyramid.svelte'
     import { BoardAnimator } from '$lib/animators/boardAnimator.svelte.js'
     import { drawOrder, type DrawnPiece } from '$lib/board/pieces.js'
-    import PowerMenu from './PowerMenu.svelte'
 
     // Bright enough to read on the dark table.
     const PLASTIC_INK: Record<PyramidColor, string> = {
@@ -475,21 +474,8 @@
                 ></path>
             </g>
         {/each}
-
-        {#if session.selectedShip !== undefined}
-            {@const ship = shipsById.get(session.selectedShip)}
-            {#if ship}
-                {@const centre = onTable(view, ship.x, ship.y)}
-                <circle id="hw-ship-anchor" cx={centre.x} cy={centre.y - 20} r="1" fill="none"
-                ></circle>
-            {/if}
-        {/if}
     </svg>
 </div>
-
-{#if session.selectedShip !== undefined && session.selectedPower === undefined}
-    <PowerMenu />
-{/if}
 
 <style>
     .tap-off {
